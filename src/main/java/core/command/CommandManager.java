@@ -14,26 +14,35 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.managers.AudioManager;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
 public class CommandManager {
     private TextChannel textChannel;
     private Guild guild;
-    private final boolean SAFE_MODE = true;
+    private User user;
+    private final boolean SAFE_MODE = false;
     private CommandStatus mode = CommandStatus.NORMAL;
     private YoutubeCrawler youtubeCrawler = new YoutubeCrawler();
 
     //Memories
     private ArrayList<String> kickList = new ArrayList<>();
+    private Message musicSelectMessage = null;
+    private ArrayList<Member> whiteList = new ArrayList<>();
+    private ArrayList<Role> whiteRoleList = new ArrayList<>();
+
+    //FINAL
+    private final int MAX_RETRIEVE_SIZE = 500;
 
 
     public void parseCommand(MessageReceivedEvent e){
-        User user = e.getAuthor();
+        user = e.getAuthor();
         textChannel = e.getTextChannel();
         Message msg = e.getMessage();
         String text = msg.getContentDisplay();
         guild = e.getGuild();
 
-        CommandParser commandParser = new CommandParser(text);
+        CommandParser commandParser = new CommandParser(text, false);
         ArrayList<String> segments = commandParser.getSegments();
         String sentence = commandParser.getIntegratedString();
         String keyword = commandParser.getKeyword();
@@ -44,23 +53,47 @@ public class CommandManager {
             case NORMAL:
                 switch(keyword){
                     case "alive": alive(); break;
+                    case "j":
                     case "join": join(e); break;
+                    case "l":
                     case "leave": leave(); break;
                     case "say": say(sentence, msg); break;
                     case "kick": kick(segments); break;
-                    case "find": find(sentence); break;
+                    case "play": play(sentence); break;
+                    case "clear": clear(e, segments.get(0)); break;
+                    case "whitelist": whitelist(); break;
                 }
                 break;
             case ASK_KICK:
-                if(keyword.equals("yes")){
-                    for (String id : kickList) {
-                        guild.kick(guild.getMemberById(id)).queue();
-                    }
-                }else{
-                    textChannel.sendMessage("kicking canceled").queue();
+                switch(keyword){
+                    case "yes":
+                        for (String id : kickList) {
+                            guild.kick(guild.getMemberById(id)).queue();
+                        }
+                    break;
+                    default:
+                        sendMessage("kicking canceled");
+                        break;
                 }
                 break;
+            case WAIT_SONG_PICK:
+                switch(keyword){
+                    case "p":
+                    case "play":
+                        try{
+                            int songIndex = Integer.parseInt(segments.get(0));
+                            play(e, songIndex);
+                        }catch(NumberFormatException exception){
+                            sendBoldMessage("잘못된 인자: 음악 실행 취소");
+                        }
+                        break;
+                    default:
+                        sendBoldMessage("음악 실행 취소");
+                        break;
+                }
         }
+
+        if(mode!=CommandStatus.NORMAL)mode = CommandStatus.NORMAL;
 
     }
 
@@ -121,55 +154,80 @@ public class CommandManager {
         sendMessage("Selected users: " + kicked);
     }
 
-    private void play(){
-        VoiceChannel currentVoiceChannel = guild.getSelfMember().getVoiceState().getChannel();
-        if(currentVoiceChannel == null){
-            sendMessage("현재 봇이 참여한 음성 채널이 없습니다.");
-        }else {
-//            AudioPlayer audioPlayer = playerManager.createPlayer();
-//            TrackScheduler trackScheduler = new TrackScheduler(audioPlayer);
-//            audioPlayer.addListener(trackScheduler);
-//            playerManager.loadItem(getIntegratedString(segment), new AudioLoadResultHandler() {
-//                @Override
-//                public void trackLoaded(AudioTrack track) {
-//                    trackScheduler.queue(track);
-//                    sendMessage(track.getInfo().title + " added to queue.");
-//                }
-//
-//                @Override
-//                public void playlistLoaded(AudioPlaylist playlist) {
-//                    sendMessage("playlist loaded.");
-//                }
-//
-//                @Override
-//                public void noMatches() {
-//                    sendMessage("매치 결과 없음");
-//                }
-//
-//                @Override
-//                public void loadFailed(FriendlyException exception) {
-//                    sendMessage("로드 실패 씨발");
-//                }
-//            });
-        }
-    }
-
-    private void find(String searchKeyword){
+    private void play(String searchKeyword){
         ArrayList<YoutubeTrackInfo> trackInfoBundle = youtubeCrawler.getVideoCandidates(searchKeyword);
         StringBuilder res = new StringBuilder();
         int index = 0;
-        for(YoutubeTrackInfo info : trackInfoBundle){
-            res.append(textStyler.toBold(++index+"")).append(". ").append(info.getTitle()).append("\n");
+        for (YoutubeTrackInfo info : trackInfoBundle) {
+            res.append(textStyler.toBold(++index + "")).append(". ").append(info.getTitle()).append("\n");
         }
 
-        sendBoldMessage("명령어 "+textStyler.toBlock("$play 1-5")+"를 사용하여 재생:");
+        sendBoldMessage("명령어 " + textStyler.toBlock("$play 1-5") + "를 사용하여 재생:");
         sendMessage(res.toString());
+
+        mode = CommandStatus.WAIT_SONG_PICK;
+    }
+
+    private void play(MessageReceivedEvent e, int index){
+        VoiceChannel currentVoiceChannel = guild.getSelfMember().getVoiceState().getChannel();
+        if(currentVoiceChannel == null){
+            join(e);
+        }
+
+    }
+
+    private void clear(MessageReceivedEvent e, String amountStr){
+        if(warningDangerousCommand())return;
+        if(hasWhitePermission())
+        try{
+            final int amount = Math.min(Integer.parseInt(amountStr), MAX_RETRIEVE_SIZE);
+
+            MessageHistory messageHistory = textChannel.getHistory();
+            messageHistory.retrievePast(amount).queue(messageList -> {
+                textChannel.deleteMessages(messageList).queue();
+                sendBoldMessage("최근 메시지 "+amount+"개 삭제되었습니다.");
+            });
+        }catch(NumberFormatException exception){
+            sendBoldMessage("잘못된 인자: clear 명령이 취소되었습니다.");
+        }
+    }
+
+    private void whitelist(){
+        boolean isEmpty = whiteList.isEmpty() && whiteRoleList.isEmpty();
+        if(isEmpty){
+            sendBoldMessage("현재 화이트리스트에 아무도 없습니다.");
+            return;
+        }
+
+        if(!whiteList.isEmpty()){
+            sendBoldMessage("화이트리스트 유저 "+whiteList.size()+"명");
+            StringBuilder res = new StringBuilder();
+            int index = 0;
+            for(Member whites : whiteList){
+                res.append(++index).append(". ").append(whites.getUser().getName()).append("\n");
+            }
+            sendWrappedMessage(res.toString());
+        }
+
+        if(!whiteRoleList.isEmpty()){
+            sendBoldMessage("\n화이트리스트 역할 "+whiteRoleList.size()+"개");
+            StringBuilder res = new StringBuilder();
+            int index = 0;
+            for(Role role : whiteRoleList){
+                res.append(++index).append(". ").append(role.getName()).append("\n");
+            }
+            sendWrappedMessage(res.toString());
+        }
     }
 
 
     /* Internal Util Functions */
-    private void sendMessage(String msg){
-        textChannel.sendMessage(msg).queue();
+    public void sendMessage(String msg){
+        if(textChannel == null){
+            print("Channel Not Allocated.");
+        }else{
+            textChannel.sendMessage(msg).queue();
+        }
     }
 
     private void sendBoldMessage(String message){
@@ -184,8 +242,70 @@ public class CommandManager {
 
     private boolean warningDangerousCommand(){
         if(!SAFE_MODE)return false;
-        sendMessage("현재 봇이 안전모드에 있습니다. 위험한 명령어는 제한됩니다.");
+        sendBoldMessage("현재 봇이 안전모드에 있습니다. 위험한 명령어는 제한됩니다.");
         return true;
+    }
+
+    private boolean hasWhitePermission(){
+        for(Member whites : whiteList){
+            if(whites.getUser().getId().equals(user.getId()))
+                return true;
+        }
+        List<Role> roles = guild.getMember(user).getRoles();
+        for(Role role : roles){
+            for(Role whiteRole : whiteRoleList){
+                if(role.getId().equals(whiteRole.getId()))
+                    return true;
+            }
+        }
+        sendBoldMessage("화이트리스트에 있는 역할/유저들만 실행할 수 있는 명령어입니다.");
+        return false;
+    }
+
+    public void privilege(String name){
+        if(guild == null) {
+            print("Channel Not Allocated.");
+            return;
+        }
+
+        boolean found = false;
+
+        for(Member member : guild.getMembers()){
+            if(member.getUser().getName().equals(name)){
+                whiteList.add(member);
+                found = true;
+                sendServerMessage("유저 "+name+"에게 특수 명령 권한을 부여함");
+                break;
+            }
+        }
+
+        if(!found){
+            for(Role role : guild.getRoles()){
+                if(role.getName().equals(name)){
+                    whiteRoleList.add(role);
+                    found = true;
+                    sendServerMessage("역할 "+role.getName()+"에게 특수 명령 권한을 부여함");
+                    break;
+                }
+            }
+        }
+
+        if(!found){
+            print("그런 닉네임의 사용자/역할은 없습니다.");
+        }
+    }
+
+    public void resetWhiteList(){
+        whiteList.clear();
+        whiteRoleList.clear();
+        sendServerMessage("화이트리스트를 비웠습니다.");
+    }
+
+    private void sendServerMessage(String str){
+        TextStyleManager styler = new TextStyleManager();
+        String printer = styler.toBold("[Server] "+str);
+
+        sendMessage(printer);
     }
 
     private void print(Object o){
