@@ -129,6 +129,8 @@ public class CommandManager {
 
     private void kick(ArrayList<String> segment){
         if(warningDangerousCommand())return;
+        if(!hasWhitePermission())return;
+
         String roleName = segment.get(0).substring(1);
         Role role = guild.getRolesByName(roleName, false).get(0);
         sendMessage("Kick Mode => selected role: " + role.getName());
@@ -162,7 +164,7 @@ public class CommandManager {
             res.append(textStyler.toBold(++index + "")).append(". ").append(info.getTitle()).append("\n");
         }
 
-        sendBoldMessage("명령어 " + textStyler.toBlock("$play 1-5") + "를 사용하여 재생:");
+        sendBoldMessage("명령어 " + textStyler.toBlock("$play 1-5") + "를 사용하여 재생하세요:");
         sendMessage(res.toString());
 
         mode = CommandStatus.WAIT_SONG_PICK;
@@ -173,19 +175,18 @@ public class CommandManager {
         if(currentVoiceChannel == null){
             join(e);
         }
-
     }
 
     private void clear(MessageReceivedEvent e, String amountStr){
         if(warningDangerousCommand())return;
-        if(hasWhitePermission())
+        if(!hasWhitePermission())return;
         try{
             final int amount = Math.min(Integer.parseInt(amountStr), MAX_RETRIEVE_SIZE);
 
             MessageHistory messageHistory = textChannel.getHistory();
             messageHistory.retrievePast(amount).queue(messageList -> {
                 textChannel.deleteMessages(messageList).queue();
-                sendBoldMessage("최근 메시지 "+amount+"개 삭제되었습니다.");
+                sendBoldMessage("최근 메시지 "+amount+"개가 "+textStyler.toBlock(e.getAuthor().getName())+"에 의해 삭제되었습니다.");
             });
         }catch(NumberFormatException exception){
             sendBoldMessage("잘못된 인자: clear 명령이 취소되었습니다.");
@@ -274,7 +275,7 @@ public class CommandManager {
             if(member.getUser().getName().equals(name)){
                 whiteList.add(member);
                 found = true;
-                sendServerMessage("유저 "+name+"에게 특수 명령 권한을 부여함");
+                sendServerMessage("유저 "+name+"를 화이트리스트에 추가했습니다.");
                 break;
             }
         }
@@ -284,7 +285,7 @@ public class CommandManager {
                 if(role.getName().equals(name)){
                     whiteRoleList.add(role);
                     found = true;
-                    sendServerMessage("역할 "+role.getName()+"에게 특수 명령 권한을 부여함");
+                    sendServerMessage("역할 "+role.getName()+"을 화이트리스트에 추가했습니다.");
                     break;
                 }
             }

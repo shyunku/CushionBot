@@ -8,7 +8,7 @@ import net.dv8tion.jda.api.OnlineStatus;
 import javax.security.auth.login.LoginException;
 
 public class CushionBot {
-    private static final String BOT_TOKEN = "Njc0NDIxMzAwNzM0ODUzMTQz.Xm65cg.MxoFL9Uob6TFEf3oWzz1Fw8EWVQ";
+    private static final String BOT_TOKEN = "Njc0NDIxMzAwNzM0ODUzMTQz.Xm-VBA.XjWl6PqCBBuTBXc3AqlgI-6WWdc";
 
     private static JDA jda;
 
