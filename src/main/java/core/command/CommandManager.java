@@ -1,53 +1,78 @@
 package core.command;
 
 import Utilities.TextStyleManager;
-import com.sedmelluq.discord.lavaplayer.player.AudioLoadResultHandler;
-import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
-import com.sedmelluq.discord.lavaplayer.tools.FriendlyException;
-import com.sedmelluq.discord.lavaplayer.track.AudioPlaylist;
-import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
+import Utilities.TokenManager;
+import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager;
+import com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager;
+import com.sedmelluq.discord.lavaplayer.source.AudioSourceManagers;
+import music.Core.MusicStreamSystem;
+import music.object.MusicPlayMode;
 import music.object.YoutubeTrackInfo;
-import music.tools.TrackScheduler;
 import music.tools.YoutubeCrawler;
+import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.managers.AudioManager;
 
+import java.awt.*;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 public class CommandManager {
+    private final char startTag = '$';
+    private final String BOT_CLIENT_ID = new TokenManager().getBotClientID();
+
+    /* Message Properties */
     private TextChannel textChannel;
     private Guild guild;
     private User user;
+    private Message currentMessage;
+
+    /* Utility Tools */
     private final boolean SAFE_MODE = false;
     private CommandStatus mode = CommandStatus.NORMAL;
     private YoutubeCrawler youtubeCrawler = new YoutubeCrawler();
+    private MusicStreamSystem musicStreamSystem = new MusicStreamSystem();
+    private AudioPlayerManager audioPlayerManager;
 
-    //Memories
+    /* Memories */
     private ArrayList<String> kickList = new ArrayList<>();
-    private Message musicSelectMessage = null;
+    private Message previousBotMessage = null;
     private ArrayList<Member> whiteList = new ArrayList<>();
     private ArrayList<Role> whiteRoleList = new ArrayList<>();
+    private ArrayList<YoutubeTrackInfo> trackCandidates = new ArrayList<>();
+    private AudioManager currentAudioManager = null;
 
-    //FINAL
+
+    /* Constants */
     private final int MAX_RETRIEVE_SIZE = 500;
 
+    public CommandManager() {
+        audioPlayerManager = new DefaultAudioPlayerManager();
+        AudioSourceManagers.registerRemoteSources(audioPlayerManager);
+        AudioSourceManagers.registerLocalSource(audioPlayerManager);
+    }
 
     public void parseCommand(MessageReceivedEvent e){
         user = e.getAuthor();
         textChannel = e.getTextChannel();
-        Message msg = e.getMessage();
-        String text = msg.getContentDisplay();
+        currentMessage = e.getMessage();
+        String text = currentMessage.getContentDisplay();
         guild = e.getGuild();
+
+        if(user.isBot()){
+            if(user.getId().equals(BOT_CLIENT_ID)) previousBotMessage = currentMessage;
+            return;
+        }
+        if(text.length()==0)return;
+        if(startTag != text.charAt(0))return;
 
         CommandParser commandParser = new CommandParser(text, false);
         ArrayList<String> segments = commandParser.getSegments();
         String sentence = commandParser.getIntegratedString();
         String keyword = commandParser.getKeyword();
 
-        print(user.getName()+": "+text+ " [Channel "+textChannel.getId() + "/"+textChannel.getName()+"]");
+        print(user.getName()+"("+user.getId()+"): "+text+ " [Channel "+textChannel.getId() + "/"+textChannel.getName()+"]");
 
         switch(mode){
             case NORMAL:
@@ -57,11 +82,14 @@ public class CommandManager {
                     case "join": join(e); break;
                     case "l":
                     case "leave": leave(); break;
-                    case "say": say(sentence, msg); break;
+                    case "say": say(sentence, currentMessage); break;
                     case "kick": kick(segments); break;
+                    case "p":
                     case "play": play(e, sentence); break;
                     case "clear": clear(e, segments.get(0)); break;
                     case "whitelist": whitelist(); break;
+                    case "repeat": repeatTrackList(segments); break;
+                    case "queue": musicQueue(); break;
                 }
                 break;
             case ASK_KICK:
@@ -109,12 +137,12 @@ public class CommandManager {
             sendMessage("음악을 재생하시려면 음성채널에 먼저 입장해주세요!");
             return;
         }
-        sendMessage("음성채널 "+textStyler.toBold(voiceChannel.getName())+"에 참여 중");
-        AudioManager audioManager = guild.getAudioManager();
-        if(audioManager.isAttemptingToConnect()){
+//        sendMessage("음성채널 "+textStyler.toBold(voiceChannel.getName())+"에 참여 중");
+        currentAudioManager = guild.getAudioManager();
+        if(currentAudioManager.isAttemptingToConnect()){
             sendMessage("Bot is already attempting to join voice channel! Please try again.");
         }else{
-            audioManager.openAudioConnection(voiceChannel);
+            currentAudioManager.openAudioConnection(voiceChannel);
         }
     }
 
@@ -128,7 +156,7 @@ public class CommandManager {
     }
 
     private void say(String str, Message msg){
-        msg.delete().queue();
+        currentMessage.delete().queue();
         sendMessage(str);
     }
 
@@ -167,14 +195,16 @@ public class CommandManager {
             sendMessage("음악을 재생하시려면 음성채널에 먼저 입장해주세요!");
             return;
         }
-        ArrayList<YoutubeTrackInfo> trackInfoBundle = youtubeCrawler.getVideoCandidates(searchKeyword);
+        trackCandidates = youtubeCrawler.getVideoCandidates(searchKeyword);
         StringBuilder res = new StringBuilder();
+        res.append(textStyler.toBold("명령어 " + textStyler.toBlock("$play 1-5") + "를 사용하여 재생하세요:")).append("\n");
         int index = 0;
-        for (YoutubeTrackInfo info : trackInfoBundle) {
+        for (YoutubeTrackInfo info : trackCandidates) {
             res.append(textStyler.toBold(++index + "")).append(". ").append(info.getTitle()).append("\n");
         }
 
-        sendBoldMessage("명령어 " + textStyler.toBlock("$play 1-5") + "를 사용하여 재생하세요:");
+        deleteReceivedCurrentMessage();
+
         sendMessage(res.toString());
 
         mode = CommandStatus.WAIT_SONG_PICK;
@@ -185,6 +215,14 @@ public class CommandManager {
         if(currentVoiceChannel == null){
             join(e);
         }
+        YoutubeTrackInfo selectedTrackInfo = trackCandidates.get(index-1);
+        trackCandidates.clear();
+
+        deleteReceivedCurrentMessage();
+        deleteSentPrviousMessage();
+
+        musicStreamSystem.registerMusicStreamer(currentAudioManager, audioPlayerManager, textChannel);
+        musicStreamSystem.addTrackToQueue(textChannel, audioPlayerManager, selectedTrackInfo);
     }
 
     private void clear(MessageReceivedEvent e, String amountStr){
@@ -231,6 +269,40 @@ public class CommandManager {
         }
     }
 
+    private void repeatTrackList(ArrayList<String> segments){
+        MusicPlayMode musicPlayMode = MusicPlayMode.NORMAL;
+        if(segments.isEmpty()){
+            musicPlayMode = MusicPlayMode.REPEAT_SINGLE;
+        }else{
+            String segment = segments.get(0);
+            switch(segment){
+                case "all":
+                    musicPlayMode = MusicPlayMode.REPEAT_ALL;
+                    break;
+                case "off":
+                    //NORMAL 모드로 정상화
+                    break;
+                default:
+                    //기타 세그먼트는 무시
+                    return;
+            }
+        }
+        musicStreamSystem.repeatTrackToQueue(textChannel, musicPlayMode);
+    }
+
+    private void musicQueue(){
+        ArrayList<YoutubeTrackInfo> trackInfos = musicStreamSystem.getMusicStreamer(textChannel).getTrackScheduler().getTrackDataList();
+        EmbedBuilder embedBuilder = new EmbedBuilder();
+        embedBuilder.setTitle("Current Track List");
+        embedBuilder.setDescription("현재 "+trackInfos.size()+"개의 트랙이 있습니다.");
+        embedBuilder.setColor(new Color(0, 255, 187));
+        for(YoutubeTrackInfo trackInfo : trackInfos){
+            embedBuilder.addField(trackInfo.getTitle(), trackInfo.getChannelTitle(), true);
+        }
+
+        textChannel.sendMessage(embedBuilder.build()).queue();
+    }
+
 
     /* Internal Util Functions */
     public void sendMessage(String msg){
@@ -271,6 +343,18 @@ public class CommandManager {
         }
         sendBoldMessage("화이트리스트에 있는 역할/유저들만 실행할 수 있는 명령어입니다.");
         return false;
+    }
+
+    private void deleteReceivedCurrentMessage(){
+        if(currentMessage == null) return;
+        currentMessage.delete().queue();
+        currentMessage = null;
+    }
+
+    private void deleteSentPrviousMessage(){
+        if(previousBotMessage == null) return;
+        previousBotMessage.delete().queue();
+        previousBotMessage = null;
     }
 
     public void privilege(String name){

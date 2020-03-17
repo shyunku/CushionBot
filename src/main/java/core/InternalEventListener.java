@@ -10,8 +10,6 @@ import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import java.util.Scanner;
 
 public class InternalEventListener extends ListenerAdapter {
-    private final char startTag = '$';
-
     private CommandManager commandManager = new CommandManager();
 
     public InternalEventListener() {
@@ -45,14 +43,6 @@ public class InternalEventListener extends ListenerAdapter {
 
     @Override
     public void onMessageReceived(MessageReceivedEvent e){
-        User user = e.getAuthor();
-        Message msg = e.getMessage();
-        String text = msg.getContentDisplay();
-
-        if(user.isBot())return;
-        if(text.length()==0)return;
-        if(startTag != text.charAt(0))return;
-
         commandManager.parseCommand(e);
     }
 

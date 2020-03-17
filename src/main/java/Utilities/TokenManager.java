@@ -30,4 +30,8 @@ public class TokenManager {
     public String getGoogleApiToken(){
         return getObjectToken("google_api_token");
     }
+
+    public String getBotClientID(){
+        return getObjectToken("bot_client_id");
+    }
 }
