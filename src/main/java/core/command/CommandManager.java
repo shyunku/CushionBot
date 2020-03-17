@@ -59,7 +59,7 @@ public class CommandManager {
                     case "leave": leave(); break;
                     case "say": say(sentence, msg); break;
                     case "kick": kick(segments); break;
-                    case "play": play(sentence); break;
+                    case "play": play(e, sentence); break;
                     case "clear": clear(e, segments.get(0)); break;
                     case "whitelist": whitelist(); break;
                 }
@@ -75,6 +75,7 @@ public class CommandManager {
                         sendMessage("kicking canceled");
                         break;
                 }
+                mode = CommandStatus.NORMAL;
                 break;
             case WAIT_SONG_PICK:
                 switch(keyword){
@@ -82,6 +83,7 @@ public class CommandManager {
                     case "play":
                         try{
                             int songIndex = Integer.parseInt(segments.get(0));
+                            if(songIndex<1||songIndex>5)throw new NumberFormatException();
                             play(e, songIndex);
                         }catch(NumberFormatException exception){
                             sendBoldMessage("잘못된 인자: 음악 실행 취소");
@@ -91,10 +93,9 @@ public class CommandManager {
                         sendBoldMessage("음악 실행 취소");
                         break;
                 }
+                mode = CommandStatus.NORMAL;
+                break;
         }
-
-        if(mode!=CommandStatus.NORMAL)mode = CommandStatus.NORMAL;
-
     }
 
     /* Commands Execution */
@@ -104,7 +105,11 @@ public class CommandManager {
 
     private void join(MessageReceivedEvent e){
         VoiceChannel voiceChannel = e.getMember().getVoiceState().getChannel();
-        sendMessage("채널 "+voiceChannel.getName()+"에 참여 중");
+        if(voiceChannel == null){
+            sendMessage("음악을 재생하시려면 음성채널에 먼저 입장해주세요!");
+            return;
+        }
+        sendMessage("음성채널 "+textStyler.toBold(voiceChannel.getName())+"에 참여 중");
         AudioManager audioManager = guild.getAudioManager();
         if(audioManager.isAttemptingToConnect()){
             sendMessage("Bot is already attempting to join voice channel! Please try again.");
@@ -156,7 +161,12 @@ public class CommandManager {
         sendMessage("Selected users: " + kicked);
     }
 
-    private void play(String searchKeyword){
+    private void play(MessageReceivedEvent e, String searchKeyword){
+        VoiceChannel voiceChannel = e.getMember().getVoiceState().getChannel();
+        if(voiceChannel == null){
+            sendMessage("음악을 재생하시려면 음성채널에 먼저 입장해주세요!");
+            return;
+        }
         ArrayList<YoutubeTrackInfo> trackInfoBundle = youtubeCrawler.getVideoCandidates(searchKeyword);
         StringBuilder res = new StringBuilder();
         int index = 0;
