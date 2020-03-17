@@ -15,11 +15,15 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.managers.AudioManager;
 
 import java.awt.*;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class CommandManager {
-    private final char startTag = '$';
+    private final char START_TAG = '$';
+    private final boolean SAFE_MODE = false;
+    private final boolean RESTRICT_MODE = false;
     private final String BOT_CLIENT_ID = new TokenManager().getBotClientID();
 
     /* Message Properties */
@@ -29,7 +33,6 @@ public class CommandManager {
     private Message currentMessage;
 
     /* Utility Tools */
-    private final boolean SAFE_MODE = false;
     private CommandStatus mode = CommandStatus.NORMAL;
     private YoutubeCrawler youtubeCrawler = new YoutubeCrawler();
     private MusicStreamSystem musicStreamSystem = new MusicStreamSystem();
@@ -61,11 +64,14 @@ public class CommandManager {
         guild = e.getGuild();
 
         if(user.isBot()){
-            if(user.getId().equals(BOT_CLIENT_ID)) previousBotMessage = currentMessage;
+            if(user.getId().equals(BOT_CLIENT_ID)){
+                previousBotMessage = currentMessage;
+                print("BOT: "+previousBotMessage);
+            }
             return;
         }
         if(text.length()==0)return;
-        if(startTag != text.charAt(0))return;
+        if(START_TAG != text.charAt(0))return;
 
         CommandParser commandParser = new CommandParser(text, false);
         ArrayList<String> segments = commandParser.getSegments();
@@ -86,10 +92,17 @@ public class CommandManager {
                     case "kick": kick(segments); break;
                     case "p":
                     case "play": play(e, sentence); break;
-                    case "clear": clear(e, segments.get(0)); break;
+                    case "clear":
+                        if(segments.isEmpty()){
+                            sendMessage("clear 명령어 뒤에 삭제하실 최근 메시지의 수를 입력해주세요!");
+                            break;
+                        }else{
+                            clear(e, segments.get(0)); break;
+                        }
                     case "whitelist": whitelist(); break;
                     case "repeat": repeatTrackList(segments); break;
                     case "queue": musicQueue(); break;
+                    case "command": printCommand(); break;
                 }
                 break;
             case ASK_KICK:
@@ -219,7 +232,7 @@ public class CommandManager {
         trackCandidates.clear();
 
         deleteReceivedCurrentMessage();
-        deleteSentPrviousMessage();
+        deleteSentPreviousMessage();
 
         musicStreamSystem.registerMusicStreamer(currentAudioManager, audioPlayerManager, textChannel);
         musicStreamSystem.addTrackToQueue(textChannel, audioPlayerManager, selectedTrackInfo);
@@ -234,7 +247,11 @@ public class CommandManager {
             MessageHistory messageHistory = textChannel.getHistory();
             messageHistory.retrievePast(amount).queue(messageList -> {
                 textChannel.deleteMessages(messageList).queue();
-                sendBoldMessage("최근 메시지 "+amount+"개가 "+textStyler.toBlock(e.getAuthor().getName())+"에 의해 삭제되었습니다.");
+                String boldStr = textStyler.toBold("최근 메시지 "+amount+"개가 "+textStyler.toBlock(e.getAuthor().getName())+"에 의해 삭제되었습니다.");
+
+                textChannel.sendMessage(boldStr).queue(res -> {
+                    deleteSentPreviousMessage(3);
+                });
             });
         }catch(NumberFormatException exception){
             sendBoldMessage("잘못된 인자: clear 명령이 취소되었습니다.");
@@ -303,6 +320,13 @@ public class CommandManager {
         textChannel.sendMessage(embedBuilder.build()).queue();
     }
 
+    private void printCommand(){
+        EmbedBuilder embedBuilder = new EmbedBuilder();
+        embedBuilder.setTitle("Cushion Bot Command List");
+        embedBuilder.setColor(new Color(0, 255, 187));
+
+    }
+
 
     /* Internal Util Functions */
     public void sendMessage(String msg){
@@ -330,6 +354,8 @@ public class CommandManager {
     }
 
     private boolean hasWhitePermission(){
+        if(!RESTRICT_MODE)return true;
+
         for(Member whites : whiteList){
             if(whites.getUser().getId().equals(user.getId()))
                 return true;
@@ -351,9 +377,15 @@ public class CommandManager {
         currentMessage = null;
     }
 
-    private void deleteSentPrviousMessage(){
+    private void deleteSentPreviousMessage(){
         if(previousBotMessage == null) return;
         previousBotMessage.delete().queue();
+        previousBotMessage = null;
+    }
+
+    private void deleteSentPreviousMessage(long delaySec){
+        if(previousBotMessage == null) return;
+        previousBotMessage.delete().queueAfter(delaySec, TimeUnit.SECONDS);
         previousBotMessage = null;
     }
 
