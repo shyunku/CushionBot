@@ -1,5 +1,6 @@
 package music.tools;
 
+import Utilities.TokenManager;
 import com.google.api.client.http.HttpRequest;
 import com.google.api.client.http.HttpRequestInitializer;
 import com.google.api.client.http.javanet.NetHttpTransport;
@@ -16,7 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class YoutubeCrawler {
-    private final String API_KEY = "AIzaSyAL6EUxgSZU9DSh4P0ezciIMxDC7YZgKII";
+    private final String API_KEY = new TokenManager().getGoogleApiToken();
     private long MAX_SEARCH = 5;
 
     public ArrayList<YoutubeTrackInfo> getVideoCandidates(String keyword){
