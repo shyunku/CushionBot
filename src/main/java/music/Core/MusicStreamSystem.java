@@ -44,17 +44,27 @@ public class MusicStreamSystem {
         musicStreamer.getTrackScheduler().clearTracks();
     }
 
+    public String getPlayModeDescription(TextChannel textChannel){
+        MusicStreamer musicStreamer = getMusicStreamer(textChannel);
+        return musicStreamer.getTrackScheduler().getMusicPlayModeDescription();
+    }
+
     public MusicStreamer getMusicStreamer(TextChannel textChannel){
         Guild guild = textChannel.getGuild();
         long guildId = guild.getIdLong();
-//        if(streamerMap.get(guildId) == null){
-//            //스트리머가 없을 경우 새로 생성
-//            registerMusicStreamer(audioManager, textChannel);
-//        }
         MusicStreamer musicStreamer = streamerMap.get(guildId);
         guild.getAudioManager().setSendingHandler(new AudioPlayerSendHandler(musicStreamer.getAudioPlayer()));
 
         return musicStreamer;
+    }
+
+    private boolean isMusicStreamerNull(TextChannel textChannel){
+        Guild guild = textChannel.getGuild();
+        long guildId = guild.getIdLong();
+        if(streamerMap.get(guildId) == null){
+            textChannel.sendMessage("StreamerMap has no textchannel matched to guild!").queue();
+        }
+        return streamerMap.get(guildId) == null;
     }
 
     private final TextStyleManager textStyler = new TextStyleManager();

@@ -62,6 +62,15 @@ public class TrackScheduler extends AudioEventAdapter{
         audioPlayer.stopTrack();
     }
 
+    public String getMusicPlayModeDescription(){
+        switch(musicPlayMode){
+            case NORMAL: return "기본";
+            case REPEAT_ALL: return "전제 반복";
+            case REPEAT_SINGLE: return "한 곡 반복";
+        }
+        return "unknown";
+    }
+
     public AudioTrack getCurrentTrack(){
         return currentTrack;
     }

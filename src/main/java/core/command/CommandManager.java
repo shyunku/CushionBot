@@ -81,6 +81,8 @@ public class CommandManager {
 
         print(user.getName()+"("+user.getId()+"): "+text+ " [Channel "+textChannel.getId() + "/"+textChannel.getName()+"]");
 
+        musicStreamSystem.registerMusicStreamer(currentAudioManager, audioPlayerManager, textChannel);
+
         switch(mode){
             case NORMAL:
                 switch(keyword){
@@ -93,6 +95,8 @@ public class CommandManager {
                     case "kick": kick(segments); break;
                     case "p":
                     case "play": play(e, sentence); break;
+                    case "qp":
+                    case "quickplay": quickPlay(e, sentence); break;
                     case "clear":
                         if(segments.isEmpty()){
                             sendMessage("clear 명령어 뒤에 삭제하실 최근 메시지의 수를 입력해주세요!");
@@ -235,7 +239,15 @@ public class CommandManager {
         deleteReceivedCurrentMessage();
         deleteSentPreviousMessage();
 
-        musicStreamSystem.registerMusicStreamer(currentAudioManager, audioPlayerManager, textChannel);
+        musicStreamSystem.addTrackToQueue(textChannel, audioPlayerManager, selectedTrackInfo);
+    }
+
+    private void quickPlay(MessageReceivedEvent e, String searchKeyword){
+        VoiceChannel currentVoiceChannel = guild.getSelfMember().getVoiceState().getChannel();
+        if(currentVoiceChannel == null){
+            join(e);
+        }
+        YoutubeTrackInfo selectedTrackInfo = youtubeCrawler.getVideoCandidates(searchKeyword).get(0);
         musicStreamSystem.addTrackToQueue(textChannel, audioPlayerManager, selectedTrackInfo);
     }
 
@@ -317,10 +329,14 @@ public class CommandManager {
         embedBuilder.setTitle("Current Track List");
         embedBuilder.setDescription("현재 "+trackInfos.size()+"개의 트랙이 있습니다.");
         embedBuilder.setColor(new Color(0, 255, 187));
-        for(YoutubeTrackInfo trackInfo : trackInfos){
-            embedBuilder.addField(trackInfo.getTitle(), trackInfo.getChannelTitle(), true);
-        }
+        String musicPlayDescription = "현재 재생모드는 "+textStyler.toBold(musicStreamSystem.getPlayModeDescription(textChannel))+"입니다.";
+        StringBuilder trackInfoList = new StringBuilder();
 
+        int index = 1;
+        for(YoutubeTrackInfo trackInfo : trackInfos){
+            trackInfoList.append(index).append(".").append(trackInfo.getTitle()).append("\n");
+        }
+        embedBuilder.addField(musicPlayDescription, trackInfoList.toString(), false);
         textChannel.sendMessage(embedBuilder.build()).queue();
     }
 
