@@ -216,8 +216,7 @@ public class CommandManager {
             res.append(textStyler.toBold(++index + "")).append(". ").append(info.getTitle()).append("\n");
         }
 
-        deleteReceivedCurrentMessage();
-
+//        deleteReceivedCurrentMessage();
         sendMessage(res.toString());
 
         mode = CommandStatus.WAIT_SONG_PICK;
@@ -290,13 +289,16 @@ public class CommandManager {
         MusicPlayMode musicPlayMode = MusicPlayMode.NORMAL;
         if(segments.isEmpty()){
             musicPlayMode = MusicPlayMode.REPEAT_SINGLE;
+            sendBoldMessage("재생 모드가 현재 트랙 반복으로 변경되었습니다.");
         }else{
             String segment = segments.get(0);
             switch(segment){
                 case "all":
                     musicPlayMode = MusicPlayMode.REPEAT_ALL;
+                    sendBoldMessage("재생 모드가 전체 반복으로 변경되었습니다.");
                     break;
                 case "off":
+                    sendBoldMessage("재생 모드가 기본으로 변경되었습니다.");
                     //NORMAL 모드로 정상화
                     break;
                 default:
@@ -324,7 +326,11 @@ public class CommandManager {
         EmbedBuilder embedBuilder = new EmbedBuilder();
         embedBuilder.setTitle("Cushion Bot Command List");
         embedBuilder.setColor(new Color(0, 255, 187));
+        embedBuilder.addField(START_TAG + "command", "Cushion 봇 명령어 목록을 출력합니다.", false);
+        embedBuilder.addField(START_TAG + "alive", "현재 Cushion이 이용가능하면 메시지를 보냅니다.", false);
+        embedBuilder.addField(START_TAG + "join(j)", "Cushion을 현재 음성 채널에 참가시킵니다.", false);
 
+        textChannel.sendMessage(embedBuilder.build()).queue();
     }
 
 

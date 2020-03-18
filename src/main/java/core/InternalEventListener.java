@@ -13,29 +13,26 @@ public class InternalEventListener extends ListenerAdapter {
     private CommandManager commandManager = new CommandManager();
 
     public InternalEventListener() {
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                Scanner scanner = new Scanner(System.in);
-                CommandParser parser;
-                while(true){
-                    String terminalCommand = scanner.nextLine();
-                    parser = new CommandParser(terminalCommand, true);
+        new Thread(() -> {
+            Scanner scanner = new Scanner(System.in);
+            CommandParser parser;
+            while(true){
+                String terminalCommand = scanner.nextLine();
+                parser = new CommandParser(terminalCommand, true);
 
-                    String keyword = parser.getKeyword();
-                    String sentence = parser.getIntegratedString();
+                String keyword = parser.getKeyword();
+                String sentence = parser.getIntegratedString();
 
-                    switch(keyword){
-                        case "adminify":
-                            commandManager.privilege(sentence);
-                            break;
-                        case "clearwhite":
-                            commandManager.resetWhiteList();
-                            break;
-                        default:
-                            System.out.println("keyword: "+keyword+", content: "+sentence);
-                            break;
-                    }
+                switch(keyword){
+                    case "adminify":
+                        commandManager.privilege(sentence);
+                        break;
+                    case "clearwhite":
+                        commandManager.resetWhiteList();
+                        break;
+                    default:
+                        System.out.println("keyword: "+keyword+", content: "+sentence);
+                        break;
                 }
             }
         }).start();
@@ -46,12 +43,12 @@ public class InternalEventListener extends ListenerAdapter {
         commandManager.parseCommand(e);
     }
 
-    private void sendServerMessage(String str){
-        TextStyleManager styler = new TextStyleManager();
-        String printer = styler.toBold("[Server] "+str);
-
-        synchronized (commandManager){
-            commandManager.sendMessage(printer);
-        }
-    }
+//    private void sendServerMessage(String str){
+//        TextStyleManager styler = new TextStyleManager();
+//        String printer = styler.toBold("[Server] "+str);
+//
+//        synchronized (commandManager){
+//            commandManager.sendMessage(printer);
+//        }
+//    }
 }

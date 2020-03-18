@@ -48,25 +48,19 @@ public class MusicStreamer {
         public void trackLoaded(AudioTrack track) {
             trackScheduler.addTrackToQueue(track);
             StringBuilder message = new StringBuilder();
+            message.append("플레이리스트에 추가되었습니다: ");
+
             long duration = track.getDuration()/1000;
             long hour = duration/3600;
             long min = (duration%3600)/60;
             long sec = duration%60;
-            String timeStr = " (";
-            boolean isPassed = false;
-
-            if(hour>0){
-                timeStr += hour+":";
-                isPassed = true;
-            }
-            if(min>0||isPassed){
-                timeStr += min+":";
-            }
-            timeStr += sec+")";
+            String timeStr = " (" + (hour>0?hour+":":"");
+            timeStr += String.format("%02d",min)+":";
+            timeStr += String.format("%02d",sec)+")";
 
             message.append(textStyler.toBold(track.getInfo().title));
             message.append(timeStr);
-            message.append(" 가 플레이리스트에 추가 되었습니다.");
+
             textChannel.sendMessage(message.toString()).queue();
         }
 

@@ -22,6 +22,7 @@ public class MusicStreamSystem {
     public void registerMusicStreamer(AudioManager audioManager, AudioPlayerManager audioPlayerManager, TextChannel textChannel){
         Guild guild = textChannel.getGuild();
         long guildId = guild.getIdLong();
+        if(streamerMap.get(guildId) != null)return;
         MusicStreamer musicStreamer = new MusicStreamer(audioManager, audioPlayerManager, textChannel);
         streamerMap.put(guildId, musicStreamer);
     }
@@ -50,8 +51,6 @@ public class MusicStreamSystem {
 
         return musicStreamer;
     }
-
-
 
     private final TextStyleManager textStyler = new TextStyleManager();
 }
