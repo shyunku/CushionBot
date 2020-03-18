@@ -45,6 +45,7 @@ public class CommandManager {
     private ArrayList<Role> whiteRoleList = new ArrayList<>();
     private ArrayList<YoutubeTrackInfo> trackCandidates = new ArrayList<>();
     private AudioManager currentAudioManager = null;
+    private Message previousCommandUser = null;
 
 
     /* Constants */
@@ -103,6 +104,7 @@ public class CommandManager {
                     case "repeat": repeatTrackList(segments); break;
                     case "queue": musicQueue(); break;
                     case "command": printCommand(); break;
+                    case "mclear": musicClear(); break;
                 }
                 break;
             case ASK_KICK:
@@ -333,6 +335,10 @@ public class CommandManager {
         textChannel.sendMessage(embedBuilder.build()).queue();
     }
 
+    private void musicClear(){
+        musicStreamSystem.clearTracksOfQueue(textChannel);
+    }
+
 
     /* Internal Util Functions */
     public void sendMessage(String msg){
@@ -404,7 +410,7 @@ public class CommandManager {
         boolean found = false;
 
         for(Member member : guild.getMembers()){
-            if(member.getUser().getName().equals(name)){
+            if(member.getNickname().equals(name)){
                 whiteList.add(member);
                 found = true;
                 sendServerMessage("유저 "+name+"를 화이트리스트에 추가했습니다.");

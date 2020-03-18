@@ -53,6 +53,13 @@ public class TrackScheduler extends AudioEventAdapter{
 
     public void nextTrack(){
         audioPlayer.startTrack(trackQueue.poll(), false);
+        trackData.remove(0);
+    }
+
+    public void clearTracks(){
+        trackData.clear();
+        trackQueue.clear();
+        audioPlayer.stopTrack();
     }
 
     public AudioTrack getCurrentTrack(){

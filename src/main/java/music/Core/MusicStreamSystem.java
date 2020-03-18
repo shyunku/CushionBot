@@ -39,6 +39,11 @@ public class MusicStreamSystem {
         musicStreamer.getTrackScheduler().setMusicPlayMode(musicPlayMode);
     }
 
+    public void clearTracksOfQueue(TextChannel textChannel){
+        MusicStreamer musicStreamer = getMusicStreamer(textChannel);
+        musicStreamer.getTrackScheduler().clearTracks();
+    }
+
     public MusicStreamer getMusicStreamer(TextChannel textChannel){
         Guild guild = textChannel.getGuild();
         long guildId = guild.getIdLong();
