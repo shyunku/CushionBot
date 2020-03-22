@@ -107,6 +107,7 @@ public class CommandManager {
                         }
                     case "whitelist": whitelist(); break;
                     case "repeat": repeatTrackList(segments); break;
+                    case "q":
                     case "queue": musicQueue(); break;
                     case "command": printCommand(); break;
                     case "mclear": musicClear(); break;
@@ -342,9 +343,9 @@ public class CommandManager {
         ArrayList<YoutubeTrackInfo> trackInfos = musicStreamSystem.getMusicStreamer(textChannel).getTrackScheduler().getTrackDataList();
         EmbedBuilder embedBuilder = new EmbedBuilder();
         embedBuilder.setTitle("Current Track List");
-        embedBuilder.setDescription("현재 "+trackInfos.size()+"개의 트랙이 있습니다.");
+        embedBuilder.setDescription("현재 "+trackInfos.size()+"개의 트랙이 있습니다. - 재생모드: "
+                +textStyler.toBold(musicStreamSystem.getPlayModeDescription(textChannel)));
         embedBuilder.setColor(new Color(0, 255, 187));
-        String musicPlayDescription = "현재 재생모드는 "+textStyler.toBold(musicStreamSystem.getPlayModeDescription(textChannel))+"입니다.";
         ArrayList<StringBuilder> stringBuilders = new ArrayList<>();
         StringBuilder trackInfoList = new StringBuilder();
 
@@ -355,15 +356,15 @@ public class CommandManager {
                 stringBuilders.add(trackInfoList);
                 trackInfoList = new StringBuilder();
             }
-            trackInfoList.append(index++).append(".").append(trackInfo.getTitle());
+            trackInfoList.append(index++).append(". ").append(trackInfo.getTitle());
             if(index <= trackInfos.size())
                 trackInfoList.append("\n");
         }
         stringBuilders.add(trackInfoList);
 
         for(int i=0;i<stringBuilders.size();i++){
-            @Nullable String tmpTitle = i==0?musicPlayDescription:"";
-            embedBuilder.addField(tmpTitle, stringBuilders.get(i).toString(), false);
+            @Nullable String tmpTitle = "트랙리스트 페이지 "+(i+1)+"/"+stringBuilders.size();
+            embedBuilder.addField(textStyler.toBold(tmpTitle), stringBuilders.get(i).toString(), false);
         }
 
         textChannel.sendMessage(embedBuilder.build()).queue();
