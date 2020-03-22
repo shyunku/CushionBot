@@ -15,6 +15,9 @@ import music.object.YoutubeTrackInfo;
 import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.managers.AudioManager;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class MusicStreamer {
     private AudioPlayer audioPlayer;
     private TrackScheduler trackScheduler;
@@ -43,6 +46,14 @@ public class MusicStreamer {
                 );
     }
 
+    public void loadItemList(AudioPlayerManager audioPlayerManager, String url){
+        audioPlayerManager.loadItemOrdered(
+                this,
+                url,
+                audioLoadResultHandler
+        );
+    }
+
     private final AudioLoadResultHandler audioLoadResultHandler = new AudioLoadResultHandler() {
         @Override
         public void trackLoaded(AudioTrack track) {
@@ -66,12 +77,17 @@ public class MusicStreamer {
 
         @Override
         public void playlistLoaded(AudioPlaylist playlist) {
-            textChannel.sendMessage("playlist loaded, but not implemented yet.").queue();
+            List<AudioTrack> trackList = playlist.getTracks();
+            for(AudioTrack track : trackList){
+                trackScheduler.addTrackToQueue(track);
+            }
+            textChannel.sendMessage("플레이리스트"+
+                    textStyler.toBold(playlist.getName())+": "+trackList.size()+"개의 트랙이 로드되었습니다.").queue();
         }
 
         @Override
         public void noMatches() {
-            textChannel.sendMessage("no matches error.").queue();
+            textChannel.sendMessage("매치되는 결과가 없습니다.").queue();
         }
 
         @Override

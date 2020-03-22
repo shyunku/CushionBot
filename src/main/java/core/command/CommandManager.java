@@ -156,7 +156,6 @@ public class CommandManager {
             sendMessage("음악을 재생하시려면 음성채널에 먼저 입장해주세요!");
             return;
         }
-//        sendMessage("음성채널 "+textStyler.toBold(voiceChannel.getName())+"에 참여 중");
         currentAudioManager = guild.getAudioManager();
         if(currentAudioManager.isAttemptingToConnect()){
             sendMessage("Bot is already attempting to join voice channel! Please try again.");
@@ -214,7 +213,17 @@ public class CommandManager {
             sendMessage("음악을 재생하시려면 음성채널에 먼저 입장해주세요!");
             return;
         }
+
+        if(searchKeyword.contains("www.youtube.com")){
+            musicStreamSystem.addTrackListToQueue(textChannel, audioPlayerManager, searchKeyword);
+            return;
+        }
+
         trackCandidates = youtubeCrawler.getVideoCandidates(searchKeyword);
+        if(trackCandidates.isEmpty()){
+            sendMessage("해당 검색어의 결과가 없습니다.");
+            return;
+        }
         StringBuilder res = new StringBuilder();
         res.append(textStyler.toBold("명령어 " + textStyler.toBlock("$play 1-5") + "를 사용하여 재생하세요:")).append("\n");
         int index = 0;
@@ -246,6 +255,10 @@ public class CommandManager {
         VoiceChannel currentVoiceChannel = guild.getSelfMember().getVoiceState().getChannel();
         if(currentVoiceChannel == null){
             join(e);
+        }
+        if(trackCandidates.isEmpty()){
+            sendMessage("해당 검색어의 결과가 없습니다.");
+            return;
         }
         YoutubeTrackInfo selectedTrackInfo = youtubeCrawler.getVideoCandidates(searchKeyword).get(0);
         musicStreamSystem.addTrackToQueue(textChannel, audioPlayerManager, selectedTrackInfo);
@@ -334,7 +347,7 @@ public class CommandManager {
 
         int index = 1;
         for(YoutubeTrackInfo trackInfo : trackInfos){
-            trackInfoList.append(index).append(".").append(trackInfo.getTitle()).append("\n");
+            trackInfoList.append(index++).append(".").append(trackInfo.getTitle()).append("\n");
         }
         embedBuilder.addField(musicPlayDescription, trackInfoList.toString(), false);
         textChannel.sendMessage(embedBuilder.build()).queue();

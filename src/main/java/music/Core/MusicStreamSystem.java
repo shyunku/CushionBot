@@ -34,6 +34,13 @@ public class MusicStreamSystem {
         musicStreamer.loadItem(audioPlayerManager, trackInfo);
     }
 
+    public void addTrackListToQueue(TextChannel textChannel, AudioPlayerManager audioPlayerManager, String url){
+        MusicStreamer musicStreamer = getMusicStreamer(textChannel);
+        TrackScheduler trackScheduler = musicStreamer.getTrackScheduler();
+//        trackScheduler.addTrackData(trackInfo);
+        musicStreamer.loadItemList(audioPlayerManager, url);
+    }
+
     public void repeatTrackToQueue(TextChannel textChannel, MusicPlayMode musicPlayMode){
         MusicStreamer musicStreamer = getMusicStreamer(textChannel);
         musicStreamer.getTrackScheduler().setMusicPlayMode(musicPlayMode);
