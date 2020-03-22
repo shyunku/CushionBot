@@ -14,6 +14,7 @@ import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.managers.AudioManager;
 
+import javax.annotation.Nullable;
 import java.awt.*;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -109,6 +110,7 @@ public class CommandManager {
                     case "queue": musicQueue(); break;
                     case "command": printCommand(); break;
                     case "mclear": musicClear(); break;
+                    case "skip": musicSkip(); break;
                 }
                 break;
             case ASK_KICK:
@@ -343,13 +345,27 @@ public class CommandManager {
         embedBuilder.setDescription("현재 "+trackInfos.size()+"개의 트랙이 있습니다.");
         embedBuilder.setColor(new Color(0, 255, 187));
         String musicPlayDescription = "현재 재생모드는 "+textStyler.toBold(musicStreamSystem.getPlayModeDescription(textChannel))+"입니다.";
+        ArrayList<StringBuilder> stringBuilders = new ArrayList<>();
         StringBuilder trackInfoList = new StringBuilder();
 
         int index = 1;
         for(YoutubeTrackInfo trackInfo : trackInfos){
-            trackInfoList.append(index++).append(".").append(trackInfo.getTitle()).append("\n");
+            int nextTotalStringLen = trackInfoList.toString().length() + 7 + trackInfo.getTitle().length();
+            if(nextTotalStringLen >= 1024){
+                stringBuilders.add(trackInfoList);
+                trackInfoList = new StringBuilder();
+            }
+            trackInfoList.append(index++).append(".").append(trackInfo.getTitle());
+            if(index <= trackInfos.size())
+                trackInfoList.append("\n");
         }
-        embedBuilder.addField(musicPlayDescription, trackInfoList.toString(), false);
+        stringBuilders.add(trackInfoList);
+
+        for(int i=0;i<stringBuilders.size();i++){
+            @Nullable String tmpTitle = i==0?musicPlayDescription:"";
+            embedBuilder.addField(tmpTitle, stringBuilders.get(i).toString(), false);
+        }
+
         textChannel.sendMessage(embedBuilder.build()).queue();
     }
 
@@ -366,6 +382,12 @@ public class CommandManager {
 
     private void musicClear(){
         musicStreamSystem.clearTracksOfQueue(textChannel);
+        sendMessage("트랙 리스트를 비웠습니다.");
+    }
+
+    private void musicSkip(){
+        musicStreamSystem.skipCurrentTracksOfQueue(textChannel);
+        sendMessage("재생 중인 트랙을 스킵했습니다.");
     }
 
 

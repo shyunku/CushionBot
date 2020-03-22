@@ -51,6 +51,11 @@ public class MusicStreamSystem {
         musicStreamer.getTrackScheduler().clearTracks();
     }
 
+    public void skipCurrentTracksOfQueue(TextChannel textChannel){
+        MusicStreamer musicStreamer = getMusicStreamer(textChannel);
+        musicStreamer.getTrackScheduler().nextTrack();
+    }
+
     public String getPlayModeDescription(TextChannel textChannel){
         MusicStreamer musicStreamer = getMusicStreamer(textChannel);
         return musicStreamer.getTrackScheduler().getMusicPlayModeDescription();

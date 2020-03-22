@@ -79,10 +79,16 @@ public class MusicStreamer {
         public void playlistLoaded(AudioPlaylist playlist) {
             List<AudioTrack> trackList = playlist.getTracks();
             for(AudioTrack track : trackList){
+                trackScheduler.addTrackData(new YoutubeTrackInfo(
+                        track.getInfo().title,
+                        track.getInfo().identifier,
+                        "",
+                        ""
+                ));
                 trackScheduler.addTrackToQueue(track);
             }
-            textChannel.sendMessage("플레이리스트"+
-                    textStyler.toBold(playlist.getName())+": "+trackList.size()+"개의 트랙이 로드되었습니다.").queue();
+            textChannel.sendMessage("플레이리스트 "+
+                    textStyler.toBold(playlist.getName())+" : "+trackList.size()+"개의 트랙이 로드되었습니다.").queue();
         }
 
         @Override
