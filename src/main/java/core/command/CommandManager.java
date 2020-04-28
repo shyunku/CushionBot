@@ -5,6 +5,7 @@ import Utilities.TokenManager;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager;
 import com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager;
 import com.sedmelluq.discord.lavaplayer.source.AudioSourceManagers;
+import custom.IntegratedLOLclan.StringCorrection.ManiangListener;
 import music.Core.MusicStreamSystem;
 import music.object.MusicPlayMode;
 import music.object.YoutubeTrackInfo;
@@ -16,7 +17,6 @@ import net.dv8tion.jda.api.managers.AudioManager;
 
 import javax.annotation.Nullable;
 import java.awt.*;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -38,6 +38,7 @@ public class CommandManager {
     private YoutubeCrawler youtubeCrawler = new YoutubeCrawler();
     private MusicStreamSystem musicStreamSystem = new MusicStreamSystem();
     private AudioPlayerManager audioPlayerManager;
+    private CommandParser commandParser = new CommandParser();
 
     /* Memories */
     private ArrayList<String> kickList = new ArrayList<>();
@@ -48,6 +49,8 @@ public class CommandManager {
     private AudioManager currentAudioManager = null;
     private Message previousCommandUser = null;
 
+    /* Command Listeners */
+    ManiangListener maniangListener = new ManiangListener("마냥 명령어", '!');
 
     /* Constants */
     private final int MAX_RETRIEVE_SIZE = 500;
@@ -56,6 +59,8 @@ public class CommandManager {
         audioPlayerManager = new DefaultAudioPlayerManager();
         AudioSourceManagers.registerRemoteSources(audioPlayerManager);
         AudioSourceManagers.registerLocalSource(audioPlayerManager);
+
+        maniangListener.addPermittedServer("674422721882488843");
     }
 
     public void parseCommand(MessageReceivedEvent e){
@@ -64,6 +69,7 @@ public class CommandManager {
         currentMessage = e.getMessage();
         String text = currentMessage.getContentDisplay();
         guild = e.getGuild();
+        if(text.length()==0)return;
 
         if(user.isBot()){
             if(user.getId().equals(BOT_CLIENT_ID)){
@@ -72,15 +78,23 @@ public class CommandManager {
             }
             return;
         }
-        if(text.length()==0)return;
-        if(START_TAG != text.charAt(0))return;
+        // Listen to users
+        maniangListener.listen(e);
 
-        CommandParser commandParser = new CommandParser(text, false);
+        if(START_TAG != text.charAt(0)){
+            print(user.getName()+"("+user.getId()+"): "+text+ " [Channel "+textChannel.getId() + "/"+textChannel.getName()
+                    +"] [server: "+guild.getId() + "/"+guild.getName()+"]");
+            return;
+        }
+
+        commandParser.setThis(text, false);
         ArrayList<String> segments = commandParser.getSegments();
         String sentence = commandParser.getIntegratedString();
         String keyword = commandParser.getKeyword();
 
-        print(user.getName()+"("+user.getId()+"): "+text+ " [Channel "+textChannel.getId() + "/"+textChannel.getName()+"]");
+        // Main Command
+        print("{{MAIN}} " + user.getName()+"("+user.getId()+"): "+text+ " [Channel "+textChannel.getId() + "/"+textChannel.getName()
+                +"] [server: "+guild.getId() + "/"+guild.getName()+"]");
 
         musicStreamSystem.registerMusicStreamer(currentAudioManager, audioPlayerManager, textChannel);
 
@@ -501,6 +515,9 @@ public class CommandManager {
 
     private void print(Object o){
         System.out.println(o);
+    }
+    private void printn(Object o){
+        System.out.print(o);
     }
 
     private TextStyleManager textStyler = new TextStyleManager();

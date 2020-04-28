@@ -4,10 +4,20 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 public class CommandParser {
+    private char startTag;
     private String keyword;
     private ArrayList<String> segments;
+    private String rawString;
+
+    public CommandParser(){
+    }
 
     public CommandParser(String rawStr, boolean isServer){
+        setThis(rawStr, isServer);
+    }
+
+    public void setThis(String rawStr, boolean isServer){
+        rawString = rawStr;
         if (isServer) {
             String newPartition = rawStr.substring(getFirstMeaningfulCharIndex(rawStr));
             String[] segmentArray = newPartition.split(" ");
@@ -15,7 +25,9 @@ public class CommandParser {
             keyword = segments.get(0);
             segments.remove(0);
         }else{
-            String partition = rawStr.substring(1);
+            int starting_index = getFirstMeaningfulCharIndex(rawStr);
+            startTag = rawStr.charAt(starting_index);
+            String partition = rawStr.substring(starting_index + 1);
             String newPartition = partition.substring(getFirstMeaningfulCharIndex(partition));
             String[] segmentArray = newPartition.split(" ");
             segments = new ArrayList<String>(Arrays.asList(segmentArray));
@@ -30,6 +42,10 @@ public class CommandParser {
                 return i;
             }
         return 0;
+    }
+
+    public char getStartTag() {
+        return startTag;
     }
 
     public String getKeyword() {
@@ -48,5 +64,17 @@ public class CommandParser {
         }
 
         return str.toString();
+    }
+
+    public String getWholeString(){
+        if(segments.isEmpty()){
+            return keyword;
+        }
+        return keyword + " " + getIntegratedString();
+    }
+
+
+    public String getRawString(){
+        return rawString;
     }
 }

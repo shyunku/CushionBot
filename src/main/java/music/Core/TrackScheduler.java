@@ -93,8 +93,10 @@ public class TrackScheduler extends AudioEventAdapter{
                     break;
                 case REPEAT_ALL:
                     AudioTrack clone = getCurrentTrack().makeClone();
+                    YoutubeTrackInfo trackInfo = trackData.get(0);
                     nextTrack();
                     addTrackToQueue(clone);
+                    addTrackData(trackInfo);
                     break;
                 case REPEAT_SINGLE:
                     audioPlayer.startTrack(getCurrentTrack().makeClone(), false);

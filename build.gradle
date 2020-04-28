@@ -26,6 +26,7 @@ dependencies {
     implementation 'com.google.apis:google-api-services-youtube:v3-rev20200213-1.30.9'
     implementation 'com.google.api-client:google-api-client:1.30.8'
     implementation 'org.yaml:snakeyaml:1.21'
+    implementation 'net.ricecode:string-similarity:1.0.0'
 
     compile ("commons-logging:commons-logging:${commonsLogging}")
     compile ("org.slf4j:slf4j-api:${slf4jVersion}")
