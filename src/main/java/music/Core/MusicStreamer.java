@@ -98,7 +98,8 @@ public class MusicStreamer {
 
         @Override
         public void loadFailed(FriendlyException exception) {
-            textChannel.sendMessage("load failed.").queue();
+            textChannel.sendMessage("load failed: " + exception.getMessage()).queue();
+            exception.printStackTrace();
         }
     };
 
