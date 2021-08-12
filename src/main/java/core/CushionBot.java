@@ -14,18 +14,7 @@ public class CushionBot {
 
     private static JDA jda;
 
-    public static void main(String[] args){
-        JDABuilder jb = new JDABuilder(AccountType.BOT);
-        jb.setAutoReconnect(true);
-        jb.setStatus(OnlineStatus.ONLINE);
-        jb.setToken(BOT_TOKEN);
-        jb.setActivity(Activity.playing("Multifunction Bot by Shyunku"));
-        jb.addEventListeners(new InternalEventListener());
-
-        try {
-            jda = jb.build();
-        } catch (LoginException e) {
-            e.printStackTrace();
-        }
+    public static void main(String[] args) throws LoginException {
+        jda = JDABuilder.createDefault(BOT_TOKEN).addEventListeners(new InternalEventListener()).build();
     }
 }

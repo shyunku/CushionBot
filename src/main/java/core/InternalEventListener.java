@@ -4,9 +4,11 @@ import Utilities.TextStyleManager;
 import core.command.CommandManager;
 import core.command.CommandParser;
 import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.events.ReadyEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 
+import javax.annotation.Nonnull;
 import java.util.Scanner;
 
 public class InternalEventListener extends ListenerAdapter {
@@ -36,6 +38,11 @@ public class InternalEventListener extends ListenerAdapter {
                 }
             }
         }).start();
+    }
+
+    @Override
+    public void onReady(@Nonnull ReadyEvent event) {
+        System.out.println("ready!");
     }
 
     @Override

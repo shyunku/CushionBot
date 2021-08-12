@@ -5,7 +5,6 @@ import Utilities.TokenManager;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager;
 import com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager;
 import com.sedmelluq.discord.lavaplayer.source.AudioSourceManagers;
-import custom.IntegratedLOLclan.StringCorrection.ManiangListener;
 import music.Core.MusicStreamSystem;
 import music.object.MusicPlayMode;
 import music.object.YoutubeTrackInfo;
@@ -49,9 +48,6 @@ public class CommandManager {
     private AudioManager currentAudioManager = null;
     private Message previousCommandUser = null;
 
-    /* Command Listeners */
-    ManiangListener maniangListener = new ManiangListener("마냥 명령어", '!');
-
     /* Constants */
     private final int MAX_RETRIEVE_SIZE = 500;
 
@@ -59,8 +55,6 @@ public class CommandManager {
         audioPlayerManager = new DefaultAudioPlayerManager();
         AudioSourceManagers.registerRemoteSources(audioPlayerManager);
         AudioSourceManagers.registerLocalSource(audioPlayerManager);
-
-        maniangListener.addPermittedServer("674422721882488843");
     }
 
     public void parseCommand(MessageReceivedEvent e){
@@ -78,8 +72,6 @@ public class CommandManager {
             }
             return;
         }
-        // Listen to users
-        maniangListener.listen(e);
 
         if(START_TAG != text.charAt(0)){
             print(user.getName()+"("+user.getId()+"): "+text+ " [Channel "+textChannel.getId() + "/"+textChannel.getName()
@@ -125,14 +117,22 @@ public class CommandManager {
                     case "queue": musicQueue(); break;
                     case "command": printCommand(); break;
                     case "mclear": musicClear(); break;
+                    case "s":
                     case "skip": musicSkip(); break;
+                    case "outframe":
+                        if(guild.getId().contentEquals("812708646966263838")){
+                            VoiceChannel v = guild.getVoiceChannelById("812708646966263843");
+                            List<Member> lm = v.getMembers();
+                            sendMessage(lm.size()+" 명 참여중입니다.");
+                        }
+                        break;
                 }
                 break;
             case ASK_KICK:
                 switch(keyword){
                     case "yes":
                         for (String id : kickList) {
-                            guild.kick(guild.getMemberById(id)).queue();
+//                            guild.kick(guild.getMemberById(id)).queue();
                         }
                     break;
                     default:
