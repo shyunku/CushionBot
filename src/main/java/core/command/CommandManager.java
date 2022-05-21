@@ -2,6 +2,7 @@ package core.command;
 
 import Utilities.TextStyleManager;
 import Utilities.TokenManager;
+
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager;
 import com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager;
 import com.sedmelluq.discord.lavaplayer.source.AudioSourceManagers;
@@ -10,6 +11,7 @@ import music.object.MusicPlayMode;
 import music.object.YoutubeTrackInfo;
 import music.tools.YoutubeCrawler;
 import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.audio.hooks.ConnectionStatus;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.managers.AudioManager;
@@ -126,6 +128,9 @@ public class CommandManager {
                             sendMessage(lm.size()+" 명 참여중입니다.");
                         }
                         break;
+                    case "jiyoon":
+                        sendMessage("ㅎㅎ");
+                        break;
                 }
                 break;
             case ASK_KICK:
@@ -168,13 +173,13 @@ public class CommandManager {
     }
 
     private void join(MessageReceivedEvent e){
-        VoiceChannel voiceChannel = e.getMember().getVoiceState().getChannel();
+        AudioChannel voiceChannel = e.getMember().getVoiceState().getChannel();
         if(voiceChannel == null){
             sendMessage("음악을 재생하시려면 음성채널에 먼저 입장해주세요!");
             return;
         }
         currentAudioManager = guild.getAudioManager();
-        if(currentAudioManager.isAttemptingToConnect()){
+        if(currentAudioManager.getConnectionStatus() == ConnectionStatus.CONNECTING_ATTEMPTING_UDP_DISCOVERY){
             sendMessage("Bot is already attempting to join voice channel! Please try again.");
         }else{
             currentAudioManager.openAudioConnection(voiceChannel);
@@ -182,7 +187,7 @@ public class CommandManager {
     }
 
     private void leave(){
-        VoiceChannel connectedChannel = guild.getSelfMember().getVoiceState().getChannel();
+        AudioChannel connectedChannel = guild.getSelfMember().getVoiceState().getChannel();
         if(connectedChannel == null){
             sendMessage("나올 채널이 없습니다.");
         }else{
@@ -225,7 +230,7 @@ public class CommandManager {
     }
 
     private void play(MessageReceivedEvent e, String searchKeyword){
-        VoiceChannel voiceChannel = e.getMember().getVoiceState().getChannel();
+        AudioChannel voiceChannel = e.getMember().getVoiceState().getChannel();
         if(voiceChannel == null){
             sendMessage("음악을 재생하시려면 음성채널에 먼저 입장해주세요!");
             return;
@@ -255,7 +260,7 @@ public class CommandManager {
     }
 
     private void play(MessageReceivedEvent e, int index){
-        VoiceChannel currentVoiceChannel = guild.getSelfMember().getVoiceState().getChannel();
+        AudioChannel currentVoiceChannel = guild.getSelfMember().getVoiceState().getChannel();
         if(currentVoiceChannel == null){
             join(e);
         }
@@ -269,7 +274,7 @@ public class CommandManager {
     }
 
     private void quickPlay(MessageReceivedEvent e, String searchKeyword){
-        VoiceChannel currentVoiceChannel = guild.getSelfMember().getVoiceState().getChannel();
+        AudioChannel currentVoiceChannel = guild.getSelfMember().getVoiceState().getChannel();
         if(currentVoiceChannel == null){
             join(e);
         }
@@ -381,7 +386,7 @@ public class CommandManager {
             embedBuilder.addField(textStyler.toBold(tmpTitle), stringBuilders.get(i).toString(), false);
         }
 
-        textChannel.sendMessage(embedBuilder.build()).queue();
+        textChannel.sendMessageEmbeds(embedBuilder.build()).queue();
     }
 
     private void printCommand(){
@@ -392,7 +397,7 @@ public class CommandManager {
         embedBuilder.addField(START_TAG + "alive", "현재 Cushion이 이용가능하면 메시지를 보냅니다.", false);
         embedBuilder.addField(START_TAG + "join(j)", "Cushion을 현재 음성 채널에 참가시킵니다.", false);
 
-        textChannel.sendMessage(embedBuilder.build()).queue();
+        textChannel.sendMessageEmbeds(embedBuilder.build()).queue();
     }
 
     private void musicClear(){

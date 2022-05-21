@@ -1,9 +1,7 @@
 package core.command;
 
 import Utilities.ChannelPermissionInfo;
-import core.command.CommandParser;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.entities.AudioChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.ArrayList;
@@ -26,24 +24,24 @@ public abstract class CommandListener {
         channelPermissionInfoHashMap.put(serverID, new ChannelPermissionInfo(serverID));
     }
 
-    public void addPermittedTextChannel(TextChannel textChannel){
-        String serverID = textChannel.getGuild().getId();
+    public void addPermittedAudioChannel(AudioChannel audioChannel){
+        String serverID = audioChannel.getGuild().getId();
         ChannelPermissionInfo permissionInfo = channelPermissionInfoHashMap.get(serverID);
         if(permissionInfo == null){
             channelPermissionInfoHashMap.put(serverID, new ChannelPermissionInfo(serverID));
         }
         assert permissionInfo != null;
-        permissionInfo.addWhiteList(textChannel);
+        permissionInfo.addWhiteList(audioChannel);
     }
 
-    public void addProhibitTextChannel(TextChannel textChannel){
-        String serverID = textChannel.getGuild().getId();
+    public void addProhibitAudioChannel(AudioChannel audioChannel){
+        String serverID = audioChannel.getGuild().getId();
         ChannelPermissionInfo permissionInfo = channelPermissionInfoHashMap.get(serverID);
         if(permissionInfo == null){
             channelPermissionInfoHashMap.put(serverID, new ChannelPermissionInfo(serverID));
         }
         assert permissionInfo != null;
-        permissionInfo.addBlackList(textChannel);
+        permissionInfo.addBlackList(audioChannel);
     }
 
     public void printListenedMessage(){
@@ -55,13 +53,13 @@ public abstract class CommandListener {
         }
     }
 
-    public boolean isAllowedTextChannel(TextChannel textChannel){
-        String serverID = textChannel.getGuild().getId();
+    public boolean isAllowedAudioChannel(AudioChannel audioChannel){
+        String serverID = audioChannel.getGuild().getId();
         ChannelPermissionInfo permissionInfo = channelPermissionInfoHashMap.get(serverID);
         if(permissionInfo == null){
             return false;
         }
-        return permissionInfo.isAllowed(textChannel);
+        return permissionInfo.isAllowed(audioChannel);
     }
 
     public void parse(MessageReceivedEvent e){
@@ -70,13 +68,7 @@ public abstract class CommandListener {
     }
 
     public void sendback(String msg){
-        rb.getTextChannel().sendMessage(msg).queue();
-    }
-
-    public boolean isListenable(MessageReceivedEvent e){
-        if(!isAllowedTextChannel(e.getTextChannel())) return false;
-        parse(e);
-        return commandParser.getStartTag() == startTag;
+        rb.getChannel().sendMessage(msg).queue();
     }
 
     public abstract void listen(MessageReceivedEvent e);

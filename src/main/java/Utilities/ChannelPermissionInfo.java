@@ -1,7 +1,7 @@
 package Utilities;
 
+import net.dv8tion.jda.api.entities.AudioChannel;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.TextChannel;
 
 import java.util.ArrayList;
 
@@ -15,21 +15,21 @@ public class ChannelPermissionInfo {
         this.serverID = serverID;
     }
 
-    public void addWhiteList(TextChannel textChannel){
+    public void addWhiteList(AudioChannel textChannel){
         String newTextChannelID = textChannel.getId();
         blackList.remove(newTextChannelID);
         if(whiteList.contains(newTextChannelID))return;
         whiteList.add(textChannel.getId());
     }
 
-    public void addBlackList(TextChannel textChannel){
+    public void addBlackList(AudioChannel textChannel){
         String newTextChannelID = textChannel.getId();
         whiteList.remove(newTextChannelID);
         if(blackList.contains(newTextChannelID))return;
         blackList.add(textChannel.getId());
     }
 
-    public boolean isAllowed(TextChannel textChannel){
+    public boolean isAllowed(AudioChannel textChannel){
         Guild guild = textChannel.getGuild();
         String newTextChannelID = textChannel.getId();
         if(!serverID.equals(guild.getId())) return false;
