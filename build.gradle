@@ -23,7 +23,6 @@ jar {
             it.isDirectory()?it:zipTree(it)
         }
     }
-    with jar
 }
 
 repositories {
