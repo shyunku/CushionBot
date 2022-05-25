@@ -3,6 +3,7 @@ package core;
 import Utilities.TextStyleManager;
 import core.command.CommandManager;
 import core.command.CommandParser;
+import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.ReadyEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -44,12 +45,14 @@ public class InternalEventListener extends ListenerAdapter {
 
     @Override
     public void onReady(@Nonnull ReadyEvent e) {
-        List<Guild> guilds = e.getJDA().getGuilds();
+        JDA jda = e.getJDA();
+        List<Guild> guilds = jda.getGuilds();
         System.out.println("Bot is now online! Have fun.");
         System.out.println(guilds.size() + " guilds connected.");
         for(Guild guild  : guilds) {
             System.out.println("Guild: '" + guild.getName() + "' connected.");
         }
+        jda.getPresence().setActivity(Activity.playing("$help"));
     }
 
     @Override
