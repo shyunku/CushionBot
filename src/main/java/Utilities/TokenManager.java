@@ -12,7 +12,7 @@ public class TokenManager {
         InputStream inputStream = null;
         try {
             inputStream = new FileInputStream(new File("src/main/resources/credentials.yaml"));
-            Map<String, Object> maps = (Map<String, Object>) yaml.load(inputStream);
+            Map<String, Object> maps = yaml.load(inputStream);
             Map<String, Object> tokens = (Map<String, Object>) maps.get("tokens");
 
             return tokens.get(key).toString();
@@ -28,7 +28,7 @@ public class TokenManager {
         InputStream inputStream = null;
         try {
             inputStream = new FileInputStream(new File("src/main/resources/credentials.yaml"));
-            Map<String, Object> maps = (Map<String, Object>) yaml.load(inputStream);
+            Map<String, Object> maps = yaml.load(inputStream);
             Map<String, Object> tokens = (Map<String, Object>) maps.get("keys");
 
             return tokens.get(key).toString();
