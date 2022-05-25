@@ -19,10 +19,11 @@ jar {
         attributes "Main-Class": 'core.CushionBot'
     }
     from {
-        (configurations.runtime).collect {
+        configurations.runtime.collect {
             it.isDirectory()?it:zipTree(it)
         }
     }
+    with jar
 }
 
 repositories {
