@@ -101,7 +101,7 @@ public class CommandManager {
                     case "l":
                     case "leave": leave(); break;
                     case "say": say(sentence, currentMessage); break;
-                    case "kick": kick(segments); break;
+//                    case "kick": kick(segments); break;
                     case "p":
                     case "play": play(e, sentence); break;
                     case "qp":
@@ -113,10 +113,11 @@ public class CommandManager {
                         }else{
                             clear(e, segments.get(0)); break;
                         }
-                    case "whitelist": whitelist(); break;
+//                    case "whitelist": whitelist(); break;
                     case "repeat": repeatTrackList(segments); break;
                     case "q":
                     case "queue": musicQueue(); break;
+                    case "help":
                     case "command": printCommand(); break;
                     case "mclear": musicClear(); break;
                     case "s":
@@ -381,11 +382,19 @@ public class CommandManager {
 
     private void printCommand(){
         EmbedBuilder embedBuilder = new EmbedBuilder();
-        embedBuilder.setTitle("Cushion Bot Command List");
+        embedBuilder.setTitle("쿠션 봇 명령어 목록");
         embedBuilder.setColor(new Color(0, 255, 187));
-        embedBuilder.addField(START_TAG + "command", "Cushion 봇 명령어 목록을 출력합니다.", false);
+        embedBuilder.addField(START_TAG + "help|command", "Cushion 봇 명령어 목록을 출력합니다.", false);
         embedBuilder.addField(START_TAG + "alive", "현재 Cushion이 이용가능하면 메시지를 보냅니다.", false);
         embedBuilder.addField(START_TAG + "join(j)", "Cushion을 현재 음성 채널에 참가시킵니다.", false);
+        embedBuilder.addField(START_TAG + "leave(l)", "Cushion을 현재 참가중인 음성 채널에서 퇴장시킵니다.", false);
+        embedBuilder.addField(START_TAG + "play(p) <음악 검색 키워드>", "(유튜브 검색 기반) 음악을 재생합니다.", false);
+        embedBuilder.addField(START_TAG + "quickplay(qp) <음악 검색 키워드>", "검색된 음악 중 가장 관련성이 높은 음악을 즉시 재생합니다.", false);
+        embedBuilder.addField(START_TAG + "clear <삭제할 메시지 수>", "현재 텍스트 채널에서 최근 작성된 메시지를 삭제합니다.", false);
+        embedBuilder.addField(START_TAG + "repeat <all|off>", "재생 모드를 <전체 반복|기본>으로 변경합니다.", false);
+        embedBuilder.addField(START_TAG + "queue(q)", "현재 음악 재생목록을 표시합니다.", false);
+        embedBuilder.addField(START_TAG + "mclear", "현재 음악 재생목록을 비웁니다.", false);
+        embedBuilder.addField(START_TAG + "skip(s)", "현재 재생 중인 음악을 건너 뛰고 다음 곡을 재생합니다.", false);
 
         textChannel.sendMessageEmbeds(embedBuilder.build()).queue();
     }
