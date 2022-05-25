@@ -7,8 +7,10 @@ import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.ReadyEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.requests.RestAction;
 
 import javax.annotation.Nonnull;
+import java.util.List;
 import java.util.Scanner;
 
 public class InternalEventListener extends ListenerAdapter {
@@ -41,8 +43,13 @@ public class InternalEventListener extends ListenerAdapter {
     }
 
     @Override
-    public void onReady(@Nonnull ReadyEvent event) {
-        System.out.println("ready!");
+    public void onReady(@Nonnull ReadyEvent e) {
+        List<Guild> guilds = e.getJDA().getGuilds();
+        System.out.println("Bot is now online! Have fun.");
+        System.out.println(guilds.size() + " guilds connected.");
+        for(Guild guild  : guilds) {
+            System.out.println("Guild: '" + guild.getName() + "' connected.");
+        }
     }
 
     @Override

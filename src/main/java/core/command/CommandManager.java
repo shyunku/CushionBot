@@ -121,16 +121,6 @@ public class CommandManager {
                     case "mclear": musicClear(); break;
                     case "s":
                     case "skip": musicSkip(); break;
-                    case "outframe":
-                        if(guild.getId().contentEquals("812708646966263838")){
-                            VoiceChannel v = guild.getVoiceChannelById("812708646966263843");
-                            List<Member> lm = v.getMembers();
-                            sendMessage(lm.size()+" 명 참여중입니다.");
-                        }
-                        break;
-                    case "jiyoon":
-                        sendMessage("ㅎㅎ");
-                        break;
                 }
                 break;
             case ASK_KICK:
@@ -415,8 +405,10 @@ public class CommandManager {
     public void sendMessage(String msg){
         if(textChannel == null){
             print("Channel Not Allocated.");
-        }else{
+        }else if(textChannel.canTalk()){
             textChannel.sendMessage(msg).queue();
+        } else {
+            print("Can't talk to this channel");
         }
     }
 
