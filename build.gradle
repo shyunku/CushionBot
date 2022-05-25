@@ -19,16 +19,8 @@ jar {
         attributes "Main-Class": 'core.CushionBot'
     }
     from {
-        configurations.compile.collect {
-            it.isDirectory()?it:zipTree(it)
-        }
+        configurations.runtimeClasspath.findAll{ it.name.endsWith('jar') }.collect{ zipTree(it) }
     }
-}
-
-task fatJar(type: Jar) {
-    classifier = 'all'
-    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
-    with jar
 }
 
 repositories {
