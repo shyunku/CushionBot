@@ -3,5 +3,5 @@ echo "============ BUILD START ============"
 sudo sh stop.sh
 rm -rf build/libs
 ./gradlew clean build
-sudo sh start.sh
+sudo sh run.sh
 echo "============ BUILD END ============"
