@@ -1,5 +1,7 @@
+#!/bin/sh
 echo "============ BUILD START ============"
+sh stop.sh
 rm -rf build/libs
 ./gradlew clean build
-nohup java -jar build/libs/CushionBot-1.0-SNAPSHOT.jar &
+sh start.sh
 echo "============ BUILD END ============"
