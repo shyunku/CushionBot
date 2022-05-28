@@ -6,6 +6,8 @@ import Utilities.TokenManager;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager;
 import com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager;
 import com.sedmelluq.discord.lavaplayer.source.AudioSourceManagers;
+import exceptions.CommandArgumentsOutOfBoundException;
+import exceptions.CommandMusicPlayIndexOutOfRangeException;
 import music.Core.MusicStreamSystem;
 import music.object.MusicPlayMode;
 import music.object.YoutubeTrackInfo;
@@ -15,6 +17,8 @@ import net.dv8tion.jda.api.audio.hooks.ConnectionStatus;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.managers.AudioManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.awt.*;
@@ -22,11 +26,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-public class CommandManager {
+public class CommandRouter {
+    private final Logger logger = LoggerFactory.getLogger(CommandRouter.class);
     private final char START_TAG = '$';
     private final boolean SAFE_MODE = false;
     private final boolean RESTRICT_MODE = false;
-    private final String BOT_CLIENT_ID = new TokenManager().getBotClientID();
 
     /* Message Properties */
     private TextChannel textChannel;
@@ -43,17 +47,19 @@ public class CommandManager {
 
     /* Memories */
     private ArrayList<String> kickList = new ArrayList<>();
-    private Message previousBotMessage = null;
     private ArrayList<Member> whiteList = new ArrayList<>();
     private ArrayList<Role> whiteRoleList = new ArrayList<>();
     private ArrayList<YoutubeTrackInfo> trackCandidates = new ArrayList<>();
     private AudioManager currentAudioManager = null;
-    private Message previousCommandUser = null;
+
+    private Message previousBotMessage = null;
+    private Message currentUserCommand = null;
+    private Message previousUserCommand = null;
 
     /* Constants */
     private final int MAX_RETRIEVE_SIZE = 500;
 
-    public CommandManager() {
+    public CommandRouter() {
         audioPlayerManager = new DefaultAudioPlayerManager();
         AudioSourceManagers.registerRemoteSources(audioPlayerManager);
         AudioSourceManagers.registerLocalSource(audioPlayerManager);
@@ -68,27 +74,23 @@ public class CommandManager {
         if(text.length()==0)return;
 
         if(user.isBot()){
-            if(user.getId().equals(BOT_CLIENT_ID)){
+            if(user.getId().equals(TokenManager.BOT_CLIENT_ID)){
+                logger.info(String.format("BOT Message --- %s", currentMessage));
                 previousBotMessage = currentMessage;
-                print("BOT: "+previousBotMessage);
             }
             return;
         }
 
-        if(START_TAG != text.charAt(0)){
-            print(user.getName()+"("+user.getId()+"): "+text+ " [Channel "+textChannel.getId() + "/"+textChannel.getName()
-                    +"] [server: "+guild.getId() + "/"+guild.getName()+"]");
-            return;
+        if(START_TAG == text.charAt(0)){
+            currentUserCommand = currentMessage;
+            logger.info(String.format("User Command {%s} --- [%s][%s] %s: %s",
+                    mode, guild.getName(), textChannel.getName(), user.getName(), text));
         }
 
         commandParser.setThis(text, false);
         ArrayList<String> segments = commandParser.getSegments();
         String sentence = commandParser.getIntegratedString();
         String keyword = commandParser.getKeyword();
-
-        // Main Command
-        print("{{MAIN}} " + user.getName()+"("+user.getId()+"): "+text+ " [Channel "+textChannel.getId() + "/"+textChannel.getName()
-                +"] [server: "+guild.getId() + "/"+guild.getName()+"]");
 
         musicStreamSystem.registerMusicStreamer(currentAudioManager, audioPlayerManager, textChannel);
 
@@ -142,10 +144,13 @@ public class CommandManager {
                     case "p":
                     case "play":
                         try{
+                            if(segments.isEmpty()) throw new CommandArgumentsOutOfBoundException(segments.size(), 0);
                             int songIndex = Integer.parseInt(segments.get(0));
-                            if(songIndex<1||songIndex>5)throw new NumberFormatException();
-                            play(e, songIndex);
-                        }catch(NumberFormatException exception){
+                            if(songIndex<1 || songIndex>5) throw new CommandMusicPlayIndexOutOfRangeException();
+                            playByIndex(e, songIndex);
+                        } catch (NumberFormatException exc) {
+                            play(e, sentence);
+                        } catch (CommandArgumentsOutOfBoundException | CommandMusicPlayIndexOutOfRangeException exc) {
                             sendBoldMessage("잘못된 인자: 음악 실행 취소");
                         }
                         break;
@@ -153,9 +158,10 @@ public class CommandManager {
                         sendBoldMessage("음악 실행 취소");
                         break;
                 }
-                mode = CommandStatus.NORMAL;
                 break;
         }
+
+        previousUserCommand = currentMessage;
     }
 
     /* Commands Execution */
@@ -222,6 +228,7 @@ public class CommandManager {
 
     private void play(MessageReceivedEvent e, String searchKeyword){
         AudioChannel voiceChannel = e.getMember().getVoiceState().getChannel();
+
         if(voiceChannel == null){
             sendMessage("음악을 재생하시려면 음성채널에 먼저 입장해주세요!");
             return;
@@ -250,7 +257,7 @@ public class CommandManager {
         mode = CommandStatus.WAIT_SONG_PICK;
     }
 
-    private void play(MessageReceivedEvent e, int index){
+    private void playByIndex(MessageReceivedEvent e, int index){
         AudioChannel currentVoiceChannel = guild.getSelfMember().getVoiceState().getChannel();
         if(currentVoiceChannel == null){
             join(e);
@@ -258,10 +265,11 @@ public class CommandManager {
         YoutubeTrackInfo selectedTrackInfo = trackCandidates.get(index-1);
         trackCandidates.clear();
 
-        deleteReceivedCurrentMessage();
+        deleteCurrentUserCommand();
         deleteSentPreviousMessage();
 
         musicStreamSystem.addTrackToQueue(textChannel, audioPlayerManager, selectedTrackInfo);
+        mode = CommandStatus.NORMAL;
     }
 
     private void quickPlay(MessageReceivedEvent e, String searchKeyword){
@@ -455,10 +463,16 @@ public class CommandManager {
         return false;
     }
 
-    private void deleteReceivedCurrentMessage(){
-        if(currentMessage == null) return;
-        currentMessage.delete().queue();
-        currentMessage = null;
+    private void deleteCurrentUserCommand(){
+        if(currentUserCommand == null) return;
+        currentUserCommand.delete().queue();
+        currentUserCommand = null;
+    }
+
+    private void deletePreviousUserCommand(){
+        if(previousUserCommand == null) return;
+        previousUserCommand.delete().queue();
+        previousUserCommand = null;
     }
 
     private void deleteSentPreviousMessage(){

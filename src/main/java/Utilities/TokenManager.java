@@ -7,6 +7,8 @@ import java.util.Iterator;
 import java.util.Map;
 
 public class TokenManager {
+    public static final String BOT_CLIENT_ID = new TokenManager().getBotClientID();
+
     private String getObjectToken(String key){
         Yaml yaml = new Yaml();
         InputStream inputStream = null;

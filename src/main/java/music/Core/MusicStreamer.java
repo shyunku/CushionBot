@@ -22,8 +22,10 @@ public class MusicStreamer {
     private AudioPlayer audioPlayer;
     private TrackScheduler trackScheduler;
     private TextChannel textChannel;
+    private AudioPlayerManager audioPlayerManager;
 
     public MusicStreamer(AudioManager audioManager, AudioPlayerManager audioPlayerManager, TextChannel textChannel){
+        this.audioPlayerManager = audioPlayerManager;
         audioPlayer = audioPlayerManager.createPlayer();
         this.textChannel = textChannel;
         trackScheduler = new TrackScheduler(audioPlayer, audioManager, textChannel);
