@@ -45,7 +45,7 @@ public class MusicStreamer {
                 this,
                 "https://www.youtube.com/watch?v=" + trackInfo.getId(),
                 audioLoadResultHandler
-                );
+        );
     }
 
     public void loadItemList(AudioPlayerManager audioPlayerManager, String url){

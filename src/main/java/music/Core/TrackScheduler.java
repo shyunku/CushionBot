@@ -10,6 +10,7 @@ import com.sedmelluq.discord.lavaplayer.track.AudioTrackEndReason;
 import music.object.MusicPlayMode;
 import music.object.YoutubeTrackInfo;
 import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.managers.AudioManager;
 
 import java.util.ArrayList;
@@ -62,7 +63,28 @@ public class TrackScheduler extends AudioEventAdapter{
             case REPEAT_ALL: return "전제 반복";
             case REPEAT_SINGLE: return "한 곡 반복";
         }
-        return "unknown";
+        return "-";
+    }
+
+    public MusicPlayMode getNextMusicPlayMode() {
+        switch(musicPlayMode){
+            case NORMAL: return MusicPlayMode.REPEAT_ALL;
+            case REPEAT_ALL: return MusicPlayMode.REPEAT_SINGLE;
+            case REPEAT_SINGLE: return MusicPlayMode.NORMAL;
+        }
+        return MusicPlayMode.NORMAL;
+    }
+
+    public static Button getMusicPlayModeButton(MusicPlayMode mode) {
+        switch(mode) {
+            case NORMAL:
+                return Button.secondary("musicPlayModeNormal", "🔁");
+            case REPEAT_ALL:
+                return Button.primary("musicPlayModeRepeatAll", "🔁");
+            case REPEAT_SINGLE:
+                return Button.primary("musicPlayModeRepeatSingle", "\uD83D\uDD02");
+        }
+        return Button.secondary("musicPlayModeNormal", "🔁");
     }
 
     public AudioTrack getCurrentTrack(){
@@ -107,12 +129,12 @@ public class TrackScheduler extends AudioEventAdapter{
 
     @Override
     public void onTrackException(AudioPlayer player, AudioTrack track, FriendlyException exception) {
-        super.onTrackException(player, track, exception);
+        System.err.println(String.format("Track Exception: %s", exception.getMessage()));
     }
 
     @Override
     public void onTrackStuck(AudioPlayer player, AudioTrack track, long thresholdMs) {
-        super.onTrackStuck(player, track, thresholdMs);
+        System.err.println(String.format("Track Stuck: %s", track.getInfo().title));
     }
 
     private class AudioCloser extends Thread{
