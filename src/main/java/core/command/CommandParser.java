@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 public class CommandParser {
-    private char startTag;
     private String keyword;
     private ArrayList<String> segments;
     private String rawString;
@@ -26,7 +25,6 @@ public class CommandParser {
             segments.remove(0);
         }else{
             int starting_index = getFirstMeaningfulCharIndex(rawStr);
-            startTag = rawStr.charAt(starting_index);
             String partition = rawStr.substring(starting_index + 1);
             String newPartition = partition.substring(getFirstMeaningfulCharIndex(partition));
             String[] segmentArray = newPartition.split(" ");
@@ -44,9 +42,6 @@ public class CommandParser {
         return 0;
     }
 
-    public char getStartTag() {
-        return startTag;
-    }
 
     public String getKeyword() {
         return keyword;
