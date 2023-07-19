@@ -2,12 +2,17 @@ package core;
 
 import Utilities.TokenManager;
 import core.command.CommandRouter;
-import core.command.GuildCommandRouter;
+import exceptions.MusicBoxNotFoundException;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.events.interaction.component.SelectMenuInteractionEvent;
+import net.dv8tion.jda.api.interactions.components.buttons.Button;
+import org.jetbrains.annotations.NotNull;
+import service.discord.JdaUtil;
 import core.command.SlashCommandParser;
-import music.Core.MusicStreamSystem;
-import music.Core.MusicStreamer;
-import music.Core.TrackScheduler;
-import music.object.MusicPlayMode;
+import service.music.Core.MusicActionEmbed;
+import service.music.Core.MusicStreamer;
+import service.music.Core.TrackScheduler;
+import service.music.object.MusicPlayMode;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.ReadyEvent;
@@ -19,9 +24,11 @@ import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import service.music.Core.MusicBox;
+import service.music.object.YoutubeTrackInfo;
 
 import javax.annotation.Nonnull;
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
 
 public class InternalEventListener extends ListenerAdapter {
@@ -38,6 +45,9 @@ public class InternalEventListener extends ListenerAdapter {
         List<Guild> guilds = jda.getGuilds();
         logger.info("Bot is now online! Have fun.");
         logger.info(guilds.size() + " guilds connected.");
+        for (Guild g : guilds) {
+            logger.info("        --- Guild: " + g.getName() + " (" + g.getId() + ")");
+        }
         jda.getPresence().setActivity(Activity.playing(Version.CURRENT + "v - $help"));
         logger.info("=====================================================================");
 
@@ -47,6 +57,11 @@ public class InternalEventListener extends ListenerAdapter {
                     Commands.slash("music", "이 텍스트 채널을 음악 채널로 지정합니다.")
             ).queue();
         }
+
+        // leave all audio channels
+//        for(Guild g : guilds) {
+//            g.getAudioManager().closeAudioConnection();
+//        }
     }
 
     @Override
@@ -84,58 +99,70 @@ public class InternalEventListener extends ListenerAdapter {
     }
 
     @Override
+    public void onSelectMenuInteraction(@NotNull SelectMenuInteractionEvent e) {
+        Guild guild = e.getGuild();
+        String guildId = guild.getId();
+        String componentId = e.getComponentId();
+
+        logger.info(componentId);
+
+        try {
+            MusicBox musicBox = Service.GetMusicBoxByGuildId(guildId);
+            MusicStreamer musicStreamer = musicBox.getStreamer();
+            TrackScheduler trackScheduler = musicStreamer.getTrackScheduler();
+            if (componentId.startsWith("track-")) {
+                String trackId = componentId.replace("track-", "");
+                trackScheduler.skipUntilTrack(trackId);
+                musicBox.updateMusicActionEmbed();
+            }
+        } catch (Exception exception) {
+            e.reply("음악 채널이 아직 설정되지 않았습니다. /music 명령어로 먼저 설정해주세요.").queue();
+        }
+    }
+
+    @Override
     public void onButtonInteraction(ButtonInteractionEvent e) {
         Guild guild = e.getGuild();
         String guildId = guild.getId();
         String componentId = e.getComponentId();
-        if(!Service.guildMusicChannelMap.containsKey(guildId)) {
-            logger.warn("Music channel is not set in this guild.");
-            return;
-        }
-        String musicTextChannelId = Service.guildMusicChannelMap.get(guildId);
-        TextChannel musicTextChannel = e.getJDA().getTextChannelById(musicTextChannelId);
 
-        if(musicTextChannel == null) {
-            logger.warn("Music channel is not set in this guild.");
+        if(!Service.guildManagers.containsKey(guildId)) {
+            logger.warn("GuildManager is not set in this guild.");
             return;
         }
 
-        if(!Service.guildCommandRouters.containsKey(guildId)) {
-            logger.warn("GuildCommandRouter is not set in this guild.");
-            return;
-        }
+        try {
+            MusicBox musicBox = Service.GetMusicBoxByGuildId(guildId);
+            MusicStreamer musicStreamer = musicBox.getStreamer();
+            TrackScheduler trackScheduler = musicStreamer.getTrackScheduler();
 
-        GuildCommandRouter guildCommandRouter = Service.guildCommandRouters.get(guildId);
-        MusicStreamSystem musicStreamSystem = guildCommandRouter.getMusicStreamSystem();
-        MusicStreamer musicStreamer = musicStreamSystem.getMusicStreamer(musicTextChannel);
-        TrackScheduler trackScheduler = musicStreamer.getTrackScheduler();
+            switch (componentId) {
+                case "musicBoxStop":
+                    musicStreamer.clearTracksOfQueue();
+//                    JdaUtil.LeaveCurrentAudioChannel(guild);
+                    break;
+                case "musicBoxPause":
+                    musicStreamer.setPaused(true);
+                    break;
+                case "musicBoxPlay":
+                    musicStreamer.setPaused(false);
+                    break;
+                case "musicBoxSkip":
+                    musicStreamer.skipCurrentTracksOfQueue();
+                    break;
+                case "musicBoxRepeat":
+                    MusicPlayMode nextPlayMode = trackScheduler.getNextMusicPlayMode();
+                    musicStreamer.repeatTrackToQueue(nextPlayMode);
+                    break;
+                case "musicBoxLeave":
+                    JdaUtil.LeaveCurrentAudioChannel(guild);
+                    break;
+            }
 
-        switch(componentId) {
-            case "musicBoxStop":
-                musicStreamSystem.clearTracksOfQueue(musicTextChannel);
-                AudioChannel connectedChannel = guild.getSelfMember().getVoiceState().getChannel();
-                if(connectedChannel != null){
-                    guild.getAudioManager().closeAudioConnection();
-                }
-                e.deferEdit().queue();
-                break;
-            case "musicBoxPause":
-                e.reply("Not supported yet").queue();
-                break;
-            case "musicBoxPlay":
-                e.reply("Not supported yet").queue();
-                break;
-            case "musicBoxNext":
-                musicStreamSystem.skipCurrentTracksOfQueue(musicTextChannel);
-                musicStreamSystem.printMusicBox(musicTextChannel);
-                e.deferEdit().queue();
-                break;
-            case "musicBoxRepeat":
-                MusicPlayMode nextPlayMode = trackScheduler.getNextMusicPlayMode();
-                musicStreamSystem.repeatTrackToQueue(musicTextChannel, nextPlayMode);
-                musicStreamSystem.printMusicBox(musicTextChannel);
-                e.deferEdit().queue();
-                break;
+            e.deferEdit().queue();
+            musicBox.updateMusicActionEmbed();
+        } catch (MusicBoxNotFoundException exception) {
+            e.reply("음악 채널이 아직 설정되지 않았습니다. /music 명령어로 먼저 설정해주세요.").queue();
         }
     }
 }

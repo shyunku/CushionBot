@@ -1,14 +1,12 @@
-package music.Core;
+package service.music.Core;
 
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
-import com.sedmelluq.discord.lavaplayer.player.event.AudioEvent;
 import com.sedmelluq.discord.lavaplayer.player.event.AudioEventAdapter;
-import com.sedmelluq.discord.lavaplayer.player.event.AudioEventListener;
 import com.sedmelluq.discord.lavaplayer.tools.FriendlyException;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrackEndReason;
-import music.object.MusicPlayMode;
-import music.object.YoutubeTrackInfo;
+import service.music.object.MusicPlayMode;
+import service.music.object.YoutubeTrackInfo;
 import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.managers.AudioManager;
@@ -19,21 +17,18 @@ import java.util.Queue;
 
 public class TrackScheduler extends AudioEventAdapter{
     private AudioPlayer audioPlayer;
-    private AudioManager audioManager;
-    private TextChannel textChannel;
     private AudioTrack currentTrack;
     private final Queue<AudioTrack> trackQueue = new LinkedList<>();
     private final ArrayList<YoutubeTrackInfo> trackData = new ArrayList<>();
 
-    private AudioCloser audioCloser;
-
     private MusicPlayMode musicPlayMode = MusicPlayMode.NORMAL;
 
+    private MusicTrackEndHandler musicTrackEndHandler;
 
-    public TrackScheduler(AudioPlayer audioPlayer, AudioManager audioManager, TextChannel textChannel) {
+
+    public TrackScheduler(AudioPlayer audioPlayer, MusicTrackEndHandler musicTrackEndHandler) {
         this.audioPlayer = audioPlayer;
-        this.audioManager = audioManager;
-        this.textChannel = textChannel;
+        this.musicTrackEndHandler = musicTrackEndHandler;
     }
 
     public void addTrackData(YoutubeTrackInfo trackInfo){
@@ -51,19 +46,27 @@ public class TrackScheduler extends AudioEventAdapter{
         trackData.remove(0);
     }
 
+    public void skipUntilTrack(String trackId) {
+        if(!this.hasTrack(trackId)) return;
+        while(!trackData.get(0).getId().equals(trackId)) {
+            trackData.remove(0);
+            trackQueue.poll();
+        }
+    }
+
+    public boolean hasTrack(String trackId) {
+        for(YoutubeTrackInfo trackInfo : trackData) {
+            if(trackInfo.getId().equals(trackId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public void clearTracks(){
         trackData.clear();
         trackQueue.clear();
         audioPlayer.stopTrack();
-    }
-
-    public String getMusicPlayModeDescription(){
-        switch(musicPlayMode){
-            case NORMAL: return "기본";
-            case REPEAT_ALL: return "전제 반복";
-            case REPEAT_SINGLE: return "한 곡 반복";
-        }
-        return "-";
     }
 
     public MusicPlayMode getNextMusicPlayMode() {
@@ -75,20 +78,12 @@ public class TrackScheduler extends AudioEventAdapter{
         return MusicPlayMode.NORMAL;
     }
 
-    public static Button getMusicPlayModeButton(MusicPlayMode mode) {
-        switch(mode) {
-            case NORMAL:
-                return Button.secondary("musicPlayModeNormal", "🔁");
-            case REPEAT_ALL:
-                return Button.primary("musicPlayModeRepeatAll", "🔁");
-            case REPEAT_SINGLE:
-                return Button.primary("musicPlayModeRepeatSingle", "\uD83D\uDD02");
-        }
-        return Button.secondary("musicPlayModeNormal", "🔁");
-    }
-
     public AudioTrack getCurrentTrack(){
         return currentTrack;
+    }
+
+    public MusicPlayMode getMusicPlayMode(){
+        return musicPlayMode;
     }
 
     public void setMusicPlayMode(MusicPlayMode musicPlayMode){
@@ -125,6 +120,7 @@ public class TrackScheduler extends AudioEventAdapter{
                     break;
             }
         }
+        musicTrackEndHandler.onTrackEnd();
     }
 
     @Override

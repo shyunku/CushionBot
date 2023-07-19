@@ -1,11 +1,12 @@
-package music.tools;
+package service.music.Core;
 
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
 import com.sedmelluq.discord.lavaplayer.track.playback.AudioFrame;
 import net.dv8tion.jda.api.audio.AudioSendHandler;
 
-import javax.annotation.Nullable;
 import java.nio.ByteBuffer;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 public class AudioPlayerSendHandler implements AudioSendHandler {
     private final AudioPlayer audioPlayer;
@@ -21,7 +22,6 @@ public class AudioPlayerSendHandler implements AudioSendHandler {
         return lastFrame != null;
     }
 
-    @Nullable
     @Override
     public ByteBuffer provide20MsAudio() {
         setFrame();

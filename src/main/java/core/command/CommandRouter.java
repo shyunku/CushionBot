@@ -1,11 +1,12 @@
 package core.command;
 
 import core.Service;
+import service.guild.GuildCommandRouter;
+import service.guild.GuildManager;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.util.HashMap;
 
 public class CommandRouter {
     private final Logger logger = LoggerFactory.getLogger(CommandRouter.class);
@@ -16,12 +17,13 @@ public class CommandRouter {
         Guild guild = e.getGuild();
         String guildId = guild.getId();
 
-        if(!Service.guildCommandRouters.containsKey(guildId)) {
-            GuildCommandRouter newGuildCommandRouter = new GuildCommandRouter(guild);
-            Service.guildCommandRouters.put(guildId, newGuildCommandRouter);
+        if(!Service.guildManagers.containsKey(guildId)) {
+            GuildManager newGuildManager = new GuildManager(guild);
+            Service.guildManagers.put(guildId, newGuildManager);
         }
 
-        GuildCommandRouter guildCommandRouter = Service.guildCommandRouters.get(guildId);
-        guildCommandRouter.route(e);
+        GuildManager guildManager = Service.guildManagers.get(guildId);
+        GuildCommandRouter guildCommandRouter = guildManager.getGuildCommandRouter();
+        guildCommandRouter.route(e, guildManager);
     }
 }

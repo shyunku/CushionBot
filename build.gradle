@@ -12,7 +12,7 @@ ext{
 group 'Shyunku'
 version '1.0-SNAPSHOT'
 
-sourceCompatibility = 1.8
+sourceCompatibility = 11
 
 jar {
     manifest {
@@ -49,3 +49,4 @@ dependencies {
 }
 
 compileJava.options.encoding = 'UTF-8'
+targetCompatibility = JavaVersion.VERSION_11
