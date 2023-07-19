@@ -23,4 +23,12 @@ public class UtilFunctions {
 
         return builder.toString();
     }
+
+    public static String unescapeHTML(String original) {
+        return original.replaceAll("&lt;", "<")
+                .replaceAll("&gt;", ">")
+                .replaceAll("&amp;", "&")
+                .replaceAll("&quot;", "\"")
+                .replaceAll("&apos;", "'");
+    }
 }

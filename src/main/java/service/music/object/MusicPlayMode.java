@@ -1,4 +1,4 @@
-package music.object;
+package service.music.object;
 
 public enum MusicPlayMode {
     NORMAL, REPEAT_SINGLE, REPEAT_ALL
