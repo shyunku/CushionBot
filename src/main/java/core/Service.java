@@ -1,8 +1,9 @@
 package core;
 
-import exceptions.MusicBoxNotFoundException;
+import exceptions.GuildManagerNotFoundException;
 import net.dv8tion.jda.api.entities.Guild;
-import service.guild.GuildManager;
+import service.guild.core.GuildManager;
+import service.leagueoflegends.Core.LolBox;
 import service.music.Core.MusicBox;
 
 import java.util.HashMap;
@@ -19,11 +20,15 @@ public class Service {
         }
     }
 
-    public static MusicBox GetMusicBoxByGuildId(String guildId) throws MusicBoxNotFoundException {
-        if(!guildManagers.containsKey(guildId)) {
-            throw new MusicBoxNotFoundException();
-        }
+    public static MusicBox GetMusicBoxByGuildId(String guildId) throws GuildManagerNotFoundException {
+        if(!guildManagers.containsKey(guildId)) throw new GuildManagerNotFoundException();
         GuildManager guildManager = guildManagers.get(guildId);
         return guildManager.getMusicBox();
+    }
+
+    public static LolBox GetLolBoxByGuildId(String guildId) throws GuildManagerNotFoundException {
+        if(!guildManagers.containsKey(guildId)) throw new GuildManagerNotFoundException();
+        GuildManager guildManager = guildManagers.get(guildId);
+        return guildManager.getLolBox();
     }
 }

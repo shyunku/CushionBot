@@ -2,6 +2,7 @@ package core;
 
 import Utilities.TokenManager;
 import core.command.CommandRouter;
+import exceptions.GuildManagerNotFoundException;
 import exceptions.MusicBoxNotFoundException;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.events.interaction.component.SelectMenuInteractionEvent;
@@ -9,6 +10,7 @@ import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import org.jetbrains.annotations.NotNull;
 import service.discord.JdaUtil;
 import core.command.SlashCommandParser;
+import service.leagueoflegends.Core.LolBox;
 import service.music.Core.MusicActionEmbed;
 import service.music.Core.MusicStreamer;
 import service.music.Core.TrackScheduler;
@@ -54,7 +56,10 @@ public class InternalEventListener extends ListenerAdapter {
         for(Guild g : guilds) {
             g.updateCommands().addCommands(
                     Commands.slash("test", "test description"),
-                    Commands.slash("music", "이 텍스트 채널을 음악 채널로 지정합니다.")
+                    Commands.slash("music", "이 텍스트 채널을 음악 채널로 지정합니다."),
+                    Commands.slash("내전채널", "이 텍스트 채널을 내전 채널로 지정합니다."),
+                    Commands.slash("내전모으기", "내전 일정을 생성합니다."),
+                    Commands.slash("내전취소", "내전을 취소합니다.")
             ).queue();
         }
 
@@ -95,6 +100,15 @@ public class InternalEventListener extends ListenerAdapter {
             case "music":
                 slashCommandParser.music(e);
                 break;
+            case "내전채널":
+                slashCommandParser.lol5vs5(e);
+                break;
+            case "내전모으기":
+                slashCommandParser.lol5vs5StartOrStop(e, true);
+                break;
+            case "내전취소":
+                slashCommandParser.lol5vs5StartOrStop(e, false);
+                break;
         }
     }
 
@@ -131,38 +145,62 @@ public class InternalEventListener extends ListenerAdapter {
             return;
         }
 
-        try {
-            MusicBox musicBox = Service.GetMusicBoxByGuildId(guildId);
-            MusicStreamer musicStreamer = musicBox.getStreamer();
-            TrackScheduler trackScheduler = musicStreamer.getTrackScheduler();
+        if(componentId.startsWith("music")) {
+            try {
+                MusicBox musicBox = Service.GetMusicBoxByGuildId(guildId);
+                MusicStreamer musicStreamer = musicBox.getStreamer();
+                TrackScheduler trackScheduler = musicStreamer.getTrackScheduler();
 
-            switch (componentId) {
-                case "musicBoxStop":
-                    musicStreamer.clearTracksOfQueue();
+                switch (componentId) {
+                    case "musicBoxStop":
+                        musicStreamer.clearTracksOfQueue();
 //                    JdaUtil.LeaveCurrentAudioChannel(guild);
-                    break;
-                case "musicBoxPause":
-                    musicStreamer.setPaused(true);
-                    break;
-                case "musicBoxPlay":
-                    musicStreamer.setPaused(false);
-                    break;
-                case "musicBoxSkip":
-                    musicStreamer.skipCurrentTracksOfQueue();
-                    break;
-                case "musicBoxRepeat":
-                    MusicPlayMode nextPlayMode = trackScheduler.getNextMusicPlayMode();
-                    musicStreamer.repeatTrackToQueue(nextPlayMode);
-                    break;
-                case "musicBoxLeave":
-                    JdaUtil.LeaveCurrentAudioChannel(guild);
-                    break;
-            }
+                        break;
+                    case "musicBoxPause":
+                        musicStreamer.setPaused(true);
+                        break;
+                    case "musicBoxPlay":
+                        musicStreamer.setPaused(false);
+                        break;
+                    case "musicBoxSkip":
+                        musicStreamer.skipCurrentTracksOfQueue();
+                        break;
+                    case "musicBoxRepeat":
+                        MusicPlayMode nextPlayMode = trackScheduler.getNextMusicPlayMode();
+                        musicStreamer.repeatTrackToQueue(nextPlayMode);
+                        break;
+                    case "musicBoxLeave":
+                        JdaUtil.LeaveCurrentAudioChannel(guild);
+                        break;
+                }
 
-            e.deferEdit().queue();
-            musicBox.updateMusicActionEmbed();
-        } catch (MusicBoxNotFoundException exception) {
-            e.reply("음악 채널이 아직 설정되지 않았습니다. /music 명령어로 먼저 설정해주세요.").queue();
+                e.deferEdit().queue();
+                musicBox.updateMusicActionEmbed();
+            } catch (GuildManagerNotFoundException exception) {
+                e.reply("음악 채널이 아직 설정되지 않았습니다. /music 명령어로 먼저 설정해주세요.").queue();
+            }
+        } else if(componentId.startsWith("lol")) {
+            try {
+                LolBox lolBox = Service.GetLolBoxByGuildId(guildId);
+                Member sender = e.getMember();
+
+                switch(componentId) {
+                    case "lolJoin":
+                        lolBox.addMemberAnswer(sender, true);
+                        break;
+                    case "lolNotJoin":
+                        lolBox.addMemberAnswer(sender, false);
+                        break;
+                    case "lolDontKnow":
+                        lolBox.removeMemberAnswer(sender);
+                        break;
+                }
+
+                e.deferEdit().queue();
+                lolBox.updateEmbed();
+            } catch (GuildManagerNotFoundException exception) {
+                e.reply("내전 채널이 아직 설정되지 않았습니다. /내전채널 명령어로 먼저 설정해주세요.").queue();
+            }
         }
     }
 }
