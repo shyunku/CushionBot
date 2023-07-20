@@ -115,7 +115,7 @@ public class LolBox {
             }
 
             SimpleDateFormat sdf = new SimpleDateFormat("HH시 mm분", java.util.Locale.KOREA);
-            sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
+            sdf.setTimeZone(TimeZone.getTimeZone("GMT+9"));
 
             StringBuilder sb = new StringBuilder();
             joiners.sort((a, b) -> (int) (a.getRight() - b.getRight()));
