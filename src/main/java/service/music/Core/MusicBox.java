@@ -1,19 +1,14 @@
 package service.music.Core;
 
-import Utilities.TextStyler;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
-import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager;
-import com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager;
-import com.sedmelluq.discord.lavaplayer.source.AudioSourceManagers;
-import core.command.CommandRouter;
 import exceptions.MusicNotFoundException;
 import net.dv8tion.jda.api.entities.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import service.guild.core.GuildUtil;
 import service.inmemory.RedisClient;
 import service.music.object.YoutubeTrackInfo;
-import service.music.tools.MusicUtil;
 import service.music.tools.YoutubeCrawler;
 import net.dv8tion.jda.api.managers.AudioManager;
 
@@ -31,7 +26,7 @@ public class MusicBox {
         this.guild = guild;
         audioManager = guild.getAudioManager();
 
-        String chanKey = MusicUtil.musicChannelKey(guild.getId());
+        String chanKey = GuildUtil.musicChannelKey(guild.getId());
         if(RedisClient.has(chanKey)) {
             String chanId = RedisClient.get(chanKey);
             TextChannel channel = guild.getTextChannelById(chanId);
@@ -40,7 +35,7 @@ public class MusicBox {
             }
         }
 
-        String msgKey = MusicUtil.musicBoxMessageKey(guild.getId());
+        String msgKey = GuildUtil.musicBoxMessageKey(guild.getId());
         if(RedisClient.has(msgKey)) {
             String msgId = RedisClient.get(msgKey);
             Message message = musicChannel.retrieveMessageById(msgId).complete();
@@ -108,7 +103,7 @@ public class MusicBox {
         MusicActionEmbed embed = getCurrentMusicActionEmbed();
         if(musicBoxMessage == null) {
             getMusicChannel().sendMessageEmbeds(embed.messageEmbed).queue(message -> {
-                musicBoxMessage = message;
+                setMusicBoxMessage(message);
                 this.updateNonNullMusicActionEmbed(embed);
             });
             return;
@@ -138,12 +133,12 @@ public class MusicBox {
     public void setMusicChannel(TextChannel musicChannel) {
         if(musicChannel == null) return;
         this.streamer.setMusicChannel(musicChannel);
-        RedisClient.set(MusicUtil.musicChannelKey(guild.getId()), musicChannel.getId());
+        RedisClient.set(GuildUtil.musicChannelKey(guild.getId()), musicChannel.getId());
     }
 
     public void setMusicBoxMessage(Message musicBoxMessage) {
         if(musicBoxMessage == null) return;
         this.musicBoxMessage = musicBoxMessage;
-        RedisClient.set(MusicUtil.musicBoxMessageKey(guild.getId()), musicBoxMessage.getId());
+        RedisClient.set(GuildUtil.musicBoxMessageKey(guild.getId()), musicBoxMessage.getId());
     }
 }

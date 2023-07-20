@@ -1,10 +1,9 @@
-package service.guild;
+package service.guild.core;
 
-import exceptions.MusicBoxNotFoundException;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.TextChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import service.leagueoflegends.Core.LolBox;
 import service.music.Core.MusicBox;
 
 public class GuildManager {
@@ -12,11 +11,13 @@ public class GuildManager {
     private Guild guild;
     private GuildCommandRouter guildCommandRouter;
     private MusicBox musicBox;
+    private LolBox lolBox;
 
     public GuildManager(Guild guild) {
         this.guild = guild;
         this.guildCommandRouter = new GuildCommandRouter(guild);
         this.musicBox = new MusicBox(guild, null);
+        this.lolBox = new LolBox(guild, null);
     }
 
     public GuildCommandRouter getGuildCommandRouter() {
@@ -25,5 +26,9 @@ public class GuildManager {
 
     public MusicBox getMusicBox() {
         return musicBox;
+    }
+
+    public LolBox getLolBox() {
+        return lolBox;
     }
 }

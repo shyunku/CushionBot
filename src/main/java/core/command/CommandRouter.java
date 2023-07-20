@@ -1,8 +1,8 @@
 package core.command;
 
 import core.Service;
-import service.guild.GuildCommandRouter;
-import service.guild.GuildManager;
+import service.guild.core.GuildCommandRouter;
+import service.guild.core.GuildManager;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.slf4j.Logger;

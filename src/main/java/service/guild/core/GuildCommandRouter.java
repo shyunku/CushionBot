@@ -1,14 +1,11 @@
-package service.guild;
+package service.guild.core;
 
 import Utilities.TextStyler;
 import Utilities.TokenManager;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import core.Service;
 import core.command.CommandParser;
-import exceptions.AudioChannelNotFoundException;
-import exceptions.MemberNotFoundException;
-import exceptions.MusicBoxNotFoundException;
-import exceptions.MusicNotFoundException;
+import exceptions.*;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.slf4j.Logger;
@@ -36,9 +33,11 @@ public class GuildCommandRouter {
         String userId = user.getId();
         String rawMessage = message.getContentDisplay();
         TextChannel musicChannel = guildManager.getMusicBox().getMusicChannel();
+        TextChannel lolChannel = guildManager.getLolBox().getLolChannel();
 
         // determine if this message targets to music channel
         boolean isMusicChannel = musicChannel != null && musicChannel.getId().equals(textChannel.getId());
+        boolean isLolChannel = lolChannel != null && lolChannel.getId().equals(textChannel.getId());
 
         // exclude empty string
         if(rawMessage.length() == 0) return;
@@ -56,6 +55,8 @@ public class GuildCommandRouter {
 
         if(isMusicChannel) {
             this.musicQuickPlay(e, rawMessage);
+        } else if (isLolChannel) {
+            message.delete().queue();
         }
     }
 
@@ -79,7 +80,7 @@ public class GuildCommandRouter {
             textChannel.sendMessage("음악을 재생하시려면 음성채널에 먼저 입장해주세요.").queue(message -> {
                 message.delete().queueAfter(10, java.util.concurrent.TimeUnit.SECONDS);
             });
-        } catch (MusicBoxNotFoundException exception) {
+        } catch (GuildManagerNotFoundException exception) {
             textChannel.sendMessage("음악 실행기를 찾지 못했습니다. /music 명령어로 음악 채널을 설정해주세요.").queue(message -> {
                 message.delete().queueAfter(10, java.util.concurrent.TimeUnit.SECONDS);
             });
