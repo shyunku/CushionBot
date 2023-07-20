@@ -20,6 +20,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.TimeZone;
 
 public class LolBox {
     private final Logger logger = LoggerFactory.getLogger(LolBox.class);
@@ -114,6 +115,7 @@ public class LolBox {
             }
 
             SimpleDateFormat sdf = new SimpleDateFormat("HH시 mm분", java.util.Locale.KOREA);
+            sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
 
             StringBuilder sb = new StringBuilder();
             joiners.sort((a, b) -> (int) (a.getRight() - b.getRight()));
