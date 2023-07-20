@@ -113,7 +113,8 @@ public class LolBox {
                 }
             }
 
-            SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
+            SimpleDateFormat sdf = new SimpleDateFormat("HH시 mm분", java.util.Locale.KOREA);
+
             StringBuilder sb = new StringBuilder();
             joiners.sort((a, b) -> (int) (a.getRight() - b.getRight()));
             for(int i = 0; i < joiners.size(); i++) {
