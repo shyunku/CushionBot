@@ -1,27 +1,28 @@
 package core.command;
 
-import core.InternalEventListener;
+import Utilities.TextStyler;
+import Utilities.Util;
 import core.Service;
 import core.Version;
-import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.entities.*;
+import exceptions.InvalidLolStartTimeException;
+import exceptions.PermissionInsufficientException;
+import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
+import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
 import net.dv8tion.jda.api.interactions.components.ItemComponent;
 import net.dv8tion.jda.api.requests.restaction.interactions.ReplyCallbackAction;
-import net.dv8tion.jda.internal.utils.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import service.discord.MessageEmbedPair;
+import service.discord.MessageEmbedProps;
 import service.leagueoflegends.Core.LolBox;
-import service.music.Core.MusicActionEmbed;
 import service.music.Core.MusicBox;
 
-import java.awt.*;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
 
 public class SlashCommandParser {
     private final Logger logger = LoggerFactory.getLogger(SlashCommandParser.class);
@@ -37,8 +38,8 @@ public class SlashCommandParser {
     public void music(SlashCommandInteractionEvent e) {
         try {
             Guild guild = e.getGuild();
-            if(guild == null) {
-                e.reply("This command can only be used in a guild.").queue();
+            if (guild == null) {
+                this.sendVolatileReply(e, "이 명령어는 guild 내에서만 사용 가능합니다.", 5);
                 return;
             }
             String guildId = guild.getId();
@@ -59,8 +60,8 @@ public class SlashCommandParser {
     public void lol5vs5(SlashCommandInteractionEvent e) {
         try {
             Guild guild = e.getGuild();
-            if(guild == null) {
-                e.reply("This command can only be used in a guild.").queue();
+            if (guild == null) {
+                this.sendVolatileReply(e, "이 명령어는 guild 내에서만 사용 가능합니다.", 5);
                 return;
             }
             String guildId = guild.getId();
@@ -69,9 +70,9 @@ public class SlashCommandParser {
             LolBox lolBox = Service.GetLolBoxByGuildId(guildId);
             lolBox.setLolChannel(textChannel);
 
-            MessageEmbedPair embedPair = lolBox.getEmbed();
+            MessageEmbedProps embedPair = lolBox.getEmbed();
             ReplyCallbackAction action = e.replyEmbeds(embedPair.messageEmbed);
-            for(ActionRow actionRow : embedPair.actionRows) {
+            for (ActionRow actionRow : embedPair.actionRows) {
                 action = action.addActionRow((ItemComponent) actionRow);
             }
             action.queue(interactionHook -> {
@@ -85,51 +86,195 @@ public class SlashCommandParser {
     public void lol5vs5StartOrStop(SlashCommandInteractionEvent e, boolean start) {
         try {
             Guild guild = e.getGuild();
-            if(guild == null) {
-                e.reply("This command can only be used in a guild.").queue();
+            if (guild == null) {
+                this.sendVolatileReply(e, "이 명령어는 guild 내에서만 사용 가능합니다.", 5);
                 return;
             }
             String guildId = guild.getId();
             Service.addGuildManagerIfNotExists(guild);
             LolBox lolBox = Service.GetLolBoxByGuildId(guildId);
             TextChannel textChannel = lolBox.getLolChannel();
-            if(textChannel == null) {
-                e.reply("내전 채널이 설정되지 않았습니다. /내전 명령어로 설정해주세요.").queue(interactionHook -> {
-                    interactionHook.retrieveOriginal().queue(message -> {
-                        message.delete().queueAfter(8, java.util.concurrent.TimeUnit.SECONDS);
-                    });
-                });
+            if (textChannel == null) {
+                this.sendVolatileReply(e, "내전 채널이 설정되지 않았습니다. /내전채널 명령어로 설정해주세요.", 8);
                 return;
             }
 
-            Member sender = e.getMember();
-            Member manager = guild.getOwner();
-            if(sender.getId().equals(manager.getId())) {
-                if(start) {
-                    lolBox.startCollectingTeam();
-                    e.reply("내전 일정이 등록되었습니다. 이제부터 내전에 참여 여부를 선택할 수 있습니다!").queue(interactionHook -> {
-                        interactionHook.retrieveOriginal().queue(message -> {
-                            message.delete().queueAfter(8, java.util.concurrent.TimeUnit.SECONDS);
-                        });
-                    });
-                } else {
-                    lolBox.stopCollectingTeam();
-                    e.reply("내전이 취소되었습니다.").queue(interactionHook -> {
-                        interactionHook.retrieveOriginal().queue(message -> {
-                            message.delete().queueAfter(8, java.util.concurrent.TimeUnit.SECONDS);
-                        });
-                    });
+            if (!this.isManager(e.getMember())) throw new PermissionInsufficientException();
+            if (start) {
+                OptionMapping timeOpt = e.getOption("시간");
+                OptionMapping minuteOpt = e.getOption("분");
+                if (timeOpt == null || minuteOpt == null) {
+                    throw new InvalidLolStartTimeException();
                 }
-                lolBox.updateEmbed();
+
+                int time = timeOpt.getAsInt();
+                int minute = minuteOpt.getAsInt();
+
+                lolBox.startCollectingTeam(time, minute);
+                this.sendVolatileReply(e, "내전 인원 모집이 시작되었습니다. 참여 여부를 선택해주세요!", 8);
             } else {
-                e.reply("내전을 등록/취소할 권한이 없습니다.").queue(interactionHook -> {
-                    interactionHook.retrieveOriginal().queue(message -> {
-                        message.delete().queueAfter(8, java.util.concurrent.TimeUnit.SECONDS);
-                    });
-                });
+                lolBox.stopCollectingTeam();
+                this.sendVolatileReply(e, "내전이 종료 또는 취소되었습니다.", 8);
             }
+            lolBox.updateEmbed();
+        } catch (InvalidLolStartTimeException exception) {
+            String msg = "내전 시간이 유효하지 않습니다." + (exception.getMessage() == null ? "" : " " + exception.getMessage());
+            e.reply(msg).queue(interactionHook -> {
+                interactionHook.retrieveOriginal().queue(message -> {
+                    message.delete().queueAfter(8, java.util.concurrent.TimeUnit.SECONDS);
+                });
+            });
+        } catch (PermissionInsufficientException exception) {
+            this.sendVolatileReply(e, "내전을 등록/취소할 권한이 없습니다.", 8);
         } catch (Exception err) {
             err.printStackTrace();
         }
+    }
+
+    public void lol5vs5ChangeStartTime(SlashCommandInteractionEvent e) {
+        try {
+            Guild guild = e.getGuild();
+            if (guild == null) {
+                this.sendVolatileReply(e, "이 명령어는 guild 내에서만 사용 가능합니다.", 5);
+                return;
+            }
+            String guildId = guild.getId();
+            Service.addGuildManagerIfNotExists(guild);
+            LolBox lolBox = Service.GetLolBoxByGuildId(guildId);
+            TextChannel textChannel = lolBox.getLolChannel();
+            if (textChannel == null) {
+                this.sendVolatileReply(e, "내전 채널이 설정되지 않았습니다. /내전채널 명령어로 설정해주세요.", 8);
+                return;
+            }
+
+            if (!this.isManager(e.getMember())) throw new PermissionInsufficientException();
+            if (!lolBox.isCollectingTeam()) {
+                this.sendVolatileReply(e, "현재 내전 일정이 없습니다. 생성하려면 /내전모으기 명령어로 생성해주세요.", 8);
+                return;
+            }
+
+            OptionMapping timeOpt = e.getOption("시간");
+            OptionMapping minuteOpt = e.getOption("분");
+            if (timeOpt == null || minuteOpt == null) {
+                throw new InvalidLolStartTimeException();
+            }
+
+            int time = timeOpt.getAsInt();
+            int minute = minuteOpt.getAsInt();
+
+            long originalTime = lolBox.getStartTime();
+            String originalTimeStr = Util.timeFormat(originalTime, "a hh시 mm분");
+            long newTime = lolBox.calculateStartTime(time, minute);
+            String newTimeStr = Util.timeFormat(newTime, "a hh시 mm분");
+
+            lolBox.setStartTime(time, minute);
+            this.sendVolatileReply(e, String.format("내전 시작시간이 %s에서 %s으로 변경되었습니다.", originalTimeStr, newTimeStr), 8);
+            lolBox.updateEmbed();
+        } catch (InvalidLolStartTimeException exception) {
+            String msg = "내전 시간이 유효하지 않습니다." + (exception.getMessage() == null ? "" : " " + exception.getMessage());
+            e.reply(msg).queue(interactionHook -> {
+                interactionHook.retrieveOriginal().queue(message -> {
+                    message.delete().queueAfter(8, java.util.concurrent.TimeUnit.SECONDS);
+                });
+            });
+        } catch (PermissionInsufficientException exception) {
+            this.sendVolatileReply(e, "내전 시간을 변경할 권한이 없습니다.", 8);
+        } catch (Exception err) {
+            err.printStackTrace();
+        }
+    }
+
+    public void lol5vs5PrintInfo(SlashCommandInteractionEvent e) {
+        try {
+            Guild guild = e.getGuild();
+            if (guild == null) {
+                this.sendVolatileReply(e, "이 명령어는 guild 내에서만 사용 가능합니다.", 5);
+                return;
+            }
+            String guildId = guild.getId();
+            Service.addGuildManagerIfNotExists(guild);
+            LolBox lolBox = Service.GetLolBoxByGuildId(guildId);
+            TextChannel textChannel = lolBox.getLolChannel();
+            if (textChannel == null) {
+                this.sendVolatileReply(e, "내전 채널이 설정되지 않았습니다. /내전채널 명령어로 설정해주세요.", 8);
+                return;
+            }
+
+            StringBuilder sb = new StringBuilder();
+            if (lolBox.isCollectingTeam()) {
+                long startTime = lolBox.getStartTime();
+                String remainTime = Util.getRelativeTime(startTime);
+
+                if (startTime > System.currentTimeMillis()) {
+                    sb.append(String.format("내전이 %s 뒤에 시작합니다.", remainTime));
+                } else {
+                    sb.append("내전이 곧 시작됩니다.");
+                }
+                sb.append("\n현재 참여투표한 사람 수: ");
+                sb.append(TextStyler.Block(lolBox.getJoiners().size() + ""));
+            } else {
+                sb.append("현재 아직 내전 일정이 없습니다.");
+            }
+            e.reply(sb.toString()).queue();
+        } catch (Exception err) {
+            err.printStackTrace();
+        }
+    }
+
+    public void lol5vs5Call(SlashCommandInteractionEvent e) {
+        try {
+            Guild guild = e.getGuild();
+            if (guild == null) {
+                this.sendVolatileReply(e, "이 명령어는 guild 내에서만 사용 가능합니다.", 5);
+                return;
+            }
+            String guildId = guild.getId();
+            Service.addGuildManagerIfNotExists(guild);
+            LolBox lolBox = Service.GetLolBoxByGuildId(guildId);
+            TextChannel textChannel = lolBox.getLolChannel();
+            if (textChannel == null) {
+                this.sendVolatileReply(e, "내전 채널이 설정되지 않았습니다. /내전채널 명령어로 설정해주세요.", 8);
+                return;
+            }
+
+            if (!this.isManager(e.getMember())) throw new PermissionInsufficientException();
+
+            if (!lolBox.isCollectingTeam()) {
+                this.sendVolatileReply(e, "현재 내전 일정이 없습니다. 생성하려면 /내전모으기 명령어로 생성해주세요.", 8);
+                return;
+            }
+
+            long startTime = lolBox.getStartTime();
+            ArrayList<Member> joiners = lolBox.getJoiners();
+            String remainTime = Util.getRelativeTime(startTime);
+            StringBuilder sb = new StringBuilder();
+
+            if (startTime > System.currentTimeMillis()) {
+                sb.append(String.format("내전이 %s 뒤에 시작합니다. 태그되는 참여자 분들은 준비해주세요.\n", remainTime));
+            } else {
+                sb.append("내전 일정에 등록된 시간이 되었습니다. 태그되는 참여자 분들은 준비해주세요.\n");
+            }
+            for (Member m : joiners) {
+                sb.append(m.getAsMention());
+                sb.append(" ");
+            }
+            e.reply(sb.toString()).queue();
+        } catch (PermissionInsufficientException exception) {
+            this.sendVolatileReply(e, "내전 시간을 변경할 권한이 없습니다.", 8);
+        } catch (Exception err) {
+            err.printStackTrace();
+        }
+    }
+
+    private void sendVolatileReply(SlashCommandInteractionEvent e, String message, int delay) {
+        e.reply(message).queue(interactionHook -> {
+            interactionHook.retrieveOriginal().queue(message1 -> {
+                message1.delete().queueAfter(delay, java.util.concurrent.TimeUnit.SECONDS);
+            });
+        });
+    }
+
+    private boolean isManager(Member member) {
+        return member.isOwner() || member.hasPermission(Permission.ADMINISTRATOR);
     }
 }

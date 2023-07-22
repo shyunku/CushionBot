@@ -71,7 +71,6 @@ public class GuildCommandRouter {
             // play request
             MusicBox musicBox = Service.GetMusicBoxByGuildId(e.getGuild().getId());
             musicBox.quickPlay(searchQuery, requester);
-            musicBox.updateMusicActionEmbed();
         } catch (MemberNotFoundException exception) {
             textChannel.sendMessage("음악 재생을 요청한 유저를 찾지 못했습니다.").queue(message -> {
                 message.delete().queueAfter(10, java.util.concurrent.TimeUnit.SECONDS);
