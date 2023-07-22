@@ -1,6 +1,6 @@
 package service.music.object;
 
-import Utilities.UtilFunctions;
+import Utilities.Util;
 import net.dv8tion.jda.api.entities.Member;
 import service.music.tools.MusicUtil;
 
@@ -24,7 +24,7 @@ public class YoutubeTrackInfo {
     }
 
     public String getTitle() {
-        return UtilFunctions.unescapeHTML(title);
+        return Util.unescapeHTML(title);
     }
 
     public String getId() {
@@ -48,7 +48,7 @@ public class YoutubeTrackInfo {
     }
 
     public String getVideoUrl() {
-        return "https://www.youtube.com/watch?v="+id;
+        return "https://www.youtube.com/watch?v=" + id;
     }
 
     public Member getRequester() {

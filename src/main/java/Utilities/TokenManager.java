@@ -52,4 +52,10 @@ public class TokenManager {
     public String getBotClientID(){
         return getObjectToken("bot_client_id");
     }
+
+    public boolean isProduction(){
+        String productionStr = getObjectToken("production");
+        if(productionStr == null) return false;
+        return Boolean.parseBoolean(productionStr);
+    }
 }

@@ -19,7 +19,7 @@ public class MusicStreamer {
     private TextChannel musicChannel;
     private final AudioPlayerManager audioPlayerManager;
 
-    public MusicStreamer(TextChannel textChannel, AudioManager audioManager, MusicTrackEndHandler musicTrackEndHandler){
+    public MusicStreamer(TextChannel textChannel, AudioManager audioManager, MusicBoxUpdateHandler musicBoxUpdateHandler){
         this.audioPlayerManager = new DefaultAudioPlayerManager();
 
         this.audioPlayerManager.getConfiguration().setFrameBufferFactory(NonAllocatingAudioFrameBuffer::new);
@@ -33,7 +33,7 @@ public class MusicStreamer {
 
         this.musicChannel = textChannel;
 
-        trackScheduler = new TrackScheduler(audioPlayer, musicTrackEndHandler);
+        trackScheduler = new TrackScheduler(audioPlayer, musicBoxUpdateHandler);
         audioPlayer.addListener(trackScheduler);
     }
 

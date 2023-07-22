@@ -7,8 +7,6 @@ import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrackEndReason;
 import service.music.object.MusicPlayMode;
 import service.music.object.YoutubeTrackInfo;
-import net.dv8tion.jda.api.entities.TextChannel;
-import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.managers.AudioManager;
 
 import java.util.ArrayList;
@@ -23,16 +21,17 @@ public class TrackScheduler extends AudioEventAdapter{
 
     private MusicPlayMode musicPlayMode = MusicPlayMode.NORMAL;
 
-    private MusicTrackEndHandler musicTrackEndHandler;
+    private MusicBoxUpdateHandler musicBoxUpdateHandler;
 
 
-    public TrackScheduler(AudioPlayer audioPlayer, MusicTrackEndHandler musicTrackEndHandler) {
+    public TrackScheduler(AudioPlayer audioPlayer, MusicBoxUpdateHandler musicTrackEndHandler) {
         this.audioPlayer = audioPlayer;
-        this.musicTrackEndHandler = musicTrackEndHandler;
+        this.musicBoxUpdateHandler = musicTrackEndHandler;
     }
 
     public void addTrackData(YoutubeTrackInfo trackInfo){
         trackData.add(trackInfo);
+
     }
 
     public void addTrackToQueue(AudioTrack audioTrack){
@@ -48,10 +47,12 @@ public class TrackScheduler extends AudioEventAdapter{
 
     public void skipUntilTrack(String trackId) {
         if(!this.hasTrack(trackId)) return;
+        AudioTrack polled = null;
         while(!trackData.get(0).getId().equals(trackId)) {
             trackData.remove(0);
-            trackQueue.poll();
+            polled = trackQueue.poll();
         }
+        audioPlayer.startTrack(polled, false);
     }
 
     public boolean hasTrack(String trackId) {
@@ -120,7 +121,7 @@ public class TrackScheduler extends AudioEventAdapter{
                     break;
             }
         }
-        musicTrackEndHandler.onTrackEnd();
+        musicBoxUpdateHandler.onActionEnd();
     }
 
     @Override
@@ -133,18 +134,7 @@ public class TrackScheduler extends AudioEventAdapter{
         System.err.println(String.format("Track Stuck: %s", track.getInfo().title));
     }
 
-    private class AudioCloser extends Thread{
-        private AudioManager audioManager;
-        public AudioCloser(AudioManager manager){
-            audioManager = manager;
-        }
-
-        public void run(){
-            audioManager.closeAudioConnection();
-        }
-    }
-
-    private void print(Object o){
-        System.out.println(o);
+    public MusicBoxUpdateHandler getMusicBoxUpdateHandler() {
+        return musicBoxUpdateHandler;
     }
 }

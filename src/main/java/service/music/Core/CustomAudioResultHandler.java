@@ -27,6 +27,8 @@ public class CustomAudioResultHandler implements AudioLoadResultHandler {
     @Override
     public void trackLoaded(AudioTrack track) {
         trackScheduler.addTrackToQueue(track);
+        this.trackScheduler.getMusicBoxUpdateHandler().onActionEnd();
+
         StringBuilder message = new StringBuilder();
         message.append("플레이리스트에 추가되었습니다: ");
 
@@ -44,16 +46,19 @@ public class CustomAudioResultHandler implements AudioLoadResultHandler {
     public void playlistLoaded(AudioPlaylist playlist) {
         List<AudioTrack> trackList = playlist.getTracks();
         for(AudioTrack track : trackList){
+            String thumbnailUrl = "https://img.youtube.com/vi/" + track.getIdentifier() + "/hqdefault.jpg";
             trackScheduler.addTrackData(new YoutubeTrackInfo(
                     track.getInfo().title,
                     track.getInfo().identifier,
-                    "",
-                    "",
+                    thumbnailUrl,
+                    track.getInfo().author,
                     Duration.ofMillis(track.getDuration()),
                     requester
             ));
             trackScheduler.addTrackToQueue(track);
         }
+
+        this.trackScheduler.getMusicBoxUpdateHandler().onActionEnd();
         musicChannel.sendMessage("플레이리스트 "+
                 TextStyler.Bold(playlist.getName())+" : "+trackList.size()+"개의 트랙이 로드되었습니다.").queue(sentMessage -> {
             sentMessage.delete().queueAfter(10, java.util.concurrent.TimeUnit.SECONDS);
