@@ -23,6 +23,7 @@ import java.awt.*;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
+import java.util.TimeZone;
 
 public class LolBox implements ControlBox {
     private final Logger logger = LoggerFactory.getLogger(LolBox.class);
@@ -117,6 +118,7 @@ public class LolBox implements ControlBox {
         ActionRow controller = null;
         if (this.isCollectingTeam) {
             Calendar cal = Calendar.getInstance();
+            cal.setTimeZone(TimeZone.getTimeZone("Asia/Seoul"));
             cal.setTimeInMillis(this.startTime);
             String startTime = Util.timeFormat(
                     this.startTime,
@@ -247,6 +249,7 @@ public class LolBox implements ControlBox {
         time %= 24;
 
         Calendar cal = Calendar.getInstance();
+        cal.setTimeZone(TimeZone.getTimeZone("Asia/Seoul"));
         int year = cal.get(Calendar.YEAR);
         int month = cal.get(Calendar.MONTH);
         int day = cal.get(Calendar.DAY_OF_MONTH);
