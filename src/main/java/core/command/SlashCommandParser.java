@@ -204,14 +204,17 @@ public class SlashCommandParser {
             if (lolBox.isCollectingTeam()) {
                 long startTime = lolBox.getStartTime();
                 String remainTime = Util.getRelativeTime(startTime);
+                String absoluteTime = Util.timeFormat(startTime, "a hh시 mm분");
 
                 if (startTime > System.currentTimeMillis()) {
-                    sb.append(String.format("내전이 %s 뒤에 시작합니다.", remainTime));
+                    sb.append(String.format("내전이 %s 뒤에 시작합니다. (%s)", remainTime, absoluteTime));
                 } else {
                     sb.append("내전이 곧 시작됩니다.");
                 }
                 sb.append("\n현재 참여투표한 사람 수: ");
                 sb.append(TextStyler.Block(lolBox.getJoiners().size() + ""));
+                sb.append("\n");
+                sb.append(String.format("%s 채널에서 내전 참여/불참에 투표하세요.", textChannel.getAsMention()));
             } else {
                 sb.append("현재 아직 내전 일정이 없습니다.");
             }
