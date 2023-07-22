@@ -28,7 +28,7 @@ public class Util {
 
     public static String timeFormat(long milli, String format) {
         SimpleDateFormat sdf = new SimpleDateFormat(format, java.util.Locale.KOREA);
-        sdf.setTimeZone(TimeZone.getTimeZone("GMT+9"));
+        sdf.setTimeZone(TimeZone.getTimeZone("Asia/Seoul"));
         return sdf.format(milli);
     }
 
