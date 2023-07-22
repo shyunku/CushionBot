@@ -27,7 +27,7 @@ public class Util {
     }
 
     public static String timeFormat(long milli, String format) {
-        SimpleDateFormat sdf = new SimpleDateFormat(format);
+        SimpleDateFormat sdf = new SimpleDateFormat(format, java.util.Locale.KOREA);
         sdf.setTimeZone(TimeZone.getTimeZone("Asia/Seoul"));
         return sdf.format(milli);
     }
@@ -47,6 +47,7 @@ public class Util {
 
     public static String dirtyRelativeDay(long milli) {
         Calendar cal = Calendar.getInstance();
+        cal.setTimeZone(TimeZone.getTimeZone("Asia/Seoul"));
         cal.setTimeInMillis(milli);
         int year = cal.get(Calendar.YEAR);
         int day = cal.get(Calendar.DAY_OF_YEAR);
