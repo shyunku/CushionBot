@@ -7,13 +7,12 @@ import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrackEndReason;
 import service.music.object.MusicPlayMode;
 import service.music.object.YoutubeTrackInfo;
-import net.dv8tion.jda.api.managers.AudioManager;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Queue;
 
-public class TrackScheduler extends AudioEventAdapter{
+public class TrackScheduler extends AudioEventAdapter {
     private AudioPlayer audioPlayer;
     private AudioTrack currentTrack;
     private final Queue<AudioTrack> trackQueue = new LinkedList<>();
@@ -29,26 +28,29 @@ public class TrackScheduler extends AudioEventAdapter{
         this.musicBoxUpdateHandler = musicTrackEndHandler;
     }
 
-    public void addTrackData(YoutubeTrackInfo trackInfo){
+    public void addTrackData(YoutubeTrackInfo trackInfo) {
         trackData.add(trackInfo);
 
     }
 
-    public void addTrackToQueue(AudioTrack audioTrack){
-        if(!audioPlayer.startTrack(audioTrack, true)){
+    public void addTrackToQueue(AudioTrack audioTrack) {
+        if (!audioPlayer.startTrack(audioTrack, true)) {
             trackQueue.offer(audioTrack);
         }
     }
 
-    public void nextTrack(){
+    public void nextTrack() {
+        if (musicPlayMode == MusicPlayMode.REPEAT_ALL) {
+            trackQueue.offer(currentTrack.makeClone());
+        }
         audioPlayer.startTrack(trackQueue.poll(), false);
         trackData.remove(0);
     }
 
     public void skipUntilTrack(String trackId) {
-        if(!this.hasTrack(trackId)) return;
+        if (!this.hasTrack(trackId)) return;
         AudioTrack polled = null;
-        while(!trackData.get(0).getId().equals(trackId)) {
+        while (!trackData.get(0).getId().equals(trackId)) {
             trackData.remove(0);
             polled = trackQueue.poll();
         }
@@ -56,38 +58,55 @@ public class TrackScheduler extends AudioEventAdapter{
     }
 
     public boolean hasTrack(String trackId) {
-        for(YoutubeTrackInfo trackInfo : trackData) {
-            if(trackInfo.getId().equals(trackId)) {
+        for (YoutubeTrackInfo trackInfo : trackData) {
+            if (trackInfo.getId().equals(trackId)) {
                 return true;
             }
         }
         return false;
     }
 
-    public void clearTracks(){
+    public void clearTracks() {
         trackData.clear();
         trackQueue.clear();
         audioPlayer.stopTrack();
     }
 
+    public void shuffleTracks() {
+        if (trackQueue.isEmpty()) return;
+
+        ArrayList<YoutubeTrackInfo> newTrackData = new ArrayList<>();
+        Queue<AudioTrack> newTrackQueue = new LinkedList<>();
+        while (!trackData.isEmpty()) {
+            int randomIndex = (int) (Math.random() * trackData.size());
+            newTrackData.add(trackData.get(randomIndex));
+            newTrackQueue.offer(trackQueue.poll());
+        }
+        trackData.addAll(newTrackData);
+        trackQueue.addAll(newTrackQueue);
+    }
+
     public MusicPlayMode getNextMusicPlayMode() {
-        switch(musicPlayMode){
-            case NORMAL: return MusicPlayMode.REPEAT_ALL;
-            case REPEAT_ALL: return MusicPlayMode.REPEAT_SINGLE;
-            case REPEAT_SINGLE: return MusicPlayMode.NORMAL;
+        switch (musicPlayMode) {
+            case NORMAL:
+                return MusicPlayMode.REPEAT_ALL;
+            case REPEAT_ALL:
+                return MusicPlayMode.REPEAT_SINGLE;
+            case REPEAT_SINGLE:
+                return MusicPlayMode.NORMAL;
         }
         return MusicPlayMode.NORMAL;
     }
 
-    public AudioTrack getCurrentTrack(){
+    public AudioTrack getCurrentTrack() {
         return currentTrack;
     }
 
-    public MusicPlayMode getMusicPlayMode(){
+    public MusicPlayMode getMusicPlayMode() {
         return musicPlayMode;
     }
 
-    public void setMusicPlayMode(MusicPlayMode musicPlayMode){
+    public void setMusicPlayMode(MusicPlayMode musicPlayMode) {
         this.musicPlayMode = musicPlayMode;
     }
 
@@ -104,8 +123,8 @@ public class TrackScheduler extends AudioEventAdapter{
     @Override
     public void onTrackEnd(AudioPlayer player, AudioTrack track, AudioTrackEndReason endReason) {
         super.onTrackEnd(player, track, endReason);
-        if(endReason.mayStartNext){
-            switch (musicPlayMode){
+        if (endReason.mayStartNext) {
+            switch (musicPlayMode) {
                 case NORMAL:
                     nextTrack();
                     break;

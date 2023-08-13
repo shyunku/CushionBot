@@ -130,6 +130,10 @@ public class MusicBox implements ControlBox {
         return streamer.getMusicChannel();
     }
 
+    public AudioManager getAudioManager() {
+        return audioManager;
+    }
+
     public void setMusicChannel(TextChannel musicChannel) {
         if (musicChannel == null) return;
         this.streamer.setMusicChannel(musicChannel);
