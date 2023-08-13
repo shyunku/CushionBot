@@ -36,6 +36,15 @@ public class SlashCommandParser {
         e.reply(String.format("Test response: CushionBot v%s", Version.CURRENT)).queue();
     }
 
+    public void finishMaintenance(SlashCommandInteractionEvent e) {
+        try {
+            Service.finishMaintenance(e);
+            this.sendVolatileReply(e, "점검 완료 처리되었습니다.", 5);
+        } catch (Exception err) {
+            err.printStackTrace();
+        }
+    }
+
     public void music(SlashCommandInteractionEvent e) {
         try {
             Guild guild = e.getGuild();
@@ -73,6 +82,34 @@ public class SlashCommandParser {
             MusicStreamer musicStreamer = musicBox.getStreamer();
             musicStreamer.shuffleTracksOnQueue();
             musicBox.updateEmbed();
+            this.sendVolatileReply(e, "음악이 셔플되었습니다.", 5);
+        } catch (Exception err) {
+            err.printStackTrace();
+        }
+    }
+
+    public void musicVolume(SlashCommandInteractionEvent e) {
+        try {
+            Guild guild = e.getGuild();
+            if (guild == null) {
+                this.sendVolatileReply(e, "이 명령어는 guild 내에서만 사용 가능합니다.", 5);
+                return;
+            }
+            String guildId = guild.getId();
+            TextChannel textChannel = e.getTextChannel();
+            Service.addGuildManagerIfNotExists(guild);
+            MusicBox musicBox = Service.GetMusicBoxByGuildId(guildId);
+            musicBox.setMusicChannel(textChannel);
+            MusicStreamer musicStreamer = musicBox.getStreamer();
+            OptionMapping volumeOpt = e.getOption("볼륨");
+            if (volumeOpt == null) {
+                this.sendVolatileReply(e, "볼륨을 입력해주세요.", 5);
+                return;
+            }
+            int volume = volumeOpt.getAsInt();
+            musicStreamer.setVolume(volume);
+            musicBox.updateEmbed();
+            this.sendVolatileReply(e, String.format("볼륨이 %d%%로 설정되었습니다.", volume), 5);
         } catch (Exception err) {
             err.printStackTrace();
         }

@@ -68,8 +68,11 @@ public class InternalEventListener extends ListenerAdapter {
                 Service.addGuildManagerIfNotExists(g);
             g.updateCommands().addCommands(
                     Commands.slash("test", "test description"),
+                    Commands.slash("점검완료", "점검 완료 후 봇을 정상 운영합니다."),
                     Commands.slash("음악채널", "이 텍스트 채널을 음악 채널로 지정합니다."),
                     Commands.slash("음악셔플", "재생목록을 셔플합니다."),
+                    Commands.slash("음악볼륨", "볼륨을 조절합니다.")
+                            .addOption(OptionType.INTEGER, "볼륨", "볼륨을 입력하세요. (0~100)", true),
                     Commands.slash("내전채널", "이 텍스트 채널을 내전 채널로 지정합니다."),
                     Commands.slash("내전모으기", "내전 일정을 생성합니다.")
                             .addOption(OptionType.INTEGER, "시간", "모집 시간을 입력하세요. (0~47) 24 이상은 내일을 나타냅니다.", true)
@@ -130,11 +133,17 @@ public class InternalEventListener extends ListenerAdapter {
             case "test":
                 slashCommandParser.test(e);
                 break;
+            case "점검완료":
+                slashCommandParser.finishMaintenance(e);
+                break;
             case "음악채널":
                 slashCommandParser.music(e);
                 break;
             case "음악셔플":
                 slashCommandParser.musicShuffle(e);
+                break;
+            case "음악볼륨":
+                slashCommandParser.musicVolume(e);
                 break;
             case "내전채널":
                 slashCommandParser.lol5vs5(e);

@@ -8,18 +8,18 @@ import com.sedmelluq.discord.lavaplayer.track.AudioTrackEndReason;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import service.music.object.MusicPlayMode;
-import service.music.object.YoutubeTrackInfo;
+import service.music.object.MusicTrack;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.Queue;
 
 public class TrackScheduler extends AudioEventAdapter {
     private final Logger logger = LoggerFactory.getLogger(TrackScheduler.class);
     private AudioPlayer audioPlayer;
-    private AudioTrack currentTrack;
-    private final Queue<AudioTrack> trackQueue = new LinkedList<>();
-    private final ArrayList<YoutubeTrackInfo> trackData = new ArrayList<>();
+    private MusicTrack currentTrack;
+    private final Queue<MusicTrack> trackQueue = new LinkedList<>();
 
     private MusicPlayMode musicPlayMode = MusicPlayMode.NORMAL;
 
@@ -31,67 +31,63 @@ public class TrackScheduler extends AudioEventAdapter {
         this.musicBoxUpdateHandler = musicTrackEndHandler;
     }
 
-    public void addTrackData(YoutubeTrackInfo trackInfo) {
-        trackData.add(trackInfo);
-
+    public void playTrack(MusicTrack musicTrack, boolean allowInterrupt) {
+        boolean started = audioPlayer.startTrack(musicTrack.audioTrack, !allowInterrupt);
+        if (!started) {
+            trackQueue.offer(musicTrack);
+        } else {
+            this.currentTrack = musicTrack;
+        }
     }
 
-    public void addTrackToQueue(AudioTrack audioTrack) {
-        if (!audioPlayer.startTrack(audioTrack, true)) {
-            trackQueue.offer(audioTrack);
-        }
+    public void addMusicTrack(MusicTrack musicTrack) {
+        this.playTrack(musicTrack, false);
     }
 
     public void nextTrack() {
         if (musicPlayMode == MusicPlayMode.REPEAT_ALL) {
             trackQueue.offer(currentTrack.makeClone());
-            trackData.add(trackData.get(0));
         }
-        audioPlayer.startTrack(trackQueue.poll(), false);
-        trackData.remove(0);
+        if (trackQueue.isEmpty()) {
+            this.currentTrack = null;
+            return;
+        }
+        this.playTrack(trackQueue.poll(), true);
     }
 
     public void skipUntilTrack(String trackId) {
-        if (!this.hasTrack(trackId)) return;
-        AudioTrack polled = null;
-        while (!trackData.get(0).getId().equals(trackId)) {
-            trackData.remove(0);
+        MusicTrack polled = null;
+        while (!trackQueue.isEmpty()) {
             polled = trackQueue.poll();
+            if (polled.trackInfo.getId().equals(trackId)) break;
         }
-        audioPlayer.startTrack(polled, false);
-    }
-
-    public boolean hasTrack(String trackId) {
-        for (YoutubeTrackInfo trackInfo : trackData) {
-            if (trackInfo.getId().equals(trackId)) {
-                return true;
-            }
+        if (polled != null) {
+            this.playTrack(polled, true);
+        } else {
+            logger.error("Track not found");
         }
-        return false;
     }
 
     public void clearTracks() {
-        trackData.clear();
         trackQueue.clear();
         audioPlayer.stopTrack();
     }
 
     public void shuffleTracks() {
         if (trackQueue.isEmpty()) return;
-        if (trackData.size() != trackQueue.size()) {
-            logger.error("Track Data and Track Queue size not equal");
-            return;
-        }
+        ArrayList<MusicTrack> tracks = new ArrayList<>(trackQueue);
+        Collections.shuffle(tracks);
+        trackQueue.clear();
+        trackQueue.addAll(tracks);
+    }
 
-        ArrayList<YoutubeTrackInfo> newTrackData = new ArrayList<>();
-        Queue<AudioTrack> newTrackQueue = new LinkedList<>();
-        while (!trackQueue.isEmpty()) {
-            int randomIndex = (int) (Math.random() * trackQueue.size());
-            newTrackData.add(trackData.get(randomIndex));
-            newTrackQueue.offer(trackQueue.poll());
+    public MusicTrack getMusicTrackByAudioTrack(AudioTrack audioTrack) {
+        for (MusicTrack musicTrack : trackQueue) {
+            if (musicTrack.audioTrack.getIdentifier().equals(audioTrack.getIdentifier())) {
+                return musicTrack;
+            }
         }
-        trackData.addAll(newTrackData);
-        trackQueue.addAll(newTrackQueue);
+        return null;
     }
 
     public MusicPlayMode getNextMusicPlayMode() {
@@ -106,8 +102,8 @@ public class TrackScheduler extends AudioEventAdapter {
         return MusicPlayMode.NORMAL;
     }
 
-    public AudioTrack getCurrentTrack() {
-        return currentTrack;
+    public MusicTrack getCurrentTrack() {
+        return this.currentTrack;
     }
 
     public MusicPlayMode getMusicPlayMode() {
@@ -118,33 +114,35 @@ public class TrackScheduler extends AudioEventAdapter {
         this.musicPlayMode = musicPlayMode;
     }
 
-    public ArrayList<YoutubeTrackInfo> getTrackDataList() {
-        return trackData;
+
+    public ArrayList<MusicTrack> getCurrentMusicTracks() {
+        return new ArrayList<>(trackQueue);
     }
 
     @Override
     public void onTrackStart(AudioPlayer player, AudioTrack track) {
         super.onTrackStart(player, track);
-        currentTrack = track;
+        logger.debug(String.format("Track Start: %s", track.getInfo().title));
     }
 
     @Override
     public void onTrackEnd(AudioPlayer player, AudioTrack track, AudioTrackEndReason endReason) {
         super.onTrackEnd(player, track, endReason);
+        logger.debug(String.format("Track End: %s", track.getInfo().title));
+
         if (endReason.mayStartNext) {
             switch (musicPlayMode) {
                 case NORMAL:
                     nextTrack();
                     break;
                 case REPEAT_ALL:
-                    AudioTrack clone = getCurrentTrack().makeClone();
-                    YoutubeTrackInfo trackInfo = trackData.get(0);
+                    MusicTrack clone = getCurrentTrack().makeClone();
                     nextTrack();
-                    addTrackToQueue(clone);
-                    addTrackData(trackInfo);
+                    this.addMusicTrack(clone);
                     break;
                 case REPEAT_SINGLE:
-                    audioPlayer.startTrack(getCurrentTrack().makeClone(), false);
+                    clone = getCurrentTrack().makeClone();
+                    this.playTrack(clone, true);
                     break;
             }
         }

@@ -9,6 +9,7 @@ import net.dv8tion.jda.api.interactions.components.selections.SelectMenu;
 import service.discord.MessageEmbedProps;
 import service.music.object.MusicBoxComponents;
 import service.music.object.MusicPlayMode;
+import service.music.object.MusicTrack;
 import service.music.object.YoutubeTrackInfo;
 import service.music.tools.MusicUtil;
 
@@ -42,10 +43,12 @@ public class MusicActionEmbedBuilder {
         return this;
     }
 
-    public MusicActionEmbedBuilder setTrackList(ArrayList<YoutubeTrackInfo> tracks, MusicPlayMode playMode) {
+    public MusicActionEmbedBuilder setTrackList(MusicTrack currentTrack, ArrayList<MusicTrack> tracks,
+                                                MusicPlayMode playMode, int volume) {
         this.trackCount = tracks.size();
-        for (int i = 1; i < tracks.size() && i <= 25; i++) {
-            YoutubeTrackInfo trackInfo = tracks.get(i);
+        if (currentTrack != null) this.trackCount++;
+        for (int i = 0; i < tracks.size() && i < 25; i++) {
+            YoutubeTrackInfo trackInfo = tracks.get(i).trackInfo;
 
             String duration = trackInfo.getDurationString();
             String requester = trackInfo.getRequester().getEffectiveName();
@@ -60,8 +63,8 @@ public class MusicActionEmbedBuilder {
         trackMenuBuilder.setPlaceholder("다음 노래가 없습니다.");
 
         // set image
-        if (!tracks.isEmpty()) {
-            YoutubeTrackInfo firstTrack = tracks.get(0);
+        if (currentTrack != null) {
+            YoutubeTrackInfo firstTrack = currentTrack.trackInfo;
             String duration = firstTrack.getDurationString();
 
             try {
@@ -71,15 +74,14 @@ public class MusicActionEmbedBuilder {
 
             embedBuilder.addField("현재 재생 중", TextStyler.Link(firstTrack.getTitle(), firstTrack.getVideoUrl()), false);
             embedBuilder.addField("노래 길이", TextStyler.Block(duration), true);
-            embedBuilder.addField("남은 곡 수", TextStyler.Block(tracks.size() - 1 + ""), true);
+            embedBuilder.addField("남은 곡 수", TextStyler.Block(tracks.size() + ""), true);
             embedBuilder.addField("반복 모드", TextStyler.Block(MusicUtil.getMusicPlayModeDescription(playMode)), true);
             embedBuilder.addField("신청자", String.format("<@%s>", firstTrack.getRequester().getId()), true);
             embedBuilder.addField("채널", TextStyler.Block(firstTrack.getChannelTitle()), true);
-//            embedBuilder.addField("개발자", TextStyler.Block("shyunku"), true);
-            embedBuilder.addBlankField(true);
+            embedBuilder.addField("볼륨", TextStyler.Block(volume + "%"), true);
 
-            if (tracks.size() > 1) {
-                YoutubeTrackInfo nextTrack = tracks.get(1);
+            if (tracks.size() > 0) {
+                YoutubeTrackInfo nextTrack = tracks.get(0).trackInfo;
                 trackMenuBuilder.setPlaceholder(String.format("다음: %s", nextTrack.getTitle()));
             }
         }
