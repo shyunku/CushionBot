@@ -13,5 +13,4 @@ public class MusicBoxComponents {
     public static final Button MusicNormalModeButton = Button.secondary("musicBoxRepeat", "🔁");
     public static final Button MusicRepeatAllModeButton = Button.success("musicBoxRepeat", "🔁");
     public static final Button MusicRepeatSingleModeButton = Button.success("musicBoxRepeat", "\uD83D\uDD02");
-    public static final Button MusicShuffleButton = Button.secondary("musicBoxShuffle", "🔀");
 }

@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import service.discord.MessageEmbedProps;
 import service.leagueoflegends.Core.LolBox;
 import service.music.Core.MusicBox;
+import service.music.Core.MusicStreamer;
 
 import java.util.ArrayList;
 
@@ -47,6 +48,30 @@ public class SlashCommandParser {
             Service.addGuildManagerIfNotExists(guild);
             MusicBox musicBox = Service.GetMusicBoxByGuildId(guildId);
             musicBox.setMusicChannel(textChannel);
+
+            MessageEmbed embed = musicBox.getInitialSettingEmbed();
+            e.replyEmbeds(embed).queue(interactionHook -> {
+                interactionHook.retrieveOriginal().queue(musicBox::setMusicBoxMessage);
+            });
+        } catch (Exception err) {
+            err.printStackTrace();
+        }
+    }
+
+    public void musicShuffle(SlashCommandInteractionEvent e) {
+        try {
+            Guild guild = e.getGuild();
+            if (guild == null) {
+                this.sendVolatileReply(e, "이 명령어는 guild 내에서만 사용 가능합니다.", 5);
+                return;
+            }
+            String guildId = guild.getId();
+            TextChannel textChannel = e.getTextChannel();
+            Service.addGuildManagerIfNotExists(guild);
+            MusicBox musicBox = Service.GetMusicBoxByGuildId(guildId);
+            musicBox.setMusicChannel(textChannel);
+            MusicStreamer musicStreamer = musicBox.getStreamer();
+            musicStreamer.shuffleTracksOnQueue();
 
             MessageEmbed embed = musicBox.getInitialSettingEmbed();
             e.replyEmbeds(embed).queue(interactionHook -> {
