@@ -200,6 +200,14 @@ public class LolBox implements ControlBox {
         this.updateNonNullLolActionEmbed(embed);
     }
 
+    @Override
+    public void clearEmbed() {
+        if (this.lolBoxMessage == null) return;
+        this.lolBoxMessage.delete().queue();
+        this.lolBoxMessage = null;
+        RedisClient.del(GuildUtil.lolBoxMessageKey(guild.getId()));
+    }
+
     private void updateNonNullLolActionEmbed(MessageEmbedProps embed) {
         assert this.lolBoxMessage != null;
         embed.editMessageEmbed(this.lolBoxMessage);

@@ -37,14 +37,12 @@ public class MusicStreamer {
         audioPlayer.addListener(trackScheduler);
     }
 
-    public void addTrackToQueue(Member requester, YoutubeTrackInfo trackInfo) {
-        trackScheduler.addTrackData(trackInfo);
-        this.loadItem(requester, trackInfo);
+    public void addTrackToQueue(Member requester, YoutubeTrackInfo track) {
+        this.loadItem(requester, track);
     }
 
     // if requester requested tracks as youtube music playlist
     public void addTrackListToQueue(Member requester, String url) {
-//        trackScheduler.addTrackData(trackInfo);
         this.loadItemList(requester, url);
     }
 
@@ -68,13 +66,21 @@ public class MusicStreamer {
         return MusicUtil.getMusicPlayModeDescription(trackScheduler.getMusicPlayMode());
     }
 
+    public void setVolume(int volume) {
+        audioPlayer.setVolume(volume);
+    }
+
+    public int getVolume() {
+        return audioPlayer.getVolume();
+    }
+
     public TrackScheduler getTrackScheduler() {
         return trackScheduler;
     }
 
     /* ----------------------------- Internal Functions ----------------------------- */
     private void loadItem(Member requester, YoutubeTrackInfo trackInfo) {
-        CustomAudioResultHandler handler = new CustomAudioResultHandler(requester, musicChannel, trackScheduler);
+        CustomAudioResultHandler handler = new CustomAudioResultHandler(requester, musicChannel, trackScheduler, trackInfo);
         this.audioPlayerManager.loadItemOrdered(this, trackInfo.getVideoUrl(), handler);
     }
 

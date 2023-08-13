@@ -1,6 +1,7 @@
 package service.music.Core;
 
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
+import core.Version;
 import exceptions.MusicNotFoundException;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.exceptions.ErrorResponseException;
@@ -11,6 +12,7 @@ import service.discord.ControlBox;
 import service.discord.MessageEmbedProps;
 import service.guild.core.GuildUtil;
 import service.inmemory.RedisClient;
+import service.music.object.MusicTrack;
 import service.music.object.YoutubeTrackInfo;
 import service.music.tools.YoutubeCrawler;
 
@@ -75,7 +77,8 @@ public class MusicBox implements ControlBox {
 
         MusicActionEmbedBuilder builder = new MusicActionEmbedBuilder();
         builder.setTitle(String.format(
-                        "\"%s\" 채널이 \"%s\" 서버의 음악 채널로 지정되었습니다.",
+                        "%s\"%s\" 채널이 \"%s\" 서버의 음악 채널로 지정되었습니다.",
+                        Version.PRODUCTION_MODE ? "" : "[점검 모드] ",
                         musicChannel.getName(), musicChannel.getGuild().getName()))
                 .setDescription("재생할 음악이 없습니다. 이 채널에 검색어를 입력하면 자동으로 재생됩니다.")
                 .setColor(new Color(0, 255, 187));
@@ -84,21 +87,24 @@ public class MusicBox implements ControlBox {
     }
 
     private MessageEmbedProps getCurrentMusicActionEmbed() {
-        ArrayList<YoutubeTrackInfo> trackInfoList = streamer.getTrackScheduler().getTrackDataList();
+        TrackScheduler trackScheduler = streamer.getTrackScheduler();
+        MusicTrack currentTrack = trackScheduler.getCurrentTrack();
+        ArrayList<MusicTrack> trackInfoList = trackScheduler.getCurrentMusicTracks();
 
         AudioChannel connectedChannel = audioManager.getConnectedChannel();
         String title = "쿠션 봇 음악 재생기";
         if (connectedChannel != null) {
             title = String.format("%s에서 스트리밍 중", connectedChannel.getName());
         }
+        title = (Version.PRODUCTION_MODE ? "" : "[점검모드] ") + title;
 
         MusicActionEmbedBuilder builder = new MusicActionEmbedBuilder();
         builder.setTitle(title)
                 .setColor(new Color(0, 255, 187))
                 .setControlButtons(streamer.isPaused(), streamer.getTrackScheduler().getMusicPlayMode())
-                .setTrackList(trackInfoList, streamer.getTrackScheduler().getMusicPlayMode());
+                .setTrackList(currentTrack, trackInfoList, streamer.getTrackScheduler().getMusicPlayMode(), streamer.getVolume());
 
-        if (trackInfoList.isEmpty()) {
+        if (trackInfoList.isEmpty() && currentTrack == null) {
             builder.setDescription("재생할 음악이 없습니다. 이 채널에 검색어를 입력하면 자동으로 재생됩니다.");
         }
         return builder.build();
@@ -115,6 +121,14 @@ public class MusicBox implements ControlBox {
             return;
         }
         this.updateNonNullMusicActionEmbed(embed);
+    }
+
+    @Override
+    public void clearEmbed() {
+        if (musicBoxMessage == null) return;
+        musicBoxMessage.delete().queue();
+        musicBoxMessage = null;
+        RedisClient.del(GuildUtil.musicBoxMessageKey(guild.getId()));
     }
 
     private void updateNonNullMusicActionEmbed(MessageEmbedProps embed) {
