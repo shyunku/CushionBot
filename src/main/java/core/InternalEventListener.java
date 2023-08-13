@@ -69,6 +69,7 @@ public class InternalEventListener extends ListenerAdapter {
             g.updateCommands().addCommands(
                     Commands.slash("test", "test description"),
                     Commands.slash("음악채널", "이 텍스트 채널을 음악 채널로 지정합니다."),
+                    Commands.slash("음악셔플", "재생목록을 셔플합니다."),
                     Commands.slash("내전채널", "이 텍스트 채널을 내전 채널로 지정합니다."),
                     Commands.slash("내전모으기", "내전 일정을 생성합니다.")
                             .addOption(OptionType.INTEGER, "시간", "모집 시간을 입력하세요. (0~47) 24 이상은 내일을 나타냅니다.", true)
