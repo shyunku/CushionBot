@@ -96,11 +96,23 @@ public class InternalEventListener extends ListenerAdapter {
         Guild guild = e.getGuild();
         List<Member> participants = audioChannel.getMembers();
 
-        if (participants.size() == 1) {
-            for (Member member : participants) {
-                if (member.getId().contentEquals(TokenManager.BOT_CLIENT_ID)) {
-                    guild.getAudioManager().closeAudioConnection();
-                }
+        int leftParticipants = 0;
+        for (Member member : participants) {
+            if (member.getId().contentEquals(TokenManager.BOT_CLIENT_ID)) continue;
+            if (member.getUser().isBot()) continue;
+            if (member.getId().equals(e.getMember().getId())) continue;
+            leftParticipants++;
+        }
+
+        if (leftParticipants == 0) {
+            try {
+                MusicBox musicBox = Service.GetMusicBoxByGuildId(guild.getId());
+                MusicStreamer streamer = musicBox.getStreamer();
+                streamer.clearTracksOfQueue();
+                musicBox.getAudioManager().closeAudioConnection();
+            } catch (GuildManagerNotFoundException ex) {
+                logger.error("GuildManagerNotFoundException occurred while trying to get MusicBox.");
+                guild.getAudioManager().closeAudioConnection();
             }
         }
     }
@@ -199,6 +211,9 @@ public class InternalEventListener extends ListenerAdapter {
                     case "musicBoxRepeat":
                         MusicPlayMode nextPlayMode = trackScheduler.getNextMusicPlayMode();
                         musicStreamer.repeatTrackToQueue(nextPlayMode);
+                        break;
+                    case "musicBoxShuffle":
+                        musicStreamer.shuffleTracksOnQueue();
                         break;
                     case "musicBoxLeave":
                         musicStreamer.clearTracksOfQueue();

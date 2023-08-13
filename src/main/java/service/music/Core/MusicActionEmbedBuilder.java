@@ -92,6 +92,7 @@ public class MusicActionEmbedBuilder {
         controlButtons.add(paused ? MusicBoxComponents.MusicPlayButton : MusicBoxComponents.MusicPauseButton);
         controlButtons.add(MusicBoxComponents.MusicSkipButton);
         controlButtons.add(MusicUtil.getMusicRepeatModeButton(playMode));
+        controlButtons.add(MusicBoxComponents.MusicShuffleButton);
         controlButtons.add(MusicBoxComponents.MusicLeaveButton);
         return this;
     }

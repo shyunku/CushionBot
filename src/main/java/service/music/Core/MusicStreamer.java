@@ -7,10 +7,10 @@ import com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager;
 import com.sedmelluq.discord.lavaplayer.source.AudioSourceManagers;
 import com.sedmelluq.discord.lavaplayer.track.playback.NonAllocatingAudioFrameBuffer;
 import net.dv8tion.jda.api.entities.Member;
-import service.music.object.MusicPlayMode;
-import service.music.object.YoutubeTrackInfo;
 import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.managers.AudioManager;
+import service.music.object.MusicPlayMode;
+import service.music.object.YoutubeTrackInfo;
 import service.music.tools.MusicUtil;
 
 public class MusicStreamer {
@@ -19,7 +19,7 @@ public class MusicStreamer {
     private TextChannel musicChannel;
     private final AudioPlayerManager audioPlayerManager;
 
-    public MusicStreamer(TextChannel textChannel, AudioManager audioManager, MusicBoxUpdateHandler musicBoxUpdateHandler){
+    public MusicStreamer(TextChannel textChannel, AudioManager audioManager, MusicBoxUpdateHandler musicBoxUpdateHandler) {
         this.audioPlayerManager = new DefaultAudioPlayerManager();
 
         this.audioPlayerManager.getConfiguration().setFrameBufferFactory(NonAllocatingAudioFrameBuffer::new);
@@ -37,30 +37,34 @@ public class MusicStreamer {
         audioPlayer.addListener(trackScheduler);
     }
 
-    public void addTrackToQueue(Member requester, YoutubeTrackInfo trackInfo){
+    public void addTrackToQueue(Member requester, YoutubeTrackInfo trackInfo) {
         trackScheduler.addTrackData(trackInfo);
         this.loadItem(requester, trackInfo);
     }
 
     // if requester requested tracks as youtube music playlist
-    public void addTrackListToQueue(Member requester, String url){
+    public void addTrackListToQueue(Member requester, String url) {
 //        trackScheduler.addTrackData(trackInfo);
         this.loadItemList(requester, url);
     }
 
-    public void repeatTrackToQueue(MusicPlayMode musicPlayMode){
+    public void repeatTrackToQueue(MusicPlayMode musicPlayMode) {
         trackScheduler.setMusicPlayMode(musicPlayMode);
     }
 
-    public void clearTracksOfQueue(){
+    public void shuffleTracksOnQueue() {
+        trackScheduler.shuffleTracks();
+    }
+
+    public void clearTracksOfQueue() {
         trackScheduler.clearTracks();
     }
 
-    public void skipCurrentTracksOfQueue(){
+    public void skipCurrentTracksOfQueue() {
         trackScheduler.nextTrack();
     }
 
-    public String getPlayModeDescription(){
+    public String getPlayModeDescription() {
         return MusicUtil.getMusicPlayModeDescription(trackScheduler.getMusicPlayMode());
     }
 
@@ -69,12 +73,12 @@ public class MusicStreamer {
     }
 
     /* ----------------------------- Internal Functions ----------------------------- */
-    private void loadItem(Member requester, YoutubeTrackInfo trackInfo){
+    private void loadItem(Member requester, YoutubeTrackInfo trackInfo) {
         CustomAudioResultHandler handler = new CustomAudioResultHandler(requester, musicChannel, trackScheduler);
         this.audioPlayerManager.loadItemOrdered(this, trackInfo.getVideoUrl(), handler);
     }
 
-    private void loadItemList(Member requester, String url){
+    private void loadItemList(Member requester, String url) {
         CustomAudioResultHandler handler = new CustomAudioResultHandler(requester, musicChannel, trackScheduler);
         this.audioPlayerManager.loadItemOrdered(this, url, handler);
     }
