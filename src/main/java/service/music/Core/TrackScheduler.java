@@ -5,6 +5,8 @@ import com.sedmelluq.discord.lavaplayer.player.event.AudioEventAdapter;
 import com.sedmelluq.discord.lavaplayer.tools.FriendlyException;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrackEndReason;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import service.music.object.MusicPlayMode;
 import service.music.object.YoutubeTrackInfo;
 
@@ -13,6 +15,7 @@ import java.util.LinkedList;
 import java.util.Queue;
 
 public class TrackScheduler extends AudioEventAdapter {
+    private final Logger logger = LoggerFactory.getLogger(TrackScheduler.class);
     private AudioPlayer audioPlayer;
     private AudioTrack currentTrack;
     private final Queue<AudioTrack> trackQueue = new LinkedList<>();
@@ -75,11 +78,15 @@ public class TrackScheduler extends AudioEventAdapter {
 
     public void shuffleTracks() {
         if (trackQueue.isEmpty()) return;
+        if (trackData.size() != trackQueue.size()) {
+            logger.error("Track Data and Track Queue size not equal");
+            return;
+        }
 
         ArrayList<YoutubeTrackInfo> newTrackData = new ArrayList<>();
         Queue<AudioTrack> newTrackQueue = new LinkedList<>();
-        while (!trackData.isEmpty()) {
-            int randomIndex = (int) (Math.random() * trackData.size());
+        while (!trackQueue.isEmpty()) {
+            int randomIndex = (int) (Math.random() * trackQueue.size());
             newTrackData.add(trackData.get(randomIndex));
             newTrackQueue.offer(trackQueue.poll());
         }
