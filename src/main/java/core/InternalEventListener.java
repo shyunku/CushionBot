@@ -132,6 +132,9 @@ public class InternalEventListener extends ListenerAdapter {
             case "음악채널":
                 slashCommandParser.music(e);
                 break;
+            case "음악셔플":
+                slashCommandParser.musicShuffle(e);
+                break;
             case "내전채널":
                 slashCommandParser.lol5vs5(e);
                 break;
@@ -211,9 +214,6 @@ public class InternalEventListener extends ListenerAdapter {
                     case "musicBoxRepeat":
                         MusicPlayMode nextPlayMode = trackScheduler.getNextMusicPlayMode();
                         musicStreamer.repeatTrackToQueue(nextPlayMode);
-                        break;
-                    case "musicBoxShuffle":
-                        musicStreamer.shuffleTracksOnQueue();
                         break;
                     case "musicBoxLeave":
                         musicStreamer.clearTracksOfQueue();
