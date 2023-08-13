@@ -42,6 +42,7 @@ public class TrackScheduler extends AudioEventAdapter {
     public void nextTrack() {
         if (musicPlayMode == MusicPlayMode.REPEAT_ALL) {
             trackQueue.offer(currentTrack.makeClone());
+            trackData.add(trackData.get(0));
         }
         audioPlayer.startTrack(trackQueue.poll(), false);
         trackData.remove(0);
