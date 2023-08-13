@@ -72,11 +72,7 @@ public class SlashCommandParser {
             musicBox.setMusicChannel(textChannel);
             MusicStreamer musicStreamer = musicBox.getStreamer();
             musicStreamer.shuffleTracksOnQueue();
-
-            MessageEmbed embed = musicBox.getInitialSettingEmbed();
-            e.replyEmbeds(embed).queue(interactionHook -> {
-                interactionHook.retrieveOriginal().queue(musicBox::setMusicBoxMessage);
-            });
+            musicBox.updateEmbed();
         } catch (Exception err) {
             err.printStackTrace();
         }
