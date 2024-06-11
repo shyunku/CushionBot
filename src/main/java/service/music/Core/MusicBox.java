@@ -39,23 +39,25 @@ public class MusicBox implements ControlBox {
             }
         }
 
-        String msgKey = GuildUtil.musicBoxMessageKey(guild.getId());
-        if (RedisClient.has(msgKey)) {
-            String msgId = RedisClient.get(msgKey);
-            try {
-                Message message = musicChannel.retrieveMessageById(msgId).complete();
-                if (message != null) {
-                    musicBoxMessage = message;
+        if (musicChannel != null) {
+            String msgKey = GuildUtil.musicBoxMessageKey(guild.getId());
+            if (RedisClient.has(msgKey)) {
+                String msgId = RedisClient.get(msgKey);
+                try {
+                    Message message = musicChannel.retrieveMessageById(msgId).complete();
+                    if (message != null) {
+                        musicBoxMessage = message;
+                    }
+                } catch (ErrorResponseException e) {
+                    e.printStackTrace();
                 }
-            } catch (ErrorResponseException e) {
-                e.printStackTrace();
             }
+
+            streamer = new MusicStreamer(musicChannel, audioManager, this::updateEmbed);
+
+            // initial update embed
+            this.updateEmbed();
         }
-
-        streamer = new MusicStreamer(musicChannel, audioManager, this::updateEmbed);
-
-        // initial update embed
-        this.updateEmbed();
     }
 
     public void quickPlay(String searchQuery, Member requester) throws MusicNotFoundException, GoogleJsonResponseException {
