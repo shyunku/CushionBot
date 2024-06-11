@@ -5,7 +5,10 @@ import Utilities.TokenManager;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import core.Service;
 import core.command.CommandParser;
-import exceptions.*;
+import exceptions.AudioChannelNotFoundException;
+import exceptions.GuildManagerNotFoundException;
+import exceptions.MemberNotFoundException;
+import exceptions.MusicNotFoundException;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.slf4j.Logger;
@@ -40,10 +43,10 @@ public class GuildCommandRouter {
         boolean isLolChannel = lolChannel != null && lolChannel.getId().equals(textChannel.getId());
 
         // exclude empty string
-        if(rawMessage.length() == 0) return;
+        if (rawMessage.length() == 0) return;
 
         // handle bot message
-        if(user.isBot() && userId.equals(TokenManager.BOT_CLIENT_ID)) {
+        if (user.isBot() && userId.equals(TokenManager.BOT_CLIENT_ID)) {
             logger.info(String.format("BOT Message --- %s", rawMessage));
             return;
         }
@@ -53,14 +56,14 @@ public class GuildCommandRouter {
 //        String sentence = commandParser.getIntegratedString();
 //        String keyword = commandParser.getKeyword();
 
-        if(isMusicChannel) {
+        if (isMusicChannel) {
             this.musicQuickPlay(e, rawMessage);
         } else if (isLolChannel) {
             message.delete().queue();
         }
     }
 
-    private void musicQuickPlay(MessageReceivedEvent e, String searchQuery){
+    private void musicQuickPlay(MessageReceivedEvent e, String searchQuery) {
         TextChannel textChannel = e.getTextChannel();
         try {
             // join audio channel if not joined
@@ -88,7 +91,7 @@ public class GuildCommandRouter {
                 message.delete().queueAfter(10, java.util.concurrent.TimeUnit.SECONDS);
             });
         } catch (GoogleJsonResponseException exception) {
-            if(exception.getDetails().getCode() == 403) {
+            if (exception.getDetails().getCode() == 403) {
                 textChannel.sendMessage("서버 할당량이 초과되었습니다. 잠시 후 다시 시도해주세요.").queue(message -> {
                     message.delete().queueAfter(10, java.util.concurrent.TimeUnit.SECONDS);
                 });
@@ -104,24 +107,6 @@ public class GuildCommandRouter {
         } finally {
             // delete request message
             e.getMessage().delete().queue();
-        }
-    }
-
-
-    private void clear(MessageReceivedEvent e, String amountStr){
-        TextChannel textChannel = e.getTextChannel();
-        try{
-            final int amount = Math.min(Integer.parseInt(amountStr), 500);
-
-            MessageHistory messageHistory = textChannel.getHistory();
-            messageHistory.retrievePast(amount).queue(messageList -> {
-                textChannel.deleteMessages(messageList).queue();
-                String boldStr = textStyler.Bold("최근 메시지 "+amount+"개가 "+textStyler.Block(e.getAuthor().getName())+"에 의해 삭제되었습니다.");
-
-                textChannel.sendMessage(boldStr).queue();
-            });
-        } catch (NumberFormatException exception){
-            textChannel.sendMessage("잘못된 인자: clear 명령이 취소되었습니다.").queue();
         }
     }
 }

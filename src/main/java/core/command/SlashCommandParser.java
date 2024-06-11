@@ -7,10 +7,7 @@ import core.Version;
 import exceptions.InvalidLolStartTimeException;
 import exceptions.PermissionInsufficientException;
 import net.dv8tion.jda.api.Permission;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.MessageEmbed;
-import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
@@ -42,6 +39,32 @@ public class SlashCommandParser {
             this.sendVolatileReply(e, "점검 완료 처리되었습니다.", 5);
         } catch (Exception err) {
             err.printStackTrace();
+        }
+    }
+
+    public void clear(SlashCommandInteractionEvent e) {
+        TextChannel textChannel = e.getTextChannel();
+        try {
+            OptionMapping amountOpt = e.getOption("message_count");
+            int amount = amountOpt == null ? 1 : Math.min(amountOpt.getAsInt(), 500);
+            Member author = e.getMember();
+
+            MessageHistory messageHistory = textChannel.getHistory();
+            messageHistory.retrievePast(amount).queue(messageList -> {
+                textChannel.deleteMessages(messageList).queue(
+                        success -> {
+                            if (author == null) return;
+                            String boldStr = TextStyler.Bold("최근 메시지 " + amount + "개가 " + TextStyler.Block(author.getEffectiveName()) + "에 의해 삭제되었습니다.");
+                            e.reply(boldStr).queue();
+                        },
+                        failure -> {
+                            if (author == null) return;
+                            logger.error("Failed to delete messages by " + author.getEffectiveName());
+                        }
+                );
+            });
+        } catch (NumberFormatException exception) {
+            textChannel.sendMessage("잘못된 인자: clear 명령이 취소되었습니다.").queue();
         }
     }
 

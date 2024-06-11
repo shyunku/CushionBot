@@ -68,6 +68,8 @@ public class InternalEventListener extends ListenerAdapter {
                 Service.addGuildManagerIfNotExists(g);
             g.updateCommands().addCommands(
                     Commands.slash("test", "test description"),
+                    Commands.slash("clear", "최근 메시지들을 삭제합니다.")
+                            .addOption(OptionType.INTEGER, "message_count", "삭제할 메시지 수를 입력하세요. (1~300)", true),
                     Commands.slash("점검완료", "점검 완료 후 봇을 정상 운영합니다."),
                     Commands.slash("음악채널", "이 텍스트 채널을 음악 채널로 지정합니다."),
                     Commands.slash("음악셔플", "재생목록을 셔플합니다."),
@@ -132,6 +134,9 @@ public class InternalEventListener extends ListenerAdapter {
         switch (eventName) {
             case "test":
                 slashCommandParser.test(e);
+                break;
+            case "clear":
+                slashCommandParser.clear(e);
                 break;
             case "점검완료":
                 slashCommandParser.finishMaintenance(e);
