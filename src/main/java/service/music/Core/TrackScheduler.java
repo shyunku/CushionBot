@@ -102,6 +102,12 @@ public class TrackScheduler extends AudioEventAdapter {
         return MusicPlayMode.NORMAL;
     }
 
+    public void removeCurrentTrack() {
+        if (currentTrack != null) {
+            currentTrack = null;
+        }
+    }
+
     public MusicTrack getCurrentTrack() {
         return this.currentTrack;
     }
@@ -151,12 +157,12 @@ public class TrackScheduler extends AudioEventAdapter {
 
     @Override
     public void onTrackException(AudioPlayer player, AudioTrack track, FriendlyException exception) {
-        System.err.println(String.format("Track Exception: %s", exception.getMessage()));
+        logger.error(String.format("Track exception occurred while playing %s", track.getInfo().title), exception);
     }
 
     @Override
     public void onTrackStuck(AudioPlayer player, AudioTrack track, long thresholdMs) {
-        System.err.println(String.format("Track Stuck: %s", track.getInfo().title));
+        logger.error(String.format("Track stuck while playing %s", track.getInfo().title));
     }
 
     public MusicBoxUpdateHandler getMusicBoxUpdateHandler() {

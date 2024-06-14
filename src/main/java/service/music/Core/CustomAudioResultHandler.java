@@ -6,7 +6,9 @@ import com.sedmelluq.discord.lavaplayer.tools.FriendlyException;
 import com.sedmelluq.discord.lavaplayer.track.AudioPlaylist;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import service.music.object.MusicTrack;
 import service.music.object.YoutubeTrackInfo;
 import service.music.tools.MusicUtil;
@@ -15,6 +17,7 @@ import java.time.Duration;
 import java.util.List;
 
 public class CustomAudioResultHandler implements AudioLoadResultHandler {
+    private final Logger logger = LoggerFactory.getLogger(CustomAudioResultHandler.class);
     private final Member requester;
     private final TextChannel musicChannel;
     private final TrackScheduler trackScheduler;
@@ -87,13 +90,14 @@ public class CustomAudioResultHandler implements AudioLoadResultHandler {
 
     @Override
     public void noMatches() {
-        musicChannel.sendMessage("매치되는 결과가 없습니다.").queue();
-        System.err.println("noMatches");
+        musicChannel.sendMessage("매치되는 결과가 없습니다.").queue(message -> {
+            message.delete().queueAfter(5, java.util.concurrent.TimeUnit.SECONDS);
+        });
+        this.logger.debug("No matches found.");
     }
 
     @Override
     public void loadFailed(FriendlyException exception) {
-        musicChannel.sendMessage("load failed: " + exception.getMessage()).queue();
-        exception.printStackTrace();
+        this.logger.error("Load failed", exception);
     }
 }

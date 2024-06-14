@@ -7,7 +7,11 @@ import core.Version;
 import exceptions.InvalidLolStartTimeException;
 import exceptions.PermissionInsufficientException;
 import net.dv8tion.jda.api.Permission;
-import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.entities.MessageHistory;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
@@ -43,7 +47,7 @@ public class SlashCommandParser {
     }
 
     public void clear(SlashCommandInteractionEvent e) {
-        TextChannel textChannel = e.getTextChannel();
+        TextChannel textChannel = e.getChannel().asTextChannel();
         try {
             OptionMapping amountOpt = e.getOption("message_count");
             int amount = amountOpt == null ? 1 : Math.min(amountOpt.getAsInt(), 500);
@@ -76,7 +80,7 @@ public class SlashCommandParser {
                 return;
             }
             String guildId = guild.getId();
-            TextChannel textChannel = e.getTextChannel();
+            TextChannel textChannel = e.getChannel().asTextChannel();
             Service.addGuildManagerIfNotExists(guild);
             MusicBox musicBox = Service.GetMusicBoxByGuildId(guildId);
             musicBox.setMusicChannel(textChannel);
@@ -98,10 +102,8 @@ public class SlashCommandParser {
                 return;
             }
             String guildId = guild.getId();
-            TextChannel textChannel = e.getTextChannel();
             Service.addGuildManagerIfNotExists(guild);
             MusicBox musicBox = Service.GetMusicBoxByGuildId(guildId);
-            musicBox.setMusicChannel(textChannel);
             MusicStreamer musicStreamer = musicBox.getStreamer();
             musicStreamer.shuffleTracksOnQueue();
             musicBox.updateEmbed();
@@ -119,10 +121,8 @@ public class SlashCommandParser {
                 return;
             }
             String guildId = guild.getId();
-            TextChannel textChannel = e.getTextChannel();
             Service.addGuildManagerIfNotExists(guild);
             MusicBox musicBox = Service.GetMusicBoxByGuildId(guildId);
-            musicBox.setMusicChannel(textChannel);
             MusicStreamer musicStreamer = musicBox.getStreamer();
             OptionMapping volumeOpt = e.getOption("볼륨");
             if (volumeOpt == null) {
@@ -132,7 +132,7 @@ public class SlashCommandParser {
             int volume = volumeOpt.getAsInt();
             musicStreamer.setVolume(volume);
             musicBox.updateEmbed();
-            this.sendVolatileReply(e, String.format("볼륨이 %d%%로 설정되었습니다.", volume), 5);
+            this.sendVolatileReply(e, String.format("볼륨이 %d%%로 설정되었습니다. 몇 초내에 적용됩니다.", volume), 5);
         } catch (Exception err) {
             err.printStackTrace();
         }
@@ -146,7 +146,7 @@ public class SlashCommandParser {
                 return;
             }
             String guildId = guild.getId();
-            TextChannel textChannel = e.getTextChannel();
+            TextChannel textChannel = e.getChannel().asTextChannel();
             Service.addGuildManagerIfNotExists(guild);
             LolBox lolBox = Service.GetLolBoxByGuildId(guildId);
             lolBox.setLolChannel(textChannel);

@@ -2,8 +2,9 @@ package service.discord;
 
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageEmbed;
-import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
+import net.dv8tion.jda.api.interactions.components.ItemComponent;
 
 import java.util.ArrayList;
 import java.util.function.Consumer;
@@ -25,16 +26,19 @@ public class MessageEmbedProps {
 
     public void editMessageEmbed(Message message) {
         if (message == null) return;
-        message.editMessageEmbeds(this.messageEmbed).setActionRows(this.actionRows).queue();
-    }
-
-    public void sendMessageEmbed(TextChannel textChannel) {
-        if (textChannel == null) return;
-        textChannel.sendMessageEmbeds(this.messageEmbed).setActionRows(this.actionRows).queue();
+        message.editMessageEmbeds(this.messageEmbed).setComponents(actionRows).queue();
     }
 
     public void sendMessageEmbedWithHook(TextChannel textChannel, Consumer<? super Message> success) {
         if (textChannel == null) return;
-        textChannel.sendMessageEmbeds(this.messageEmbed).setActionRows(this.actionRows).queue(success);
+        textChannel.sendMessageEmbeds(this.messageEmbed).setComponents(actionRows).queue(success);
+    }
+
+    private ArrayList<ItemComponent> getActionRowComponents() {
+        ArrayList<ItemComponent> itemComponents = new ArrayList<>();
+        for (ActionRow actionRow : actionRows) {
+            itemComponents.addAll(actionRow.getComponents());
+        }
+        return itemComponents;
     }
 }

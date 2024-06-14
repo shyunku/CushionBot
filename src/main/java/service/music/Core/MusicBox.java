@@ -3,7 +3,12 @@ package service.music.Core;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import core.Version;
 import exceptions.MusicNotFoundException;
-import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.AudioChannel;
 import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 import net.dv8tion.jda.api.managers.AudioManager;
 import org.slf4j.Logger;
@@ -53,10 +58,7 @@ public class MusicBox implements ControlBox {
                 }
             }
 
-            streamer = new MusicStreamer(musicChannel, audioManager, this::updateEmbed);
-
-            // initial update embed
-            this.updateEmbed();
+            this.setMusicChannel(musicChannel);
         }
     }
 
@@ -152,6 +154,10 @@ public class MusicBox implements ControlBox {
 
     public void setMusicChannel(TextChannel musicChannel) {
         if (musicChannel == null) return;
+        this.streamer = new MusicStreamer(musicChannel, audioManager, this::updateEmbed);
+
+        // initial update embed
+        this.updateEmbed();
         this.streamer.setMusicChannel(musicChannel);
         RedisClient.set(GuildUtil.musicChannelKey(guild.getId()), musicChannel.getId());
     }

@@ -1,7 +1,7 @@
 package Utilities;
 
-import net.dv8tion.jda.api.entities.AudioChannel;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.channel.middleman.AudioChannel;
 
 import java.util.ArrayList;
 
@@ -11,30 +11,30 @@ public class ChannelPermissionInfo {
     private ArrayList<String> whiteList = new ArrayList<>();    //Text channel ID bundle
     private ArrayList<String> blackList = new ArrayList<>();
 
-    public ChannelPermissionInfo(String serverID){
+    public ChannelPermissionInfo(String serverID) {
         this.serverID = serverID;
     }
 
-    public void addWhiteList(AudioChannel textChannel){
+    public void addWhiteList(AudioChannel textChannel) {
         String newTextChannelID = textChannel.getId();
         blackList.remove(newTextChannelID);
-        if(whiteList.contains(newTextChannelID))return;
+        if (whiteList.contains(newTextChannelID)) return;
         whiteList.add(textChannel.getId());
     }
 
-    public void addBlackList(AudioChannel textChannel){
+    public void addBlackList(AudioChannel textChannel) {
         String newTextChannelID = textChannel.getId();
         whiteList.remove(newTextChannelID);
-        if(blackList.contains(newTextChannelID))return;
+        if (blackList.contains(newTextChannelID)) return;
         blackList.add(textChannel.getId());
     }
 
-    public boolean isAllowed(AudioChannel textChannel){
+    public boolean isAllowed(AudioChannel textChannel) {
         Guild guild = textChannel.getGuild();
         String newTextChannelID = textChannel.getId();
-        if(!serverID.equals(guild.getId())) return false;
-        if(blackList.contains(newTextChannelID)) return false;
-        if(whiteList.isEmpty()) return true;
+        if (!serverID.equals(guild.getId())) return false;
+        if (blackList.contains(newTextChannelID)) return false;
+        if (whiteList.isEmpty()) return true;
         return whiteList.contains(newTextChannelID);
     }
 }

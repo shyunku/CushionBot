@@ -5,7 +5,7 @@ import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
-import net.dv8tion.jda.api.interactions.components.selections.SelectMenu;
+import net.dv8tion.jda.api.interactions.components.selections.StringSelectMenu;
 import service.discord.MessageEmbedProps;
 import service.music.object.MusicBoxComponents;
 import service.music.object.MusicPlayMode;
@@ -19,13 +19,13 @@ import java.util.ArrayList;
 public class MusicActionEmbedBuilder {
     private final EmbedBuilder embedBuilder;
     private ArrayList<Button> controlButtons;
-    private final SelectMenu.Builder trackMenuBuilder;
+    private final StringSelectMenu.Builder trackMenuBuilder;
     private int trackCount = 0;
 
     public MusicActionEmbedBuilder() {
         embedBuilder = new EmbedBuilder();
         controlButtons = new ArrayList<>();
-        trackMenuBuilder = SelectMenu.create("musicAction:musicTrackSelector");
+        trackMenuBuilder = StringSelectMenu.create("musicAction:musicTrackSelector");
     }
 
     public MusicActionEmbedBuilder setTitle(String title) {
@@ -99,12 +99,12 @@ public class MusicActionEmbedBuilder {
     }
 
     public MessageEmbedProps build() {
-        ActionRow trackMenuActionRow = ActionRow.of(trackMenuBuilder.build());
         MessageEmbedProps pair = new MessageEmbedProps();
         pair.setMessageEmbed(embedBuilder.build());
         if (trackCount > 0) {
             pair.addActionRow(ActionRow.of(controlButtons));
             if (trackMenuBuilder.getOptions().size() > 0) {
+                ActionRow trackMenuActionRow = ActionRow.of(trackMenuBuilder.build());
                 pair.addActionRow(trackMenuActionRow);
             }
         }

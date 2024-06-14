@@ -9,7 +9,12 @@ import exceptions.AudioChannelNotFoundException;
 import exceptions.GuildManagerNotFoundException;
 import exceptions.MemberNotFoundException;
 import exceptions.MusicNotFoundException;
-import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.AudioChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,7 +35,7 @@ public class GuildCommandRouter {
 
     public void route(MessageReceivedEvent e, GuildManager guildManager) {
         User user = e.getAuthor();
-        TextChannel textChannel = e.getTextChannel();
+        TextChannel textChannel = e.getChannel().asTextChannel();
         Message message = e.getMessage();
 
         String userId = user.getId();
@@ -64,7 +69,7 @@ public class GuildCommandRouter {
     }
 
     private void musicQuickPlay(MessageReceivedEvent e, String searchQuery) {
-        TextChannel textChannel = e.getTextChannel();
+        TextChannel textChannel = e.getChannel().asTextChannel();
         try {
             // join audio channel if not joined
             Member requester = e.getMember();
