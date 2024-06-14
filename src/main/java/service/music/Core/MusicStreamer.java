@@ -4,10 +4,10 @@ package service.music.Core;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager;
 import com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager;
-import com.sedmelluq.discord.lavaplayer.source.AudioSourceManagers;
 import com.sedmelluq.discord.lavaplayer.track.playback.NonAllocatingAudioFrameBuffer;
+import dev.lavalink.youtube.YoutubeAudioSourceManager;
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.managers.AudioManager;
 import service.music.object.MusicPlayMode;
 import service.music.object.YoutubeTrackInfo;
@@ -21,10 +21,13 @@ public class MusicStreamer {
 
     public MusicStreamer(TextChannel textChannel, AudioManager audioManager, MusicBoxUpdateHandler musicBoxUpdateHandler) {
         this.audioPlayerManager = new DefaultAudioPlayerManager();
-
         this.audioPlayerManager.getConfiguration().setFrameBufferFactory(NonAllocatingAudioFrameBuffer::new);
-        AudioSourceManagers.registerLocalSource(audioPlayerManager);
-        AudioSourceManagers.registerRemoteSources(audioPlayerManager);
+
+        YoutubeAudioSourceManager youtubeAudioSourceManager = new dev.lavalink.youtube.YoutubeAudioSourceManager();
+        this.audioPlayerManager.registerSourceManager(youtubeAudioSourceManager);
+
+//        AudioSourceManagers.registerLocalSource(audioPlayerManager);
+//        AudioSourceManagers.registerRemoteSources(this.audioPlayerManager, com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager.class);
 
         audioPlayer = audioPlayerManager.createPlayer();
 
@@ -56,6 +59,7 @@ public class MusicStreamer {
 
     public void clearTracksOfQueue() {
         trackScheduler.clearTracks();
+        trackScheduler.removeCurrentTrack();
     }
 
     public void skipCurrentTracksOfQueue() {

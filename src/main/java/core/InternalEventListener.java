@@ -7,15 +7,15 @@ import exceptions.GuildManagerNotFoundException;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.entities.Activity;
-import net.dv8tion.jda.api.entities.AudioChannel;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.events.ReadyEvent;
-import net.dv8tion.jda.api.events.guild.voice.GuildVoiceLeaveEvent;
+import net.dv8tion.jda.api.entities.channel.middleman.AudioChannel;
+import net.dv8tion.jda.api.events.guild.voice.GuildVoiceUpdateEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
-import net.dv8tion.jda.api.events.interaction.component.SelectMenuInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.component.GenericSelectMenuInteractionEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.api.events.session.ReadyEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
@@ -96,9 +96,10 @@ public class InternalEventListener extends ListenerAdapter {
     }
 
     @Override
-    public void onGuildVoiceLeave(@Nonnull GuildVoiceLeaveEvent e) {
-        super.onGuildVoiceLeave(e);
+    public void onGuildVoiceUpdate(@Nonnull GuildVoiceUpdateEvent e) {
+        super.onGuildVoiceUpdate(e);
         AudioChannel audioChannel = e.getChannelLeft();
+        if (audioChannel == null) return;
         Guild guild = e.getGuild();
         List<Member> participants = audioChannel.getMembers();
 
@@ -112,6 +113,7 @@ public class InternalEventListener extends ListenerAdapter {
 
         if (leftParticipants == 0) {
             try {
+                this.logger.debug("All participants left the voice channel. Clearing the queue.");
                 MusicBox musicBox = Service.GetMusicBoxByGuildId(guild.getId());
                 MusicStreamer streamer = musicBox.getStreamer();
                 streamer.clearTracksOfQueue();
@@ -173,11 +175,11 @@ public class InternalEventListener extends ListenerAdapter {
     }
 
     @Override
-    public void onSelectMenuInteraction(@NotNull SelectMenuInteractionEvent e) {
+    public void onGenericSelectMenuInteraction(@NotNull GenericSelectMenuInteractionEvent e) {
         Guild guild = e.getGuild();
         String guildId = guild.getId();
         if (e.getValues().isEmpty()) return;
-        String value = e.getValues().get(0);
+        String value = (String) e.getValues().get(0);
 
         try {
             MusicBox musicBox = Service.GetMusicBoxByGuildId(guildId);
