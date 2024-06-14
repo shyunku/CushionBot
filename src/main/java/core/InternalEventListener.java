@@ -117,6 +117,7 @@ public class InternalEventListener extends ListenerAdapter {
                 MusicBox musicBox = Service.GetMusicBoxByGuildId(guild.getId());
                 MusicStreamer streamer = musicBox.getStreamer();
                 streamer.clearTracksOfQueue();
+                musicBox.updateEmbed();
                 musicBox.getAudioManager().closeAudioConnection();
             } catch (GuildManagerNotFoundException ex) {
                 logger.error("GuildManagerNotFoundException occurred while trying to get MusicBox.");
