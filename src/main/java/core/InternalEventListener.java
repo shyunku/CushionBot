@@ -119,6 +119,9 @@ public class InternalEventListener extends ListenerAdapter {
                 streamer.clearTracksOfQueue();
                 musicBox.updateEmbed();
                 musicBox.getAudioManager().closeAudioConnection();
+                musicBox.getMusicChannel().sendMessage("모든 참가자가 음성 채널을 나갔습니다. 음악 재생을 종료합니다.").queue(sentMessage -> {
+                    sentMessage.delete().queueAfter(5, java.util.concurrent.TimeUnit.SECONDS);
+                });
             } catch (GuildManagerNotFoundException ex) {
                 logger.error("GuildManagerNotFoundException occurred while trying to get MusicBox.");
                 guild.getAudioManager().closeAudioConnection();
