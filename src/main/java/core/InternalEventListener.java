@@ -123,10 +123,9 @@ public class InternalEventListener extends ListenerAdapter {
                 AudioChannelUnion connectedChannel = audioManager.getConnectedChannel();
                 if (connectedChannel == null) return;
                 VoiceChannel voiceChannel = connectedChannel.asVoiceChannel();
-
-                streamer.clearTracksOfQueue();
-                musicBox.updateEmbed();
                 if (voiceChannel.getId().equals(audioChannel.getId())) {
+                    streamer.clearTracksOfQueue();
+                    musicBox.updateEmbed();
                     voiceChannel.getGuild().getAudioManager().closeAudioConnection();
                     audioManager.closeAudioConnection();
                     musicBox.getMusicChannel().sendMessage("모든 참가자가 음성 채널을 나갔습니다. 음악 재생을 종료합니다.").queue(sentMessage -> {
