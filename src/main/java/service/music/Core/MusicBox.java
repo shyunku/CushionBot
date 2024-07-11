@@ -123,11 +123,6 @@ public class MusicBox implements ControlBox {
         }
         title = (Version.PRODUCTION_MODE ? "" : "[점검모드] ") + title;
 
-        this.logger.debug("Current track: {}", currentTrack);
-        this.logger.debug("Track list: {}", trackInfoList);
-        this.logger.debug("Music play mode: {}", trackScheduler.getMusicPlayMode());
-        this.logger.debug("Volume: {}", streamer.getVolume());
-
         MusicActionEmbedBuilder builder = new MusicActionEmbedBuilder();
         builder.setTitle(title)
                 .setColor(new Color(0, 255, 187))
