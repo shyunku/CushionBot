@@ -123,11 +123,16 @@ public class MusicBox implements ControlBox {
         }
         title = (Version.PRODUCTION_MODE ? "" : "[점검모드] ") + title;
 
+        this.logger.debug("Current track: {}", currentTrack);
+        this.logger.debug("Track list: {}", trackInfoList);
+        this.logger.debug("Music play mode: {}", trackScheduler.getMusicPlayMode());
+        this.logger.debug("Volume: {}", streamer.getVolume());
+
         MusicActionEmbedBuilder builder = new MusicActionEmbedBuilder();
         builder.setTitle(title)
                 .setColor(new Color(0, 255, 187))
-                .setControlButtons(streamer.isPaused(), streamer.getTrackScheduler().getMusicPlayMode())
-                .setTrackList(currentTrack, trackInfoList, streamer.getTrackScheduler().getMusicPlayMode(), streamer.getVolume());
+                .setControlButtons(streamer.isPaused(), trackScheduler.getMusicPlayMode())
+                .setTrackList(currentTrack, trackInfoList, trackScheduler.getMusicPlayMode(), streamer.getVolume());
 
         if (trackInfoList.isEmpty() && currentTrack == null) {
             builder.setDescription("재생할 음악이 없습니다. 이 채널에 검색어를 입력하면 자동으로 재생됩니다.");
