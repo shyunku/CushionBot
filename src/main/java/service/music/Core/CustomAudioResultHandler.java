@@ -23,7 +23,6 @@ public class CustomAudioResultHandler implements AudioLoadResultHandler {
     private final TrackScheduler trackScheduler;
 
     private final YoutubeTrackInfo trackInfo;
-    private final boolean isPlaylist;
 
     // single track requested
     public CustomAudioResultHandler(Member requester, TextChannel musicChannel, TrackScheduler trackScheduler, YoutubeTrackInfo trackInfo) {
@@ -31,7 +30,6 @@ public class CustomAudioResultHandler implements AudioLoadResultHandler {
         this.musicChannel = musicChannel;
         this.trackScheduler = trackScheduler;
         this.trackInfo = trackInfo;
-        this.isPlaylist = false;
     }
 
     // multiple tracks requested
@@ -40,16 +38,15 @@ public class CustomAudioResultHandler implements AudioLoadResultHandler {
         this.musicChannel = musicChannel;
         this.trackScheduler = trackScheduler;
         this.trackInfo = null;
-        this.isPlaylist = true;
     }
 
     @Override
     public void trackLoaded(AudioTrack track) {
-        if (isPlaylist) return;
         trackScheduler.addMusicTrack(new MusicTrack(track, trackInfo));
 
         StringBuilder message = new StringBuilder();
         message.append("플레이리스트에 추가되었습니다: ");
+        this.logger.debug("Track loaded: {}", track.getInfo().title);
 
         // long to duration
         Duration duration = Duration.ofMillis(track.getDuration());
@@ -65,7 +62,6 @@ public class CustomAudioResultHandler implements AudioLoadResultHandler {
 
     @Override
     public void playlistLoaded(AudioPlaylist playlist) {
-        if (!isPlaylist) return;
         List<AudioTrack> trackList = playlist.getTracks();
         for (AudioTrack track : trackList) {
             String thumbnailUrl = "https://img.youtube.com/vi/" + track.getIdentifier() + "/hqdefault.jpg";
@@ -84,6 +80,7 @@ public class CustomAudioResultHandler implements AudioLoadResultHandler {
                 TextStyler.Bold(playlist.getName()) + " : " + trackList.size() + "개의 트랙이 로드되었습니다.").queue(sentMessage -> {
             sentMessage.delete().queueAfter(10, java.util.concurrent.TimeUnit.SECONDS);
         });
+        this.logger.debug("Playlist loaded: {}", playlist.getName());
 
         this.trackScheduler.getMusicBoxUpdateHandler().onActionEnd();
     }

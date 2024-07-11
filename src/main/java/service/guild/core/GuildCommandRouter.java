@@ -5,10 +5,7 @@ import Utilities.TokenManager;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import core.Service;
 import core.command.CommandParser;
-import exceptions.AudioChannelNotFoundException;
-import exceptions.GuildManagerNotFoundException;
-import exceptions.MemberNotFoundException;
-import exceptions.MusicNotFoundException;
+import exceptions.*;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
@@ -89,6 +86,10 @@ public class GuildCommandRouter {
             });
         } catch (GuildManagerNotFoundException exception) {
             textChannel.sendMessage("음악 실행기를 찾지 못했습니다. /music 명령어로 음악 채널을 설정해주세요.").queue(message -> {
+                message.delete().queueAfter(10, java.util.concurrent.TimeUnit.SECONDS);
+            });
+        } catch (MusicUrlInvalidException exception) {
+            textChannel.sendMessage("URL이 올바르지 않습니다.").queue(message -> {
                 message.delete().queueAfter(10, java.util.concurrent.TimeUnit.SECONDS);
             });
         } catch (MusicNotFoundException exception) {
