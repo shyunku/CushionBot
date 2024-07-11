@@ -22,7 +22,7 @@ public class CustomAudioResultHandler implements AudioLoadResultHandler {
     private final TextChannel musicChannel;
     private final TrackScheduler trackScheduler;
 
-    private final YoutubeTrackInfo trackInfo;
+    private YoutubeTrackInfo trackInfo;
 
     // single track requested
     public CustomAudioResultHandler(Member requester, TextChannel musicChannel, TrackScheduler trackScheduler, YoutubeTrackInfo trackInfo) {
@@ -42,6 +42,16 @@ public class CustomAudioResultHandler implements AudioLoadResultHandler {
 
     @Override
     public void trackLoaded(AudioTrack track) {
+        if (this.trackInfo == null) {
+            this.trackInfo = new YoutubeTrackInfo(
+                    track.getInfo().title,
+                    track.getInfo().identifier,
+                    "https://img.youtube.com/vi/" + track.getIdentifier() + "/hqdefault.jpg",
+                    track.getInfo().author,
+                    Duration.ofMillis(track.getDuration()),
+                    requester
+            );
+        }
         trackScheduler.addMusicTrack(new MusicTrack(track, trackInfo));
 
         StringBuilder message = new StringBuilder();
