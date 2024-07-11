@@ -52,20 +52,36 @@ public class SlashCommandParser {
             OptionMapping amountOpt = e.getOption("message_count");
             int amount = amountOpt == null ? 1 : Math.min(amountOpt.getAsInt(), 500);
             Member author = e.getMember();
+            if (author == null) {
+                this.sendVolatileReply(e, "메시지 삭제 권한이 없습니다.", 5);
+                return;
+            }
 
             MessageHistory messageHistory = textChannel.getHistory();
             messageHistory.retrievePast(amount).queue(messageList -> {
-                textChannel.deleteMessages(messageList).queue(
-                        success -> {
-                            if (author == null) return;
-                            String boldStr = TextStyler.Bold("최근 메시지 " + amount + "개가 " + TextStyler.Block(author.getEffectiveName()) + "에 의해 삭제되었습니다.");
-                            e.reply(boldStr).queue();
-                        },
-                        failure -> {
-                            if (author == null) return;
-                            logger.error("Failed to delete messages by " + author.getEffectiveName());
-                        }
-                );
+                try {
+                    textChannel.purgeMessages(messageList);
+                    String boldStr = TextStyler.Bold("최근 메시지 " + amount + "개가 " + TextStyler.member(author) + "에 의해 삭제 요청되었습니다.");
+                    e.reply(boldStr).queue();
+//                    textChannel.deleteMessages(messageList).queue(
+//                            success -> {
+//                                if (author == null) return;
+//                                String boldStr = TextStyler.Bold("최근 메시지 " + amount + "개가 " + TextStyler.Block(author.getEffectiveName()) + "에 의해 삭제되었습니다.");
+//                                e.reply(boldStr).queue();
+//                            },
+//                            failure -> {
+//                                if (author == null) return;
+//                                logger.error("Failed to delete messages by {}", author.getEffectiveName());
+//                            }
+//                    );
+                } catch (Exception err) {
+                    if (err.getMessage().contains("older than")) {
+                        e.reply("14일 이상된 메시지는 삭제할 수 없습니다.").queue();
+                        return;
+                    }
+                    err.printStackTrace();
+                    e.reply("메시지 삭제 중 오류가 발생했습니다.").queue();
+                }
             });
         } catch (NumberFormatException exception) {
             textChannel.sendMessage("잘못된 인자: clear 명령이 취소되었습니다.").queue();

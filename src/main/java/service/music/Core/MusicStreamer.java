@@ -44,6 +44,11 @@ public class MusicStreamer {
         this.loadItem(requester, track);
     }
 
+    // if requester requested tracks as youtube music link
+    public void addTrackToQueue(Member requester, String url) {
+        this.loadItemList(requester, url);
+    }
+
     // if requester requested tracks as youtube music playlist
     public void addTrackListToQueue(Member requester, String url) {
         this.loadItemList(requester, url);

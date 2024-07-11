@@ -3,6 +3,7 @@ package service.music.Core;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import core.Version;
 import exceptions.MusicNotFoundException;
+import exceptions.MusicUrlInvalidException;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
@@ -54,7 +55,15 @@ public class MusicBox implements ControlBox {
                         musicBoxMessage = message;
                     }
                 } catch (ErrorResponseException e) {
-                    e.printStackTrace();
+                    int errorCode = e.getErrorCode();
+                    switch (errorCode) {
+                        case 10008:
+                            RedisClient.del(msgKey);
+                            break;
+                        default:
+                            e.printStackTrace();
+                            break;
+                    }
                 }
             }
 
@@ -62,9 +71,21 @@ public class MusicBox implements ControlBox {
         }
     }
 
-    public void quickPlay(String searchQuery, Member requester) throws MusicNotFoundException, GoogleJsonResponseException {
-        if (searchQuery.contains("www.youtube.com") || searchQuery.contains("music.youtube.com")) {
-            streamer.addTrackListToQueue(requester, searchQuery);
+    public void quickPlay(String searchQuery, Member requester) throws MusicNotFoundException, GoogleJsonResponseException, MusicUrlInvalidException {
+        if (searchQuery.contains("http")) {
+            String searchUrl = searchQuery;
+            if (searchUrl.contains("www.youtube.com") || searchUrl.contains("music.youtube.com")) {
+                if (searchUrl.contains("list=")) {
+                    // playlist
+                    streamer.addTrackListToQueue(requester, searchUrl);
+                } else {
+                    // music link
+                    streamer.addTrackToQueue(requester, searchUrl);
+                }
+            } else {
+                throw new MusicUrlInvalidException();
+            }
+
         } else {
             ArrayList<YoutubeTrackInfo> trackCandidates = YoutubeCrawler.getVideoCandidates(searchQuery, 1, requester);
             if (trackCandidates.isEmpty()) {
