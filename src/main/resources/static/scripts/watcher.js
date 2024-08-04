@@ -1,7 +1,7 @@
 var data, guilds, users;
 var selectedGuildId = null;
 var currentTimeDisplayInterval = null;
-var targetDay = new Date();
+var targetInterval = {start: startOfDay(), end: endOfDay()};
 const defaultAvatarUrl = "https://cdn.discordapp.com/embed/avatars/0.png";
 
 $(document).ready(async () => {
@@ -99,14 +99,24 @@ function displayMainContent() {
     mainContent.empty();
     if (guildId == null) return;
     mainContent.append(`
-        <div class="title">${guildData?.name ?? "Unknown"} (${dateStr(targetDay.getTime())})</div>
+        <div class="title">${guildData?.name ?? "Unknown"} (${datetimeStr(targetInterval.start)} ~ ${datetimeStr(targetInterval.end)})</div>
         <div class="options">
             <div class="left">
                 <button class="btn" id="prev_day">1일 전</button>
                 <button class="btn" id="current_day">오늘</button>
                 <button class="btn" id="next_day">1일 후</button>
             </div>
-            <div class="right"></div>
+            <div class="right">
+                <button class="btn" id="day_unit_1">1일 단위</button>
+                <button class="btn" id="day_unit_2">2일 단위</button>
+                <button class="btn" id="day_unit_3">3일 단위</button>
+                <button class="btn" id="day_unit_7">7일 단위</button>
+                <button class="btn" id="day_unit_14">14일 단위</button>
+                <button class="btn" id="day_unit_30">30일 단위</button>
+                <button class="btn" id="day_unit_90">3달 단위</button>
+                <button class="btn" id="day_unit_180">6달 단위</button>
+                <button class="btn" id="day_unit_365">1년 단위</button>
+            </div>
         </div>
         <div class="content">
             ${Array(25).fill(0).map((_, i) => {
@@ -128,15 +138,18 @@ function displayMainContent() {
     const nextDayBtn = $('#next_day')[0];
 
     prevDayBtn.addEventListener("click", () => {
-        targetDay.setDate(targetDay.getDate() - 1);
+        targetInterval.start.setDate(targetInterval.start.getDate() - 1);
+        targetInterval.end.setDate(targetInterval.end.getDate() - 1);
         displayMainContent();
     });
     todayBtn.addEventListener("click", () => {
-        targetDay = new Date();
+        targetInterval.start = startOfDay();
+        targetInterval.end = endOfDay();
         displayMainContent();
     });
     nextDayBtn.addEventListener("click", () => {
-        targetDay.setDate(targetDay.getDate() + 1);
+        targetInterval.start.setDate(targetInterval.start.getDate() + 1);
+        targetInterval.end.setDate(targetInterval.end.getDate() + 1);
         displayMainContent();
     });
 
@@ -434,6 +447,20 @@ function timeStr(time = Date.now()) {
     const md = `${minutes}`.padStart(2, "0");
     const sd = `${seconds}`.padStart(2, "0");
     return `${hd}:${md}:${sd}`;
+}
+
+function startOfDay(time = Date.now()) {
+    const date = new Date(time);
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
+}
+
+function endOfDay(time = Date.now()) {
+    const date = new Date(time);
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
+}
+
+function datetimeStr(time = Date.now()) {
+    return `${dateStr(time)} ${timeStr(time)}`;
 }
 
 function durationStr(duration) {
