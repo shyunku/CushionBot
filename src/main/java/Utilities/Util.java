@@ -1,5 +1,7 @@
 package Utilities;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import net.ricecode.similarity.JaroWinklerStrategy;
 import net.ricecode.similarity.SimilarityStrategy;
 import net.ricecode.similarity.StringSimilarityService;
@@ -70,5 +72,14 @@ public class Util {
                 .replaceAll("&amp;", "&")
                 .replaceAll("&quot;", "\"")
                 .replaceAll("&apos;", "'");
+    }
+
+    public static String ToJson(Object obj, boolean pretty) throws JsonProcessingException {
+        ObjectMapper mapper = new ObjectMapper();
+        if (pretty) {
+            return mapper.writerWithDefaultPrettyPrinter().writeValueAsString(obj);
+        } else {
+            return mapper.writeValueAsString(obj);
+        }
     }
 }

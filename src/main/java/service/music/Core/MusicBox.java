@@ -166,6 +166,7 @@ public class MusicBox implements ControlBox {
     }
 
     public TextChannel getMusicChannel() {
+        if (streamer == null) return null;
         return streamer.getMusicChannel();
     }
 
