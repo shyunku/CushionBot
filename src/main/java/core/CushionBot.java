@@ -5,18 +5,20 @@ import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import service.inmemory.RedisClient;
+import service.watcher.WatchServer;
 
 import javax.security.auth.login.LoginException;
 
 public class CushionBot {
     private static final String BOT_TOKEN = new TokenManager().getDiscordBotToken();
 
-    private static JDA jda;
+    public static JDA jda;
 
     public static void main(String[] args) throws LoginException {
         try {
             RedisClient redisClient = new RedisClient();
             redisClient.connect();
+            WatchServer.start();
         } catch (Exception e) {
             e.printStackTrace();
             System.exit(-1);

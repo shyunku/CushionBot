@@ -32,6 +32,8 @@ import service.music.Core.MusicBox;
 import service.music.Core.MusicStreamer;
 import service.music.Core.TrackScheduler;
 import service.music.object.MusicPlayMode;
+import service.watcher.AccessType;
+import service.watcher.GuildWatcher;
 
 import javax.annotation.Nonnull;
 import java.util.List;
@@ -92,6 +94,8 @@ public class InternalEventListener extends ListenerAdapter {
             ).queue();
         }
 
+        GuildWatcher.loadAll();
+
         // leave all audio channels
 //        for(Guild g : guilds) {
 //            g.getAudioManager().closeAudioConnection();
@@ -101,9 +105,19 @@ public class InternalEventListener extends ListenerAdapter {
     @Override
     public void onGuildVoiceUpdate(@Nonnull GuildVoiceUpdateEvent e) {
         super.onGuildVoiceUpdate(e);
+        Guild guild = e.getGuild();
+
+        AccessType accessType = getAccessType(e);
+        if (accessType != AccessType.UNKNOWN) {
+            AudioChannelUnion voiceChannel = e.getChannelJoined();
+            if (voiceChannel == null) voiceChannel = e.getChannelLeft();
+            if (voiceChannel != null) {
+                GuildWatcher.addAccessLog(accessType, guild.getId(), e.getMember().getId(), voiceChannel.getId());
+            }
+        }
+
         AudioChannel audioChannel = e.getChannelLeft();
         if (audioChannel == null) return;
-        Guild guild = e.getGuild();
         List<Member> participants = audioChannel.getMembers();
 
         int leftParticipants = 0;
@@ -280,5 +294,22 @@ public class InternalEventListener extends ListenerAdapter {
                 e.reply("내전 채널이 아직 설정되지 않았습니다. /내전채널 명령어로 먼저 설정해주세요.").queue();
             }
         }
+    }
+
+    private static @NotNull AccessType getAccessType(@NotNull GuildVoiceUpdateEvent e) {
+        AccessType accessType = AccessType.UNKNOWN;
+        AudioChannelUnion joinedChannel = e.getChannelJoined();
+        AudioChannelUnion leftChannel = e.getChannelLeft();
+        if (joinedChannel != null && leftChannel != null) {
+            // the member moved from one audio channel to another
+            accessType = AccessType.MOVED;
+        } else if (joinedChannel != null) {
+            // the member joined an audio channel
+            accessType = AccessType.JOIN;
+        } else if (leftChannel != null) {
+            // the member left an audio channel
+            accessType = AccessType.LEAVE;
+        }
+        return accessType;
     }
 }
