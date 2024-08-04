@@ -164,6 +164,7 @@ html, body {
             cursor: default;
             z-index: 1;
             border: 1px solid transparent;
+            box-sizing: border-box;
 
             &.current {
                 border: 1px solid #44e7a3 !important;
