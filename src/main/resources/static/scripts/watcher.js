@@ -143,26 +143,8 @@ function displayMainContent() {
     const rx = h24.getBoundingClientRect().right;
     const ry = h24.getBoundingClientRect().bottom - padding;
 
-    const userIdList = Object.keys(userSessionMap);
-    const sortedUserIds = userIdList.sort((u1, u2) => {
-        const s1 = userSessionMap[u1];
-        const s2 = userSessionMap[u2];
-        if (s1.length === 0) return 1;
-        if (s2.length === 0) return -1;
-        const lastLeaveTime1 = s1[s1.length - 1].leaveTime || Date.now();
-        const lastLeaveTime2 = s2[s2.length - 1].leaveTime || Date.now();
-
-        if (lastLeaveTime1 !== lastLeaveTime2) {
-            return lastLeaveTime2 - lastLeaveTime1;
-        }
-
-        const duration1 = s1.reduce((acc, cur) => acc + ((cur.leaveTime || Date.now()) - cur.joinTime), 0);
-        const duration2 = s2.reduce((acc, cur) => acc + ((cur.leaveTime || Date.now()) - cur.joinTime), 0);
-        return duration2 - duration1;
-    });
-
     const sessions = [];
-    for (let userId of sortedUserIds) {
+    for (let userId in userSessionMap) {
         const user = users[userId];
         const userSessions = userSessionMap[userId];
         for (let i = 0; i < userSessions.length; i++) {
@@ -193,6 +175,14 @@ function displayMainContent() {
         }
     }
 
+    const filteredUserSessions = {};
+    for (let session of sessions) {
+        if (filteredUserSessions[session.user.id] == null) {
+            filteredUserSessions[session.user.id] = [];
+        }
+        filteredUserSessions[session.user.id].push(session);
+    }
+
     const sorted = sessions.sort((s1, s2) => (s1.joinTime - s2.joinTime));
     const seatUsers = {};
     const userSeat = {};
@@ -213,6 +203,30 @@ function displayMainContent() {
             }
         }
     }
+
+    const userIdList = Object.keys(userSessionMap);
+    const sortedUserIds = userIdList.sort((u1, u2) => {
+        const s1 = filteredUserSessions[u1];
+        const s2 = filteredUserSessions[u2];
+        if (s1.length === 0) return 1;
+        if (s2.length === 0) return -1;
+
+        const lastLeaveTime1 = s1[s1.length - 1].leaveTime || Date.now();
+        const lastLeaveTime2 = s2[s2.length - 1].leaveTime || Date.now();
+        if (lastLeaveTime1 !== lastLeaveTime2) {
+            return lastLeaveTime2 - lastLeaveTime1;
+        }
+
+        const duration1 = s1.reduce((acc, cur) => acc + ((cur.leaveTime || Date.now()) - cur.joinTime), 0);
+        const duration2 = s2.reduce((acc, cur) => acc + ((cur.leaveTime || Date.now()) - cur.joinTime), 0);
+        if (duration1 !== duration2) {
+            return duration2 - duration1;
+        }
+
+        const lastSession1 = s1[s1.length - 1];
+        const lastSession2 = s2[s2.length - 1];
+        return (lastSession1.channelName ?? "Unknown").localeCompare((lastSession2.channelName ?? "Unknown"));
+    });
 
     for (let userId of sortedUserIds) {
         if (userSeat[userId] != null) continue;
@@ -241,6 +255,7 @@ function displayMainContent() {
         const session = sorted[i];
         const start = new Date(session.joinTime);
         const end = session.leaveTime > 0 ? new Date(session.leaveTime) : new Date();
+        const isCurrent = (session.leaveTime || 0) === 0;
         const duration = end - start;
 
         const total = 24 * 60 * 60 * 1000;
@@ -256,7 +271,7 @@ function displayMainContent() {
         const color = getColorByStringWithBrightness(session.channelName, 0.3, 0.5);
 
         sessionsElem.append(`
-            <div class="session ss-${session.id}" style="left: ${x}px; top: ${y}px; width: ${w}px; background-color: ${color};">
+            <div class="session ss-${session.id} ${isCurrent ? "current" : ""}" style="left: ${x}px; top: ${y}px; width: ${w}px; background-color: ${color};">
                 <div class="session-content">
                     <img class="icon" src="${session.user.avatarUrl ?? defaultAvatarUrl}" alt="User Icon">
                     <div class="name">${session.user.effectiveName ?? "Unknown"}</div>
