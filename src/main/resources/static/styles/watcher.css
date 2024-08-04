@@ -263,6 +263,7 @@ html, body {
     #time_display {
         position: fixed;
         border-right: 1px solid #c93030;
+        z-index: 10;
 
         .curtime {
             display: flex;
