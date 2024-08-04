@@ -76,6 +76,8 @@ public class InternalEventListener extends ListenerAdapter {
                     Commands.slash("clear", "최근 메시지들을 삭제합니다.")
                             .addOption(OptionType.INTEGER, "message_count", "삭제할 메시지 수를 입력하세요. (1~300)", true),
                     Commands.slash("점검완료", "점검 완료 후 봇을 정상 운영합니다."),
+                    Commands.slash("서버랭킹", "서버 참여 랭킹을 출력합니다."),
+                    Commands.slash("내랭킹", "내 랭킹을 출력합니다."),
                     Commands.slash("음악채널", "이 텍스트 채널을 음악 채널로 지정합니다."),
                     Commands.slash("음악셔플", "재생목록을 셔플합니다."),
                     Commands.slash("음악볼륨", "볼륨을 조절합니다.")
@@ -170,6 +172,12 @@ public class InternalEventListener extends ListenerAdapter {
                 break;
             case "점검완료":
                 slashCommandParser.finishMaintenance(e);
+                break;
+            case "서버랭킹":
+                slashCommandParser.serverRanking(e);
+                break;
+            case "내랭킹":
+                slashCommandParser.myRanking(e);
                 break;
             case "음악채널":
                 slashCommandParser.music(e);

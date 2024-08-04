@@ -11,10 +11,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class GuildWatcher {
@@ -27,11 +24,11 @@ public class GuildWatcher {
         Map<String, List<AccessSession>> guildSessions = accessSessions.computeIfAbsent(guildId, k -> new HashMap<>());
         List<AccessSession> sessions = guildSessions.computeIfAbsent(userId, k -> new ArrayList<>());
         AccessSession lastSession = getLastSession(sessions);
+        removeUnlastUncompleteSession(sessions);
+        removeOldSessions(sessions);
         if (lastSession != null && !lastSession.isComplete()) {
             switch (accessType) {
                 case JOIN:
-                    // remove incomplete session
-                    sessions.remove(lastSession);
                     sessions.add(new AccessSession(userId, channelId, eventTime));
                     break;
                 case MOVED:
@@ -57,8 +54,20 @@ public class GuildWatcher {
         saveAll();
     }
 
+    private static void removeUnlastUncompleteSession(List<AccessSession> sessions) {
+        if (sessions.isEmpty()) return;
+        AccessSession lastSession = getLastSession(sessions);
+        sessions.removeIf(session -> session != lastSession && !session.isComplete());
+    }
+
+    private static void removeOldSessions(List<AccessSession> sessions) {
+        long currentTime = System.currentTimeMillis();
+        sessions.removeIf(session -> session.isComplete() && currentTime - session.getJoinTime() > 365 * 24 * 60 * 60 * 1000L);
+    }
+
     private static AccessSession getLastSession(List<AccessSession> sessions) {
         if (sessions.isEmpty()) return null;
+        sessions.sort(Comparator.comparingLong(AccessSession::getJoinTime));
         return sessions.get(sessions.size() - 1);
     }
 
