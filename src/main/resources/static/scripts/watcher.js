@@ -38,7 +38,7 @@ $(document).ready(async () => {
         if (selectedGuildId != null) {
             displayMainContent();
         }
-    }, 1000 * 5);
+    }, 1000 * 10);
 
     displaySidebar();
 
@@ -178,7 +178,7 @@ function displayMainContent() {
     const sorted = sessions.sort((s1, s2) => (s1.joinTime - s2.joinTime));
     const seatUsers = {};
     const userSeat = {};
-    const maxYindex = 24;
+    const maxYindex = 28;
 
     const overlap = (u1, u2) => {
         const s1 = userSessionMap[u1] ?? [];
@@ -235,7 +235,7 @@ function displayMainContent() {
         const yIndex = userSeat[session.user.id];
         const y = ly + (yIndex + 1) * (ry - ly) / (maxYindex + 1);
         const w = (endR - startR) * (rx - lx);
-        const color = getColorByStringWithBrightness(session.channelName, 0.3, 0.6);
+        const color = getColorByStringWithBrightness(session.channelName, 0.3, 0.5);
 
         sessionsElem.append(`
             <div class="session ss-${session.id}" style="left: ${x}px; top: ${y}px; width: ${w}px; background-color: ${color};">
@@ -326,9 +326,9 @@ function makeRandomColor() {
 }
 
 function getColorByStringWithBrightness(str, lb = 0, rb = 1) {
-    const rhash = hashStr(str + "$r");
-    const ghash = hashStr(str + "$g");
-    const bhash = hashStr(str + "$b");
+    const rhash = hashStr("$r" + str.repeat(3));
+    const ghash = hashStr("$g" + str.repeat(3));
+    const bhash = hashStr("$b" + str.repeat(3));
     let r = Math.floor(rhash * 255);
     let g = Math.floor(ghash * 255);
     let b = Math.floor(bhash * 255);
