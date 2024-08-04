@@ -9,7 +9,8 @@ $(document).ready(async () => {
     guilds = {};
     users = {};
 
-    selectedGuildId = Object.keys(data)?.[0] ?? null;
+    selectedGuildId = localStorage.getItem("selected_guild_id") ?? Object.keys(data)?.[0] ?? null;
+    localStorage.setItem("selected_guild_id", selectedGuildId);
 
     // resize detect
     window.addEventListener("resize", () => {
@@ -21,6 +22,11 @@ $(document).ready(async () => {
 
     fastInterval(async () => {
         data = await httpGet("/data");
+        if (selectedGuildId != null && data[selectedGuildId] == null) {
+            selectedGuildId = Object.keys(data)?.[0] ?? null;
+            localStorage.setItem("selected_guild_id", selectedGuildId);
+        }
+
         for (let guildId in data) {
             if (guilds[guildId] == null) {
                 const guildData = await httpGet(`/guild/${guildId}`);
@@ -79,6 +85,7 @@ function displaySidebar() {
             }
             selectedGuildId = guildId;
             todayItemElem.classList.add("selected");
+            localStorage.setItem("selected_guild_id", selectedGuildId);
             displayMainContent();
         });
     }
@@ -226,7 +233,13 @@ function displayMainContent() {
 
         const duration1 = s1.reduce((acc, cur) => acc + ((cur.leaveTime || Date.now()) - cur.joinTime), 0);
         const duration2 = s2.reduce((acc, cur) => acc + ((cur.leaveTime || Date.now()) - cur.joinTime), 0);
-        return duration2 - duration1;
+        if (duration1 !== duration2) {
+            return duration2 - duration1;
+        }
+
+        const user1 = users[u1];
+        const user2 = users[u2];
+        return (user1.effectiveName ?? "Unknown").localeCompare(user2.effectiveName ?? "Unknown");
     });
 
     for (let userId of sortedUserIds) {
