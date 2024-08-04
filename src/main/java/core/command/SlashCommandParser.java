@@ -6,6 +6,7 @@ import core.Service;
 import core.Version;
 import exceptions.InvalidLolStartTimeException;
 import exceptions.PermissionInsufficientException;
+import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
@@ -17,14 +18,20 @@ import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
 import net.dv8tion.jda.api.interactions.components.ItemComponent;
 import net.dv8tion.jda.api.requests.restaction.interactions.ReplyCallbackAction;
+import net.dv8tion.jda.internal.utils.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import service.discord.MessageEmbedProps;
 import service.leagueoflegends.Core.LolBox;
 import service.music.Core.MusicBox;
 import service.music.Core.MusicStreamer;
+import service.watcher.AccessSession;
+import service.watcher.GuildWatcher;
 
+import java.awt.*;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 public class SlashCommandParser {
     private final Logger logger = LoggerFactory.getLogger(SlashCommandParser.class);
@@ -43,6 +50,115 @@ public class SlashCommandParser {
             this.sendVolatileReply(e, "점검 완료 처리되었습니다.", 5);
         } catch (Exception err) {
             err.printStackTrace();
+        }
+    }
+
+    public void serverRanking(SlashCommandInteractionEvent e) {
+        try {
+            TextChannel textChannel = e.getChannel().asTextChannel();
+            Guild guild = e.getGuild();
+            if (guild == null) {
+                this.sendReply(e, "이 명령어는 guild 내에서만 사용 가능합니다.");
+                return;
+            }
+
+            Map<String, Map<String, List<AccessSession>>> accessSessions = GuildWatcher.accessSessions;
+            Map<String, List<AccessSession>> guildSessions = accessSessions.get(guild.getId());
+            List<Pair<String, Long>> guildRanking = new ArrayList<>();
+            if (guildSessions == null || guildSessions.isEmpty()) {
+                this.sendReply(e, "서버 랭킹 정보가 없습니다.");
+                return;
+            }
+
+            for (Map.Entry<String, List<AccessSession>> entry : guildSessions.entrySet()) {
+                String userId = entry.getKey();
+                List<AccessSession> sessions = entry.getValue();
+                long totalDuration = 0;
+                for (AccessSession session : sessions) {
+                    totalDuration += session.getDuration();
+                }
+                guildRanking.add(Pair.of(userId, totalDuration));
+            }
+
+            guildRanking.sort((a, b) -> (int) (b.getRight() - a.getRight()));
+            guildRanking = guildRanking.subList(0, Math.min(10, guildRanking.size()));
+
+            EmbedBuilder embedBuilder = new EmbedBuilder();
+            embedBuilder.setTitle("서버 랭킹");
+            embedBuilder.setDescription("최근 1년간 서버 내 음성채널에 연결한 총 시간을 기준으로 정렬됩니다.");
+            embedBuilder.setColor(new Color(104, 53, 255));
+
+            for (int i = 0; i < guildRanking.size(); i++) {
+                Pair<String, Long> pair = guildRanking.get(i);
+                String userId = pair.getLeft();
+                long totalDuration = pair.getRight();
+                String durationStr = Util.getDurationString(totalDuration);
+                Member member = guild.retrieveMemberById(userId).complete();
+                String memberName = member == null ? "알 수 없음" : member.getEffectiveName();
+                embedBuilder.addField(String.format("[%d위] %s", i + 1, memberName), TextStyler.Block(durationStr), false);
+            }
+
+            MessageEmbed embed = embedBuilder.build();
+            e.replyEmbeds(embed).queue();
+        } catch (Exception err) {
+            err.printStackTrace();
+            e.reply(String.format("오류: %s", err.getMessage())).queue();
+        }
+    }
+
+    public void myRanking(SlashCommandInteractionEvent e) {
+        try {
+            TextChannel textChannel = e.getChannel().asTextChannel();
+            Guild guild = e.getGuild();
+            if (guild == null) {
+                this.sendReply(e, "이 명령어는 guild 내에서만 사용 가능합니다.");
+                return;
+            }
+
+            Map<String, Map<String, List<AccessSession>>> accessSessions = GuildWatcher.accessSessions;
+            Map<String, List<AccessSession>> guildSessions = accessSessions.get(guild.getId());
+            List<Pair<String, Long>> guildRanking = new ArrayList<>();
+            if (guildSessions == null || guildSessions.isEmpty()) {
+                this.sendReply(e, "서버 랭킹 정보가 없습니다.");
+                return;
+            }
+
+            for (Map.Entry<String, List<AccessSession>> entry : guildSessions.entrySet()) {
+                String userId = entry.getKey();
+                List<AccessSession> sessions = entry.getValue();
+                long totalDuration = 0;
+                for (AccessSession session : sessions) {
+                    totalDuration += session.getDuration();
+                }
+                guildRanking.add(Pair.of(userId, totalDuration));
+            }
+
+            guildRanking.sort((a, b) -> (int) (b.getRight() - a.getRight()));
+            Integer ranking = null;
+            long totalDuration = 0;
+            for (int i = 0; i < guildRanking.size(); i++) {
+                Pair<String, Long> pair = guildRanking.get(i);
+                String userId = pair.getLeft();
+                if (userId.equals(e.getUser().getId())) {
+                    ranking = i + 1;
+                    totalDuration = pair.getRight();
+                    break;
+                }
+            }
+
+            EmbedBuilder embedBuilder = new EmbedBuilder();
+            embedBuilder.setTitle("개인 랭킹");
+            embedBuilder.setDescription("최근 1년간 서버 내 음성채널에 연결한 총 시간을 기준으로 랭크가 매겨집니다.");
+            embedBuilder.setColor(new Color(104, 53, 255));
+            embedBuilder.setThumbnail(e.getUser().getAvatarUrl());
+            embedBuilder.addField("순위", TextStyler.Block(ranking != null ? String.format("%d위", ranking) : "순위권 외"), false);
+            embedBuilder.addField("총 연결 시간", TextStyler.Block(Util.getDurationString(totalDuration)), false);
+
+            MessageEmbed embed = embedBuilder.build();
+            e.replyEmbeds(embed).queue();
+        } catch (Exception err) {
+            err.printStackTrace();
+            e.reply(String.format("오류: %s", err.getMessage())).queue();
         }
     }
 
@@ -364,6 +480,10 @@ public class SlashCommandParser {
         } catch (Exception err) {
             err.printStackTrace();
         }
+    }
+
+    private void sendReply(SlashCommandInteractionEvent e, String message) {
+        e.reply(message).queue();
     }
 
     private void sendVolatileReply(SlashCommandInteractionEvent e, String message, int delay) {

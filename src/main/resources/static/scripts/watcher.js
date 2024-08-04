@@ -383,5 +383,9 @@ function durationStr(duration) {
     const hours = Math.floor(duration / (60 * 60 * 1000));
     const minutes = Math.floor((duration % (60 * 60 * 1000)) / (60 * 1000));
     const seconds = Math.floor((duration % (60 * 1000)) / 1000);
-    return `${hours}:${minutes}:${seconds}`;
+
+    const hd = `${hours}`;
+    const md = `${minutes}`.padStart(2, "0");
+    const sd = `${seconds}`.padStart(2, "0");
+    return `${hd}:${md}:${sd}`;
 }

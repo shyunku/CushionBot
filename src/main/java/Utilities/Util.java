@@ -47,6 +47,16 @@ public class Util {
         return String.format("약 %s%d시간 %d분", isPast ? "-" : "", hour, minute);
     }
 
+    public static String getDurationString(long milli) {
+        long second = (milli / 1000) % 60;
+        long minute = (milli / (1000 * 60)) % 60;
+        long hour = (milli / (1000 * 60 * 60)) % 24;
+        long day = (milli / (1000 * 60 * 60 * 24));
+
+        if (day > 0) return String.format("%d일 %02d:%02d:%02d", day, hour, minute, second);
+        return String.format("%d:%02d:%02d", hour, minute, second);
+    }
+
     public static String dirtyRelativeDay(long milli) {
         Calendar cal = Calendar.getInstance();
         cal.setTimeZone(TimeZone.getTimeZone("Asia/Seoul"));
