@@ -11,20 +11,48 @@ $(document).ready(async () => {
 
     selectedGuildId = Object.keys(data)?.[0] ?? null;
 
-    const todayElem = $('#today');
-    for (let guildId in data) {
-        const guildData = await httpGet(`/guild/${guildId}`);
-        guilds[guildId] = guildData;
+    // resize detect
+    window.addEventListener("resize", () => {
+        if (selectedGuildId != null) {
+            const serverData = data[selectedGuildId];
+            displayMainContent();
+        }
+    });
 
-        const userSessions = data[guildId];
-        for (let userId in userSessions) {
-            try {
+    fastInterval(async () => {
+        data = await httpGet("/data");
+        for (let guildId in data) {
+            if (guilds[guildId] == null) {
+                const guildData = await httpGet(`/guild/${guildId}`);
+                guilds[guildId] = guildData;
+            }
+
+            const userSessions = data[guildId];
+            for (let userId in userSessions) {
+                if (users[userId] != null) continue;
                 const userData = await httpGet(`/user/${guildId}/${userId}`);
                 users[userId] = userData;
-            } catch (e) {
             }
         }
+        displaySidebar();
+        if (selectedGuildId != null) {
+            displayMainContent();
+        }
+    }, 1000 * 5);
 
+    displaySidebar();
+
+    console.log("data", data);
+    console.log("guilds", guilds);
+    console.log("users", users);
+});
+
+function displaySidebar() {
+    const todayElem = $('#today');
+    todayElem.empty();
+
+    for (let guildId in data) {
+        const guildData = guilds[guildId];
         const serverName = guildData?.name ?? "Unknown";
         const guildIconUrl = guildData?.iconUrl ?? null;
         todayElem.append(`
@@ -54,25 +82,7 @@ $(document).ready(async () => {
             displayMainContent();
         });
     }
-
-    if (selectedGuildId != null) {
-        const serverData = data[selectedGuildId];
-        displayMainContent();
-    }
-
-    // resize detect
-    window.addEventListener("resize", () => {
-        if (selectedGuildId != null) {
-            const serverData = data[selectedGuildId];
-            displayMainContent();
-        }
-    });
-
-    console.log("data", data);
-    console.log("guilds", guilds);
-    console.log("users", users);
-
-});
+}
 
 function displayMainContent() {
     const guildId = selectedGuildId;
