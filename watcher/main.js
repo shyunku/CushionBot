@@ -12,9 +12,9 @@ app.use(bodyParser.json());
 app.use(cors());
 app.use(express.static("public"));
 
-app.get("/", (req, res) => {
+app.get("/", async (req, res) => {
   res.render("index", {
-    botHost: process.env.BOT_SERVER_HOST ?? "localhost",
+    botHost: process.env.BOT_SERVER_HOST ?? (await publicIpv4()) ?? "localhost",
     botPort: process.env.BOT_SERVER_PORT ?? "7918",
   });
 });
