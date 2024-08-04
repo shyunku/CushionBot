@@ -1,17 +1,26 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <link rel="stylesheet" type="text/css" href="styles/index.css" />
+
     <script
       src="https://code.jquery.com/jquery-3.7.1.min.js"
       integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="
       crossorigin="anonymous"
     ></script>
-    <link rel="stylesheet" type="text/css" href="styles/index.css" />
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1/locale/ko.js"></script>
+
     <script>
+      dayjs.locale("ko");
+
       const botHost = "<%= botHost %>";
       const botPort = "<%= botPort %>";
     </script>
     <script src="scripts/util.js"></script>
+    <script src="scripts/variable.js"></script>
+    <script src="scripts/components/sidebar.js"></script>
+    <script src="scripts/components/main_content.js"></script>
     <script src="scripts/index.js"></script>
   </head>
   <body>

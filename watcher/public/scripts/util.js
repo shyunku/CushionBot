@@ -1,26 +1,167 @@
-function makeRandomColor() {
-  const r = Math.floor(Math.random() * 255);
-  const g = Math.floor(Math.random() * 255);
-  const b = Math.floor(Math.random() * 255);
-  return `rgb(${r},${g},${b})`;
+const TimeUnit = {
+  SECOND: 1000,
+  MINUTE: 60 * 1000,
+  HOUR: 60 * 60 * 1000,
+  DAY: 24 * 60 * 60 * 1000,
+};
+
+class Color {
+  constructor(r, g, b) {
+    this.r = r;
+    this.g = g;
+    this.b = b;
+  }
+
+  static generateRandomColorWithSeed(seed) {
+    seed += "$$seed";
+    const rHash = Math.floor(hashStr(seed + "r") * 255);
+    const gHash = Math.floor(hashStr(seed + "g") * 255);
+    const bHash = Math.floor(hashStr(seed + "b") * 255);
+    return new Color(rHash, gHash, bHash);
+  }
+
+  calculateBrightness() {
+    let r = this.r / 255;
+    let g = this.g / 255;
+    let b = this.b / 255;
+    return Math.sqrt(0.299 * r * r + 0.587 * g * g + 0.114 * b * b);
+  }
+
+  calculateSaturation() {
+    const max = Math.max(this.r, this.g, this.b);
+    const min = Math.min(this.r, this.g, this.b);
+    const delta = max - min;
+
+    if (max === 0) {
+      return 0;
+    } else {
+      return delta / max;
+    }
+  }
+
+  adjustBrightness(brightness) {
+    const ob = brightness;
+    const f = ob / this.calculateBrightness();
+
+    this.r = Math.min(255, Math.floor(this.r * f));
+    this.g = Math.min(255, Math.floor(this.g * f));
+    this.b = Math.min(255, Math.floor(this.b * f));
+
+    return this;
+  }
+
+  adjustSaturation(saturation) {
+    const max = Math.max(this.r, this.g, this.b);
+    const min = Math.min(this.r, this.g, this.b);
+    const delta = max - min;
+
+    if (delta === 0) {
+      return this;
+    }
+
+    const os = this.calculateSaturation();
+    const f = saturation / os;
+
+    this.r = Math.min(255, Math.floor((this.r - min) * f + min));
+    this.g = Math.min(255, Math.floor((this.g - min) * f + min));
+    this.b = Math.min(255, Math.floor((this.b - min) * f + min));
+
+    return this;
+  }
+
+  adjustBrightnessAndSaturation(brightness, saturation) {
+    // Adjust Brightness
+    const currentBrightness = this.calculateBrightness();
+    const brightnessFactor = brightness / currentBrightness;
+
+    let newR = Math.min(255, Math.floor(this.r * brightnessFactor));
+    let newG = Math.min(255, Math.floor(this.g * brightnessFactor));
+    let newB = Math.min(255, Math.floor(this.b * brightnessFactor));
+
+    // Adjust Saturation
+    const max = Math.max(newR, newG, newB);
+    const min = Math.min(newR, newG, newB);
+    const delta = max - min;
+
+    if (delta !== 0) {
+      const currentSaturation = delta / max;
+      const saturationFactor = saturation / currentSaturation;
+
+      newR = Math.min(255, Math.floor((newR - min) * saturationFactor + min));
+      newG = Math.min(255, Math.floor((newG - min) * saturationFactor + min));
+      newB = Math.min(255, Math.floor((newB - min) * saturationFactor + min));
+    }
+
+    this.r = newR;
+    this.g = newG;
+    this.b = newB;
+
+    return this;
+  }
+
+  toString() {
+    return `rgb(${this.r},${this.g},${this.b})`;
+  }
 }
 
-function getColorByStringWithBrightness(str, lb = 0, rb = 1) {
-  const rhash = hashStr("$r" + str.repeat(3));
-  const ghash = hashStr("$g" + str.repeat(3));
-  const bhash = hashStr("$b" + str.repeat(3));
-  let r = Math.floor(rhash * 255);
-  let g = Math.floor(ghash * 255);
-  let b = Math.floor(bhash * 255);
-  const brightness = (r * 299 + g * 587 + b * 114) / (1000 * 255);
-  const ob = lb + (rb - lb) * brightness;
-  const f = ob / brightness;
+async function httpGet(url) {
+  return new Promise((resolve, reject) => {
+    try {
+      if (!url.startsWith("/")) {
+        url = `/${url}`;
+      }
+      url = `http://${botHost}:${botPort}${url}`;
 
-  r = Math.min(255, Math.floor(r * f));
-  g = Math.min(255, Math.floor(g * f));
-  b = Math.min(255, Math.floor(b * f));
+      $.ajax({
+        url,
+        type: "GET",
+        success: (data) => {
+          resolve(data);
+        },
+        error: (err) => {
+          reject(err);
+        },
+      });
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
 
-  return `rgb(${r},${g},${b})`;
+function cyrb128(str) {
+  let h1 = 1779033703,
+    h2 = 3144134277,
+    h3 = 1013904242,
+    h4 = 2773480762;
+  for (let i = 0, k; i < str.length; i++) {
+    k = str.charCodeAt(i);
+    h1 = h2 ^ Math.imul(h1 ^ k, 597399067);
+    h2 = h3 ^ Math.imul(h2 ^ k, 2869860233);
+    h3 = h4 ^ Math.imul(h3 ^ k, 951274213);
+    h4 = h1 ^ Math.imul(h4 ^ k, 2716044179);
+  }
+  h1 = Math.imul(h3 ^ (h1 >>> 18), 597399067);
+  h2 = Math.imul(h4 ^ (h2 >>> 22), 2869860233);
+  h3 = Math.imul(h1 ^ (h3 >>> 17), 951274213);
+  h4 = Math.imul(h2 ^ (h4 >>> 19), 2716044179);
+  (h1 ^= h2 ^ h3 ^ h4), (h2 ^= h1), (h3 ^= h1), (h4 ^= h1);
+  return [h1 >>> 0, h2 >>> 0, h3 >>> 0, h4 >>> 0];
+}
+
+function sfc32(a, b, c, d) {
+  return function () {
+    a |= 0;
+    b |= 0;
+    c |= 0;
+    d |= 0;
+    let t = (((a + b) | 0) + d) | 0;
+    d = (d + 1) | 0;
+    a = b ^ (b >>> 9);
+    b = (c + (c << 3)) | 0;
+    c = (c << 21) | (c >>> 11);
+    c = (c + t) | 0;
+    return (t >>> 0) / 4294967296;
+  };
 }
 
 function fnv1a(str) {
@@ -33,13 +174,14 @@ function fnv1a(str) {
 }
 
 function hashStr(str) {
-  const seed = fnv1a(str);
-  return Math.abs(Math.sin(seed));
+  const seeds = cyrb128(str + "$seed");
+  return sfc32(seeds[0], seeds[1], seeds[2], seeds[3])();
 }
 
 function hashStrAsStr(str) {
-  const seed = fnv1a(str);
-  return Math.floor(Math.abs(Math.sin(seed) * 1000000)).toString(16);
+  const seeds = cyrb128(str + "$seed");
+  const seed = sfc32(seeds[0], seeds[1], seeds[2], seeds[3])();
+  return Math.floor(seed * 1000000).toString(16);
 }
 
 function fastInterval(fn, interval) {
@@ -57,18 +199,6 @@ function dateStr(date = Date.now()) {
   return `${year}.${md}.${dd}`;
 }
 
-function timeStr(time = Date.now()) {
-  const date = new Date(time);
-  const hours = date.getHours();
-  const minutes = date.getMinutes();
-  const seconds = date.getSeconds();
-
-  const hd = `${hours}`;
-  const md = `${minutes}`.padStart(2, "0");
-  const sd = `${seconds}`.padStart(2, "0");
-  return `${hd}:${md}:${sd}`;
-}
-
 function startOfDay(time = Date.now()) {
   const date = new Date(time);
   return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
@@ -79,17 +209,24 @@ function endOfDay(time = Date.now()) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
 }
 
-function datetimeStr(time = Date.now()) {
-  return `${dateStr(time)} ${timeStr(time)}`;
-}
-
 function durationStr(duration) {
-  const hours = Math.floor(duration / (60 * 60 * 1000));
+  const days = Math.floor(duration / (24 * 60 * 60 * 1000));
+  const hours = Math.floor((duration % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
   const minutes = Math.floor((duration % (60 * 60 * 1000)) / (60 * 1000));
   const seconds = Math.floor((duration % (60 * 1000)) / 1000);
 
-  const hd = `${hours}`;
-  const md = `${minutes}`.padStart(2, "0");
-  const sd = `${seconds}`.padStart(2, "0");
-  return `${hd}:${md}:${sd}`;
+  const parts = [];
+  if (days > 0) {
+    parts.push(`${days}일`);
+  }
+  if (hours > 0) {
+    parts.push(`${hours}시간`);
+  }
+  if (minutes > 0) {
+    parts.push(`${minutes}분`);
+  }
+  if (seconds > 0) {
+    parts.push(`${seconds}초`);
+  }
+  return parts.join(" ");
 }
