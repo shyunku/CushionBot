@@ -81,7 +81,7 @@ public class SlashCommandParser {
             }
 
             guildRanking.sort((a, b) -> (int) (b.getRight() - a.getRight()));
-            guildRanking = guildRanking.subList(0, Math.min(10, guildRanking.size()));
+            guildRanking = guildRanking.subList(0, Math.min(5, guildRanking.size()));
 
             EmbedBuilder embedBuilder = new EmbedBuilder();
             embedBuilder.setTitle("서버 랭킹");
