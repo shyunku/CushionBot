@@ -211,21 +211,22 @@ function displayMainContent() {
         if (s1.length === 0) return 1;
         if (s2.length === 0) return -1;
 
-        const lastLeaveTime1 = s1[s1.length - 1].leaveTime || Date.now();
-        const lastLeaveTime2 = s2[s2.length - 1].leaveTime || Date.now();
+        const lastSession1 = s1[s1.length - 1];
+        const lastSession2 = s2[s2.length - 1];
+
+        const lastLeaveTime1 = lastSession1.leaveTime || Date.now();
+        const lastLeaveTime2 = lastSession2.leaveTime || Date.now();
         if (lastLeaveTime1 !== lastLeaveTime2) {
             return lastLeaveTime2 - lastLeaveTime1;
         }
 
-        const duration1 = s1.reduce((acc, cur) => acc + ((cur.leaveTime || Date.now()) - cur.joinTime), 0);
-        const duration2 = s2.reduce((acc, cur) => acc + ((cur.leaveTime || Date.now()) - cur.joinTime), 0);
-        if (duration1 !== duration2) {
-            return duration2 - duration1;
+        if (lastSession1.channelName !== lastSession2.channelName) {
+            return (lastSession1.channelName ?? "Unknown").localeCompare((lastSession2.channelName ?? "Unknown"));
         }
 
-        const lastSession1 = s1[s1.length - 1];
-        const lastSession2 = s2[s2.length - 1];
-        return (lastSession1.channelName ?? "Unknown").localeCompare((lastSession2.channelName ?? "Unknown"));
+        const duration1 = s1.reduce((acc, cur) => acc + ((cur.leaveTime || Date.now()) - cur.joinTime), 0);
+        const duration2 = s2.reduce((acc, cur) => acc + ((cur.leaveTime || Date.now()) - cur.joinTime), 0);
+        return duration2 - duration1;
     });
 
     for (let userId of sortedUserIds) {
