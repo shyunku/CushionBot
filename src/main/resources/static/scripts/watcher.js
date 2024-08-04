@@ -143,8 +143,26 @@ function displayMainContent() {
     const rx = h24.getBoundingClientRect().right;
     const ry = h24.getBoundingClientRect().bottom - padding;
 
+    const userIdList = Object.keys(userSessionMap);
+    const sortedUserIds = userIdList.sort((u1, u2) => {
+        const s1 = userSessionMap[u1];
+        const s2 = userSessionMap[u2];
+        if (s1.length === 0) return 1;
+        if (s2.length === 0) return -1;
+        const lastLeaveTime1 = s1[s1.length - 1].leaveTime || Date.now();
+        const lastLeaveTime2 = s2[s2.length - 1].leaveTime || Date.now();
+
+        if (lastLeaveTime1 !== lastLeaveTime2) {
+            return lastLeaveTime2 - lastLeaveTime1;
+        }
+
+        const duration1 = s1.reduce((acc, cur) => acc + ((cur.leaveTime || Date.now()) - cur.joinTime), 0);
+        const duration2 = s2.reduce((acc, cur) => acc + ((cur.leaveTime || Date.now()) - cur.joinTime), 0);
+        return duration2 - duration1;
+    });
+
     const sessions = [];
-    for (let userId in userSessionMap) {
+    for (let userId of sortedUserIds) {
         const user = users[userId];
         const userSessions = userSessionMap[userId];
         for (let i = 0; i < userSessions.length; i++) {
@@ -196,7 +214,7 @@ function displayMainContent() {
         }
     }
 
-    for (let userId in userSessionMap) {
+    for (let userId of sortedUserIds) {
         if (userSeat[userId] != null) continue;
         const emptySeatExists = Array(maxYindex).fill(0).map((_, i) => i).some((i) => seatUsers[i] == null || seatUsers[i].length === 0);
         for (let i = 0; i < maxYindex; i++) {

@@ -93,9 +93,9 @@ public class SlashCommandParser {
                 String userId = pair.getLeft();
                 long totalDuration = pair.getRight();
                 String durationStr = Util.getDurationString(totalDuration);
-                Member member = guild.retrieveMemberById(userId).complete();
-                String memberName = member == null ? "알 수 없음" : member.getEffectiveName();
-                embedBuilder.addField(String.format("[%d위] %s", i + 1, memberName), TextStyler.Block(durationStr), false);
+//                Member member = guild.retrieveMemberById(userId).complete();
+//                String memberName = member == null ? "알 수 없음" : member.getEffectiveName();
+                embedBuilder.addField(String.format("[%d위]", i + 1), TextStyler.Block(String.format("<@%s> %s", userId, durationStr)), false);
             }
 
             MessageEmbed embed = embedBuilder.build();
