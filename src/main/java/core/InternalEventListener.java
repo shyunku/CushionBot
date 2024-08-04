@@ -96,7 +96,7 @@ public class InternalEventListener extends ListenerAdapter {
             ).queue();
         }
 
-        GuildWatcher.loadAll();
+        GuildWatcher.initialize();
 
         // leave all audio channels
 //        for(Guild g : guilds) {

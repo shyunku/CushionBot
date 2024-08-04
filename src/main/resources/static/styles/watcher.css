@@ -200,7 +200,7 @@ html, body {
             display: none;
             position: fixed;
             width: 180px;
-            background-color: rgba(0, 0, 0, 0.8);
+            background-color: rgba(0, 0, 0, 0.9);
             color: white;
             padding: 8px;
             box-sizing: border-box;

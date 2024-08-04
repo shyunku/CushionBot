@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import core.CushionBot;
 import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.entities.Guild;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -71,7 +72,7 @@ public class GuildWatcher {
         return sessions.get(sessions.size() - 1);
     }
 
-    public static void loadAll() {
+    public static void initialize() {
         initializeTime = System.currentTimeMillis();
 
         // load access logs from file
@@ -98,6 +99,34 @@ public class GuildWatcher {
             TypeReference<Map<String, Map<String, List<AccessSession>>>> typeRef = new TypeReference<Map<String, Map<String, List<AccessSession>>>>() {
             };
             accessSessions = mapper.readValue(json.toString(), typeRef);
+
+            for (Map.Entry<String, Map<String, List<AccessSession>>> guildEntry : accessSessions.entrySet()) {
+                for (Map.Entry<String, List<AccessSession>> userEntry : guildEntry.getValue().entrySet()) {
+                    List<AccessSession> sessions = userEntry.getValue();
+                    removeOldSessions(sessions);
+                    removeUnlastUncompleteSession(sessions);
+                }
+            }
+
+            JDA jda = CushionBot.jda;
+            List<Guild> guilds = jda.getGuilds();
+            for (Guild guild : guilds) {
+                String guildId = guild.getId();
+                if (!accessSessions.containsKey(guildId)) {
+                    accessSessions.put(guildId, new HashMap<>());
+                }
+
+                // already joined members
+                guild.getVoiceChannels().forEach(voiceChannel -> {
+                    voiceChannel.getMembers().forEach(member -> {
+                        List<AccessSession> userSessions = accessSessions.get(guildId).computeIfAbsent(member.getId(), k -> new ArrayList<>());
+                        AccessSession lastSession = getLastSession(userSessions);
+                        if (lastSession == null || lastSession.isComplete()) {
+                            addAccessLog(AccessType.JOIN, guildId, member.getId(), voiceChannel.getId());
+                        }
+                    });
+                });
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }

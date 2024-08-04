@@ -206,8 +206,8 @@ function displayMainContent() {
 
     const userIdList = Object.keys(userSessionMap);
     const sortedUserIds = userIdList.sort((u1, u2) => {
-        const s1 = filteredUserSessions[u1];
-        const s2 = filteredUserSessions[u2];
+        const s1 = filteredUserSessions?.[u1] ?? [];
+        const s2 = filteredUserSessions?.[u2] ?? [];
         if (s1.length === 0) return 1;
         if (s2.length === 0) return -1;
 
