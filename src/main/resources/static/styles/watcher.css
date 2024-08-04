@@ -23,6 +23,10 @@ html, body {
     padding: 20px;
     box-sizing: border-box;
 
+    @media (max-width: 768px) {
+        
+    }
+
     .title {
         color: #70e7c3;
         font-size: 16px;
@@ -96,9 +100,10 @@ html, body {
         justify-content: space-between;
         margin-bottom: 15px;
 
-        .left button {
+        button {
             font-size: 13px;
-            border-radius: 5px 8px;
+            padding: 3px 5px;
+            border-radius: 3px;
             border: 1px solid #7a7a7a;
             color: #7a7a7a;
             background-color: black;

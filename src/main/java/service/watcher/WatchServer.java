@@ -1,7 +1,6 @@
 package service.watcher;
 
 import Utilities.Util;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
@@ -11,48 +10,27 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
-import java.nio.charset.StandardCharsets;
 
 public class WatchServer {
     public static void start() throws Exception {
         HttpServer server = HttpServer.create(new InetSocketAddress(7918), 0);
-        server.createContext("/watch", new WatchHandler());
         server.createContext("/data", new DataHandler());
         server.createContext("/guild", new GuildHandler());
         server.createContext("/user", new UserHandler());
-        server.createContext("/static/styles", new StaticStyleHandler());
-        server.createContext("/static/scripts", new StaticScriptHandler());
         server.setExecutor(null);
         server.start();
         System.out.println("Watch server started at port 7918");
     }
 
-    static class WatchHandler implements HttpHandler {
+    static class IntermediateHttpHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             try {
-                InputStream inputStream = getClass().getClassLoader().getResourceAsStream("templates/watcher.html");
-                if (inputStream == null) {
-                    String response = "404 (Not Found)\n";
-                    exchange.sendResponseHeaders(404, response.length());
-                    OutputStream os = exchange.getResponseBody();
-                    os.write(response.getBytes());
-                    os.close();
-                    return;
-                }
-
-                String dataJson = GuildWatcher.getAccessLogs();
-                ObjectMapper mapper = new ObjectMapper();
-                String response = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
-                response = response.replace("$$data", dataJson);
-                exchange.getResponseHeaders().set("Content-Type", "text/html; charset=utf-8");
-                exchange.sendResponseHeaders(200, response.getBytes().length);
-                OutputStream os = exchange.getResponseBody();
-                os.write(response.getBytes());
-                os.close();
+                exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+                exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+                exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type");
             } catch (Exception e) {
                 e.printStackTrace();
                 throw e;
@@ -60,10 +38,11 @@ public class WatchServer {
         }
     }
 
-    static class DataHandler implements HttpHandler {
+    static class DataHandler extends IntermediateHttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             try {
+                super.handle(exchange);
                 String dataJson = GuildWatcher.getAccessLogs();
                 exchange.getResponseHeaders().set("Content-Type", "application/json");
                 exchange.sendResponseHeaders(200, dataJson.getBytes().length);
@@ -78,10 +57,11 @@ public class WatchServer {
         }
     }
 
-    static class GuildHandler implements HttpHandler {
+    static class GuildHandler extends IntermediateHttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             try {
+                super.handle(exchange);
                 String path = exchange.getRequestURI().getPath();
                 String[] parts = path.split("/");
                 if (parts.length < 3) {
@@ -118,10 +98,11 @@ public class WatchServer {
         }
     }
 
-    static class UserHandler implements HttpHandler {
+    static class UserHandler extends IntermediateHttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             try {
+                super.handle(exchange);
                 String path = exchange.getRequestURI().getPath();
                 String[] parts = path.split("/");
                 if (parts.length < 4) {
@@ -155,64 +136,6 @@ public class WatchServer {
                 OutputStream os = exchange.getResponseBody();
                 os.write(response.getBytes());
                 os.close();
-            }
-        }
-    }
-
-    static class StaticStyleHandler implements HttpHandler {
-        @Override
-        public void handle(HttpExchange exchange) throws IOException {
-            try {
-                String path = exchange.getRequestURI().getPath();
-                String filePath = path.substring(1);
-                InputStream inputStream = getClass().getClassLoader().getResourceAsStream(filePath);
-                if (inputStream == null) {
-                    String response = "404 (Not Found)\n";
-                    exchange.sendResponseHeaders(404, response.length());
-                    OutputStream os = exchange.getResponseBody();
-                    os.write(response.getBytes());
-                    os.close();
-                    return;
-                }
-
-                byte[] bytes = inputStream.readAllBytes();
-                exchange.getResponseHeaders().set("Content-Type", "text/css");
-                exchange.sendResponseHeaders(200, bytes.length);
-                OutputStream os = exchange.getResponseBody();
-                os.write(bytes);
-                os.close();
-            } catch (Exception e) {
-                e.printStackTrace();
-                throw e;
-            }
-        }
-    }
-
-    static class StaticScriptHandler implements HttpHandler {
-        @Override
-        public void handle(HttpExchange exchange) throws IOException {
-            try {
-                String path = exchange.getRequestURI().getPath();
-                String filePath = path.substring(1);
-                InputStream inputStream = getClass().getClassLoader().getResourceAsStream(filePath);
-                if (inputStream == null) {
-                    String response = "404 (Not Found)\n";
-                    exchange.sendResponseHeaders(404, response.length());
-                    OutputStream os = exchange.getResponseBody();
-                    os.write(response.getBytes());
-                    os.close();
-                    return;
-                }
-
-                byte[] bytes = inputStream.readAllBytes();
-                exchange.getResponseHeaders().set("Content-Type", "text/javascript");
-                exchange.sendResponseHeaders(200, bytes.length);
-                OutputStream os = exchange.getResponseBody();
-                os.write(bytes);
-                os.close();
-            } catch (Exception e) {
-                e.printStackTrace();
-                throw e;
             }
         }
     }
