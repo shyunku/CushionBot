@@ -140,7 +140,7 @@ public class WatchServer {
                 if (guild == null) throw new Exception("Guild not found: " + guildId);
                 Member member = guild.retrieveMemberById(userId).complete();
                 if (member == null) throw new Exception("Member not found " + userId + " in guild " + guildId);
-                UserInfo userInfo = new UserInfo(member.getId(), member.getNickname(), member.getEffectiveName(), member.getUser().getAvatarUrl());
+                UserInfo userInfo = new UserInfo(member.getId(), member.getNickname(), member.getEffectiveName(), member.getUser().getEffectiveAvatarUrl());
                 String dataJson = Util.ToJson(userInfo, false);
                 exchange.getResponseHeaders().set("Content-Type", "application/json");
                 exchange.getResponseHeaders().set("Cache-Control", "max-age=3600");
