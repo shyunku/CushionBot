@@ -163,8 +163,9 @@ html, body {
             /*border-radius: 3px;*/
             cursor: default;
             z-index: 1;
+            border: 1px solid transparent;
 
-            &.current .session-content {
+            &.current {
                 border: 1px solid #44e7a3 !important;
             }
 
@@ -180,7 +181,6 @@ html, body {
                 text-overflow: ellipsis;
                 white-space: nowrap;
                 color: white;
-                border: 1px solid transparent;
 
                 .icon {
                     min-width: 20px;
