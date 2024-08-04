@@ -3,5 +3,6 @@
 /build/
 /build/classes/java/main/
 
+/datafiles/access_logs.json
 /src/main/resources/credentials.yaml
 .idea

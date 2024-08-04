@@ -20,6 +20,7 @@ public class WatchServer {
     public static void start() throws Exception {
         HttpServer server = HttpServer.create(new InetSocketAddress(7918), 0);
         server.createContext("/watch", new WatchHandler());
+        server.createContext("/data", new DataHandler());
         server.createContext("/guild", new GuildHandler());
         server.createContext("/user", new UserHandler());
         server.createContext("/static/styles", new StaticStyleHandler());
@@ -51,6 +52,24 @@ public class WatchServer {
                 exchange.sendResponseHeaders(200, response.getBytes().length);
                 OutputStream os = exchange.getResponseBody();
                 os.write(response.getBytes());
+                os.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw e;
+            }
+        }
+    }
+
+    static class DataHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            try {
+                String dataJson = GuildWatcher.getAccessLogs();
+                exchange.getResponseHeaders().set("Content-Type", "application/json");
+                exchange.sendResponseHeaders(200, dataJson.getBytes().length);
+
+                OutputStream os = exchange.getResponseBody();
+                os.write(dataJson.getBytes());
                 os.close();
             } catch (Exception e) {
                 e.printStackTrace();
