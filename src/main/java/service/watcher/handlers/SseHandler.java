@@ -12,6 +12,7 @@ import java.util.concurrent.Executors;
 public class SseHandler extends IntermediateHttpHandler {
     private static final ExecutorService executorService = Executors.newCachedThreadPool();
     public HttpExchange exchange;
+    private OutputStream os;
 
     @Override
     public void handle(HttpExchange exchange) throws IOException {
@@ -31,15 +32,22 @@ public class SseHandler extends IntermediateHttpHandler {
 
             Watcher.register(this);
 
+            os = exchange.getResponseBody();
             executorService.submit(() -> {
-                try (OutputStream os = exchange.getResponseBody()) {
+                try {
                     while (!Thread.currentThread().isInterrupted()) {
-                        Thread.sleep(500); // 유휴 시간 설정
+                        try {
+                            os.write(":\n\n".getBytes()); // 주기적으로 ping을 보내 연결을 유지
+                            os.flush();
+                            Thread.sleep(15000); // 15초마다 ping 전송
+                        } catch (IOException e) {
+                            Thread.currentThread().interrupt();
+                        }
                     }
-                } catch (InterruptedException | IOException e) {
+                } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 } finally {
-                    Watcher.unregister(this);
+                    closeConnection();
                 }
             });
         } catch (Exception e) {
@@ -53,15 +61,27 @@ public class SseHandler extends IntermediateHttpHandler {
     }
 
     public void sendData(SseResponse data) {
-        if (exchange != null && exchange.getResponseBody() != null) {
+        if (os != null) {
             try {
                 ObjectMapper mapper = new ObjectMapper();
                 String json = mapper.writeValueAsString(data);
-                exchange.getResponseBody().write(json.getBytes());
-                exchange.getResponseBody().flush();
+                String message = "data: " + json + "\n\n";
+                os.write(message.getBytes());
+                os.flush();
+            } catch (IOException e) {
+                closeConnection();
+            }
+        }
+    }
+
+    private void closeConnection() {
+        if (os != null) {
+            try {
+                os.close();
             } catch (IOException e) {
                 e.printStackTrace();
             }
+            Watcher.unregister(this);
         }
     }
 }
