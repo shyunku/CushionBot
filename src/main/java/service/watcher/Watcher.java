@@ -13,6 +13,10 @@ public class Watcher {
     private static final Set<SseHandler> clients = Collections.synchronizedSet(new HashSet<>());
 
     public static void start() throws Exception {
+        startServer();
+    }
+
+    private static void startServer() throws Exception {
         HttpServer server = HttpServer.create(new InetSocketAddress(7918), 0);
         server.createContext("/data", new DataHandler());
         server.createContext("/guild", new GuildHandler());
@@ -20,7 +24,7 @@ public class Watcher {
         server.createContext("/sse", new SseHandler());
         server.setExecutor(null);
         server.start();
-        System.out.println("Watch server started at port 7918");
+        System.out.println("Watch server started at port 7919");
     }
 
     public static void register(SseHandler handler) {
