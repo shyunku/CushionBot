@@ -5,7 +5,7 @@ import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import service.inmemory.RedisClient;
-import service.watcher.WatchServer;
+import service.watcher.Watcher;
 
 import javax.security.auth.login.LoginException;
 
@@ -18,7 +18,7 @@ public class CushionBot {
         try {
             RedisClient redisClient = new RedisClient();
             redisClient.connect();
-            WatchServer.start();
+            Watcher.start();
         } catch (Exception e) {
             e.printStackTrace();
             System.exit(-1);
