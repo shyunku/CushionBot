@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectWriter;
 import core.CushionBot;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
+import service.watcher.handlers.SseResponse;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -53,6 +54,7 @@ public class GuildWatcher {
         }
 
         saveAll();
+        Watcher.sendData(new SseResponse(Watcher.WATCH_TYPE_CHANGE, null));
     }
 
     private static void removeUnlastUncompleteSession(List<AccessSession> sessions) {
