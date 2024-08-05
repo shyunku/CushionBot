@@ -1,3 +1,9 @@
+var sessionList = [];
+var userSeats = {};
+var updateSessionsInterval = null;
+
+const boxLeftPad = 16;
+
 function displayMainContent() {
   const guildId = selectedGuildId;
   const userSessionMap = data[guildId];
@@ -22,15 +28,18 @@ function displayMainContent() {
                 <button class="btn" id="next_day">1일 후</button>
             </div>
             <div class="right">
-                <button class="btn" id="day_unit_1">1일 단위</button>
-                <button class="btn" id="day_unit_2">2일 단위</button>
-                <button class="btn" id="day_unit_3">3일 단위</button>
-                <button class="btn" id="day_unit_7">7일 단위</button>
-                <button class="btn" id="day_unit_14">14일 단위</button>
-                <button class="btn" id="day_unit_30">30일 단위</button>
-                <button class="btn" id="day_unit_90">3달 단위</button>
-                <button class="btn" id="day_unit_180">6달 단위</button>
-                <button class="btn" id="day_unit_365">1년 단위</button>
+                <button class="btn" id="day_unit_3h">3시간</button>
+                <button class="btn" id="day_unit_6h">6시간</button>
+                <button class="btn" id="day_unit_12h">12시간</button>
+                <button class="btn" id="day_unit_1">1일</button>
+                <button class="btn" id="day_unit_2">2일</button>
+                <button class="btn" id="day_unit_3">3일</button>
+                <button class="btn" id="day_unit_7">7일</button>
+                <button class="btn" id="day_unit_14">14일</button>
+                <button class="btn" id="day_unit_30">30일</button>
+                <button class="btn" id="day_unit_90">3달</button>
+                <button class="btn" id="day_unit_180">6달</button>
+                <button class="btn" id="day_unit_365">1년</button>
             </div>
         </div>
         <div id="main_area">
@@ -46,23 +55,19 @@ function displayMainContent() {
   const mainAreaElem = $("#main_area");
   const segmentsElem = $("#segments");
 
-  const xpad = 16;
   const mainAreaBox = mainAreaElem[0];
-
-  const boxLeft = 0 + xpad;
-  const boxRight = mainAreaBox.getBoundingClientRect().width - xpad - 100;
+  const boxLeft = boxLeftPad;
+  const boxRight = mainAreaBox.getBoundingClientRect().width - boxLeftPad - 100;
   const boxTop = 0;
-  const boxBottom = mainAreaBox.getBoundingClientRect().height;
-
   const boxWidth = boxRight - boxLeft;
-  const boxHeight = boxBottom - boxTop;
 
   const totalTime = targetInterval.end.getTime() - targetInterval.start.getTime();
+  let isHourUnit = targetInterval.end.getTime() - targetInterval.start.getTime() <= 24 * 60 * 60 * 1000;
+  let isDayUnit = targetInterval.end.getTime() - targetInterval.start.getTime() >= 5 * 24 * 60 * 60 * 1000;
   const simulateSegmentCounts = (l, r, w) => {
     return Math.floor(r / w) - Math.floor((l - 1) / w);
   };
 
-  const minWidth = 45;
   const hourCandidates = [1, 2, 3, 4, 6, 8, 12, 24, 2 * 24, 3 * 24, 4 * 24, 5 * 24, 6 * 24, 7 * 24, 30 * 24];
   let hourUnit = 1;
   for (let i = 0; i < hourCandidates.length; i++) {
@@ -72,6 +77,7 @@ function displayMainContent() {
       targetInterval.end.getTime(),
       hour * 60 * 60 * 1000
     );
+    const minWidth = isHourUnit ? 36 : isDayUnit ? 36 : 64;
     const segmentWidth = boxWidth / segmentCount;
     if (segmentWidth >= minWidth) {
       hourUnit = hour;
@@ -79,8 +85,6 @@ function displayMainContent() {
     }
   }
 
-  let isHourUnit = targetInterval.end.getTime() - targetInterval.start.getTime() <= 24 * 60 * 60 * 1000;
-  let isDayUnit = targetInterval.end.getTime() - targetInterval.start.getTime() >= 5 * 24 * 60 * 60 * 1000;
   const format = isHourUnit ? "H시" : isDayUnit ? "M/DD" : "M.DD H시";
   const timeUnit = hourUnit * 60 * 60 * 1000;
   const startTime = targetInterval.start.getTime();
@@ -144,6 +148,9 @@ function displayMainContent() {
     displayMainContent();
   });
 
+  const dayUnit3hBtn = $("#day_unit_3h")[0];
+  const dayUnit6hBtn = $("#day_unit_6h")[0];
+  const dayUnit12hBtn = $("#day_unit_12h")[0];
   const dayUnit1Btn = $("#day_unit_1")[0];
   const dayUnit2Btn = $("#day_unit_2")[0];
   const dayUnit3Btn = $("#day_unit_3")[0];
@@ -159,6 +166,9 @@ function displayMainContent() {
     displayMainContent();
   };
 
+  dayUnit3hBtn.addEventListener("click", () => dayUnitHandler(1 / 8));
+  dayUnit6hBtn.addEventListener("click", () => dayUnitHandler(1 / 4));
+  dayUnit12hBtn.addEventListener("click", () => dayUnitHandler(1 / 2));
   dayUnit1Btn.addEventListener("click", () => dayUnitHandler(1));
   dayUnit2Btn.addEventListener("click", () => dayUnitHandler(2));
   dayUnit3Btn.addEventListener("click", () => dayUnitHandler(3));
@@ -172,8 +182,30 @@ function displayMainContent() {
   const lsb = $(`.segment.left-bound .segment-line`)[0];
   const rsb = $(`.segment.right-bound .segment-line`)[0];
 
-  const padding = 5;
+  calculateSessions(userSessionMap);
+  drawSessions();
 
+  if (currentTimeDisplayInterval != null) {
+    clearInterval(currentTimeDisplayInterval);
+  }
+  currentTimeDisplayInterval = fastInterval(() => {
+    const now = new Date();
+    const elapsed = now.getTime() - targetInterval.start.getTime();
+    const ratio = elapsed / totalTime;
+    const x = boxLeft + ratio * boxWidth;
+
+    const timeElem = $("#time_display")[0];
+    timeElem.style.left = `${x}px`;
+    timeElem.style.height = `${lsb.getBoundingClientRect().bottom - lsb.getBoundingClientRect().top}px`;
+    const curTimeElem = $("#time_display .curtime")[0];
+    // curTimeElem.style.left = `${x}px`;
+    // curTimeElem.style.top = `${lsb.getBoundingClientRect().top - 13}px`;
+    curTimeElem.innerText = dayjs().format("H:mm:ss");
+  }, 1000);
+}
+
+function calculateSessions(userSessionMap) {
+  const now = Date.now();
   const sessions = [];
   for (let userId in userSessionMap) {
     const user = users[userId];
@@ -214,15 +246,19 @@ function displayMainContent() {
     sessions.sort((s1, s2) => s1.joinTime - s2.joinTime);
     for (let i = 0; i < sessions.length; i++) {
       const session = sessions[i];
-      session.leaveTime = session.leaveTime || Date.now();
+      session.online = (session.leaveTime || 0) === 0;
+      session.leaveTime = session.leaveTime || now;
+      if (session.leaveTime < session.joinTime) {
+        session.leaveTime = session.joinTime;
+      }
       session.next = i < sessions.length - 1 ? sessions[i + 1] : null;
       session.isLast = i === sessions.length - 1;
     }
   }
 
-  const sorted = sessions.sort((s1, s2) => s1.joinTime - s2.joinTime);
+  sessionList = sessions.sort((s1, s2) => s1.joinTime - s2.joinTime);
   const seatUsers = {};
-  const userSeat = {};
+  userSeats = {};
   const maxYindex = 100;
 
   const overlap = (u1, u2) => {
@@ -251,8 +287,8 @@ function displayMainContent() {
     const lastSession1 = s1[s1.length - 1];
     const lastSession2 = s2[s2.length - 1];
 
-    const lastLeaveTime1 = lastSession1.leaveTime || Date.now();
-    const lastLeaveTime2 = lastSession2.leaveTime || Date.now();
+    const lastLeaveTime1 = lastSession1.leaveTime;
+    const lastLeaveTime2 = lastSession2.leaveTime;
     if (lastLeaveTime1 !== lastLeaveTime2) {
       return lastLeaveTime2 - lastLeaveTime1;
     }
@@ -261,8 +297,8 @@ function displayMainContent() {
       return (lastSession1.channelName ?? "Unknown").localeCompare(lastSession2.channelName ?? "Unknown");
     }
 
-    const duration1 = s1.reduce((acc, cur) => acc + ((cur.leaveTime || Date.now()) - cur.joinTime), 0);
-    const duration2 = s2.reduce((acc, cur) => acc + ((cur.leaveTime || Date.now()) - cur.joinTime), 0);
+    const duration1 = s1.reduce((acc, cur) => acc + (cur.leaveTime - cur.joinTime), 0);
+    const duration2 = s2.reduce((acc, cur) => acc + (cur.leaveTime - cur.joinTime), 0);
     if (duration1 !== duration2) {
       return duration2 - duration1;
     }
@@ -273,7 +309,7 @@ function displayMainContent() {
   });
 
   for (let userId of sortedUserIds) {
-    if (userSeat[userId] != null) continue;
+    if (userSeats[userId] != null) continue;
     const emptySeatExists = Array(maxYindex)
       .fill(0)
       .map((_, i) => i)
@@ -289,20 +325,29 @@ function displayMainContent() {
         }
       }
       if (ok) {
-        userSeat[userId] = i;
+        userSeats[userId] = i;
         if (seatUsers[i] == null) seatUsers[i] = [];
         seatUsers[i].push(userId);
         break;
       }
     }
   }
+}
+
+function drawSessions() {
+  const mainAreaElem = $("#main_area");
+
+  const mainAreaBox = mainAreaElem[0];
+  const boxLeft = boxLeftPad;
+  const boxRight = mainAreaBox.getBoundingClientRect().width - boxLeftPad - 100;
+  const boxTop = 0;
+  const boxWidth = boxRight - boxLeft;
 
   const sessionsElem = $("#sessions");
-  for (let i = 0; i < sorted.length; i++) {
-    const session = sorted[i];
+  for (let i = 0; i < sessionList.length; i++) {
+    const session = sessionList[i];
     const start = new Date(session.joinTime);
     const end = new Date(session.leaveTime);
-    const isCurrent = (session.leaveTime || 0) === 0;
     const duration = end - start;
 
     const total = targetInterval.end.getTime() - targetInterval.start.getTime();
@@ -312,7 +357,7 @@ function displayMainContent() {
     const endR = endX / total;
 
     const x = boxLeft + startR * boxWidth;
-    const yIndex = userSeat[session.user.id];
+    const yIndex = userSeats[session.user.id];
     const y = boxTop + 15 + (yIndex + 1) * 50;
     const w = (endR - startR) * boxWidth;
     const color = Color.generateRandomColorWithSeed(session.channelName ?? "Unknown")
@@ -329,7 +374,7 @@ function displayMainContent() {
 
     sessionsElem.append(`
             <div class="session ss-${session.id} ${
-      isCurrent ? "current" : ""
+      session.online ? "current" : ""
     }" style="left: ${x}px; top: ${y}px; width: ${w}px; background-color: ${color};">
                 <div class="session-content">
                     ${
@@ -354,7 +399,7 @@ function displayMainContent() {
                 <div class="time-info">
                     <div class="time join">${dayjs(session.joinTime).format("YY.MM.DD HH:mm:ss")} 접속</div>
                     ${
-                      session.leaveTime
+                      !session.online
                         ? `
                         <div class="time leave">${dayjs(session.leaveTime).format("YY.MM.DD HH:mm:ss")} 퇴장</div>
                     `
@@ -375,22 +420,31 @@ function displayMainContent() {
     });
   }
 
-  if (currentTimeDisplayInterval != null) {
-    clearInterval(currentTimeDisplayInterval);
-  }
-  currentTimeDisplayInterval = fastInterval(() => {
-    const now = new Date();
-    const elapsed = now.getTime() - targetInterval.start.getTime();
-    const ratio = elapsed / totalTime;
-    const x = boxLeft + ratio * boxWidth;
+  clearInterval(updateSessionsInterval);
+  updateSessionsInterval = fastInterval(() => {
+    for (let session of sessionList) {
+      const sessionElem = $(`.session.ss-${session.id}`)[0];
 
-    const timeElem = $("#time_display")[0];
-    timeElem.style.left = `${x}px`;
-    timeElem.style.height = `${lsb.getBoundingClientRect().bottom - lsb.getBoundingClientRect().top}px`;
-    const curTimeElem = $("#time_display .curtime")[0];
-    // curTimeElem.style.left = `${x}px`;
-    // curTimeElem.style.top = `${lsb.getBoundingClientRect().top - 13}px`;
-    curTimeElem.innerText = dayjs().format("H:mm:ss");
+      if (!session.online) continue;
+      session.leaveTime = Date.now();
+      if (session.leaveTime < session.joinTime) session.leaveTime = session.joinTime;
+
+      const start = new Date(session.joinTime);
+      const end = new Date(session.leaveTime);
+
+      const total = targetInterval.end.getTime() - targetInterval.start.getTime();
+      const startX = start.getTime() - targetInterval.start.getTime();
+      const endX = end.getTime() - targetInterval.start.getTime();
+      const startR = startX / total;
+      const endR = endX / total;
+
+      const w = (endR - startR) * boxWidth;
+
+      sessionElem.style.width = `${w}px`;
+
+      const durationElem = $(`.session-tooltip.st-${session.id} .duration`)[0];
+      durationElem.innerText = `${durationStr(end - start)} 동안 연결`;
+    }
   }, 1000);
 }
 

@@ -203,6 +203,11 @@ body {
 
       &.current {
         border: 1px solid #44e7a3 !important;
+        box-shadow: 0 0 10px 1px #44e7a3;
+
+        .session-content .name {
+          color: #44e7a3;
+        }
       }
 
       .session-content {
@@ -310,6 +315,7 @@ body {
     align-items: center;
     transform: translate(-50%);
     top: 3px;
+    pointer-events: none;
 
     .curtime {
       display: flex;
