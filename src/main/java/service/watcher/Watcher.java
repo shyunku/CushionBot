@@ -28,14 +28,17 @@ public class Watcher {
     }
 
     public static void register(SseHandler handler) {
+        System.out.println("Client connected: " + handler.exchange.getRemoteAddress());
         clients.add(handler);
     }
 
     public static void unregister(SseHandler handler) {
+        System.out.println("Client disconnected: " + handler.exchange.getRemoteAddress());
         clients.remove(handler);
     }
 
     public static void sendData(SseResponse res) {
+        System.out.println("Sending data to " + clients.size() + " clients");
         synchronized (clients) {
             for (SseHandler client : clients) {
                 client.sendData(res);

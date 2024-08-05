@@ -11,7 +11,7 @@ import java.util.concurrent.Executors;
 
 public class SseHandler extends IntermediateHttpHandler {
     private static final ExecutorService executorService = Executors.newCachedThreadPool();
-    private HttpExchange exchange;
+    public HttpExchange exchange;
 
     @Override
     public void handle(HttpExchange exchange) throws IOException {
@@ -28,7 +28,6 @@ public class SseHandler extends IntermediateHttpHandler {
                 exchange.sendResponseHeaders(204, -1);
                 return;
             }
-            System.out.println("connected");
 
             Watcher.register(this);
 
