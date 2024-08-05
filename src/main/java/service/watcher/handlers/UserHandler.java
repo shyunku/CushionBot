@@ -37,7 +37,7 @@ public class UserHandler extends IntermediateHttpHandler {
             UserInfo userInfo = new UserInfo(member.getId(), member.getNickname(), member.getEffectiveName(), member.getUser().getEffectiveAvatarUrl());
             String dataJson = Util.ToJson(userInfo, false);
             exchange.getResponseHeaders().set("Content-Type", "application/json");
-            exchange.getResponseHeaders().set("Cache-Control", "max-age=3600");
+            exchange.getResponseHeaders().set("Cache-Control", "max-age=86400");
             exchange.sendResponseHeaders(200, dataJson.getBytes().length);
 
             OutputStream os = exchange.getResponseBody();

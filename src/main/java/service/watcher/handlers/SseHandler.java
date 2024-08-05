@@ -18,6 +18,10 @@ public class SseHandler extends IntermediateHttpHandler {
         exchange.getResponseHeaders().set("Connection", "keep-alive");
         exchange.sendResponseHeaders(200, 0);
 
+        if ("OPTIONS".equalsIgnoreCase(exchange.getRequestMethod())) {
+            return;
+        }
+
         Watcher.register(this);
 
         // 연결 유지
