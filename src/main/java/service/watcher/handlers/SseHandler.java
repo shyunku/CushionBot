@@ -9,7 +9,6 @@ import java.io.OutputStream;
 
 public class SseHandler extends IntermediateHttpHandler {
     private HttpExchange exchange;
-    private boolean isClosed = false;
 
     @Override
     public void handle(HttpExchange exchange) throws IOException {
@@ -28,15 +27,14 @@ public class SseHandler extends IntermediateHttpHandler {
         // 연결 유지
         try (OutputStream os = exchange.getResponseBody()) {
             while (true) {
-                if (isClosed) {
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    // 스레드 인터럽트가 발생하면 루프 종료
                     break;
                 }
-                Thread.sleep(500);
             }
-        } catch (InterruptedException e) {
-            isClosed = true;
         } finally {
-            System.out.println("SSE Connection closed");
             Watcher.unregister(this);
         }
     }
