@@ -20,7 +20,7 @@ function displayMainContent() {
   }
 
   mainContent.append(`
-        <div class="title">${guildData?.name ?? "Unknown"} (${intervalText})</div>
+        <div id="channel_title" class="title">${guildData?.name ?? "Unknown"} (${intervalText})</div>
         <div class="options">
             <div class="left">
                 <button class="btn" id="prev_day">1일 전</button>
@@ -51,6 +51,14 @@ function displayMainContent() {
           </div>
         </div>
     `);
+
+  const channelTitleElem = $("#channel_title")[0];
+  channelTitleElem.addEventListener("click", () => {
+    const route = "/channel/" + guildId;
+
+    // copy to clipboard
+    navigator.clipboard.writeText(window.location.origin + route);
+  });
 
   const mainAreaElem = $("#main_area");
   const segmentsElem = $("#segments");

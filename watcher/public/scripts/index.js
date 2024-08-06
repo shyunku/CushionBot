@@ -14,6 +14,11 @@ $(document).ready(async () => {
     }
   });
 
+  if (channelId != null) {
+    const sidebarElem = $(".sidebar")[0];
+    sidebarElem.style.display = "none";
+  }
+
   setTimeout(async () => {
     await loadData();
     startSSE();

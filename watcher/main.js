@@ -16,6 +16,15 @@ app.get("/", async (req, res) => {
   res.render("index", {
     botHost: process.env.BOT_SERVER_HOST ?? (await publicIpv4()) ?? "localhost",
     botPort: process.env.BOT_SERVER_PORT ?? "7918",
+    channelId: null,
+  });
+});
+
+app.get("/channel/:id", async (req, res) => {
+  res.render("index", {
+    botHost: process.env.BOT_SERVER_HOST ?? (await publicIpv4()) ?? "localhost",
+    botPort: process.env.BOT_SERVER_PORT ?? "7918",
+    channelId: req.params.id,
   });
 });
 
