@@ -57,7 +57,16 @@ function displayMainContent() {
     const route = "/channel/" + guildId;
 
     // copy to clipboard
-    navigator.clipboard.writeText(window.location.origin + route);
+    if (!!navigator.clipboard) {
+      navigator.clipboard.writeText(window.location.origin + route);
+    } else {
+      const el = document.createElement("textarea");
+      el.value = window.location.origin + route;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
+    }
   });
 
   const mainAreaElem = $("#main_area");
