@@ -185,9 +185,7 @@ function displayMainContent() {
   calculateSessions(userSessionMap);
   drawSessions();
 
-  if (currentTimeDisplayInterval != null) {
-    clearInterval(currentTimeDisplayInterval);
-  }
+  clearInterval(currentTimeDisplayInterval);
   currentTimeDisplayInterval = fastInterval(() => {
     const now = new Date();
     const elapsed = now.getTime() - targetInterval.start.getTime();
@@ -195,7 +193,7 @@ function displayMainContent() {
     const x = boxLeft + ratio * boxWidth;
 
     const timeElem = $("#time_display")[0];
-    timeElem.style.left = `${x}px`;
+    timeElem.style.left = `${x + 1}px`;
     timeElem.style.height = `${lsb.getBoundingClientRect().bottom - lsb.getBoundingClientRect().top}px`;
     const curTimeElem = $("#time_display .curtime")[0];
     // curTimeElem.style.left = `${x}px`;
@@ -370,7 +368,7 @@ function drawSessions() {
     const nextSession = session.next;
     const nextSessionDistance =
       nextSession != null ? ((nextSession.joinTime - session.leaveTime) * boxWidth) / total : Infinity;
-    const hideContent = w < 50 && nextSessionDistance < 50;
+    const hideContent = w < 100 && nextSessionDistance < 100;
 
     sessionsElem.append(`
             <div class="session ss-${session.id} ${
@@ -394,7 +392,7 @@ function drawSessions() {
                     <div class="name">${session.user.effectiveName ?? "Unknown"}</div>
                 </div>
                 <div class="channel-info">
-                    <div class="channel" style="color: ${color};">"${session.channelName}" 채널 (${session.id})</div>
+                    <div class="channel" style="color: ${color};">"${session.channelName}" 채널</div>
                 </div>
                 <div class="time-info">
                     <div class="time join">${dayjs(session.joinTime).format("YY.MM.DD HH:mm:ss")} 접속</div>
@@ -412,8 +410,15 @@ function drawSessions() {
 
     const sessionElem = $(`.session.ss-${session.id}`)[0];
     const tooltipElem = $(`.session-tooltip.st-${session.id}`)[0];
-    sessionElem.addEventListener("mouseover", () => {
+    sessionElem.addEventListener("mouseover", (e) => {
       tooltipElem.style.display = "flex";
+    });
+    sessionElem.addEventListener("mousemove", (e) => {
+      const box = mainAreaElem[0].getBoundingClientRect();
+      const x = e.clientX - box.left;
+      const y = e.clientY - box.top;
+      tooltipElem.style.left = `${x + 10}px`;
+      tooltipElem.style.top = `${y + 10}px`;
     });
     sessionElem.addEventListener("mouseout", () => {
       tooltipElem.style.display = "none";

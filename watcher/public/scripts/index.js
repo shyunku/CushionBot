@@ -14,14 +14,14 @@ $(document).ready(async () => {
     }
   });
 
-  await loadData();
-  startSSE();
+  setTimeout(async () => {
+    await loadData();
+    startSSE();
 
-  displaySidebar();
-
-  console.log("data", data);
-  console.log("guilds", guilds);
-  console.log("users", users);
+    console.log("data", data);
+    console.log("guilds", guilds);
+    console.log("users", users);
+  }, 500);
 });
 
 async function loadData() {
@@ -55,8 +55,11 @@ function startSSE() {
     const source = new EventSource(`http://${botHost}:${botPort}/sse`);
 
     // disconnect when the page is closed
-    window.addEventListener("beforeunload", () => {
-      source.close();
+    $(window).bind("beforeunload", (e) => {
+      if (source) {
+        console.log("sse closed");
+        source.close();
+      }
     });
 
     source.onmessage = function (event) {
