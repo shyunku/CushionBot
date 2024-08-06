@@ -39,10 +39,9 @@ public class SseHandler extends IntermediateHttpHandler {
                         try {
                             os.write(":\n\n".getBytes()); // 주기적으로 ping을 보내 연결을 유지
                             os.flush();
-                            Thread.sleep(1000);
+                            Thread.sleep(300);
                         } catch (IOException e) {
-                            Thread.currentThread().interrupt();
-                            closeConnection();
+                            break;
                         }
                     }
                 } catch (InterruptedException e) {
@@ -80,7 +79,6 @@ public class SseHandler extends IntermediateHttpHandler {
             try {
                 os.close();
             } catch (IOException e) {
-                e.printStackTrace();
             }
             Watcher.unregister(this);
         }

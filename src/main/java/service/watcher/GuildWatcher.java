@@ -118,15 +118,37 @@ public class GuildWatcher {
                     accessSessions.put(guildId, new HashMap<>());
                 }
 
+                Map<String, String> joiners = new HashMap<>();
+
                 // already joined members
                 guild.getVoiceChannels().forEach(voiceChannel -> {
                     voiceChannel.getMembers().forEach(member -> {
+                        joiners.put(member.getId(), voiceChannel.getId());
                         List<AccessSession> userSessions = accessSessions.get(guildId).computeIfAbsent(member.getId(), k -> new ArrayList<>());
                         AccessSession lastSession = getLastSession(userSessions);
                         if (lastSession == null || lastSession.isComplete()) {
                             addAccessLog(AccessType.JOIN, guildId, member.getId(), voiceChannel.getId());
                         }
                     });
+                });
+
+                // left members
+                accessSessions.get(guildId).forEach((userId, sessions) -> {
+                    AccessSession lastSession = getLastSession(sessions);
+                    if (!joiners.containsKey(userId)) {
+                        // disconnected
+                        if (lastSession != null && !lastSession.isComplete()) {
+                            addAccessLog(AccessType.LEAVE, guildId, userId, lastSession.getChannelId());
+                        }
+                    } else {
+                        // connecting
+                        String voiceChannelId = joiners.get(userId);
+                        if (lastSession == null || lastSession.isComplete()) {
+                            addAccessLog(AccessType.JOIN, guildId, userId, voiceChannelId);
+                        } else if (!lastSession.isComplete() && !lastSession.getChannelId().equals(voiceChannelId)) {
+                            addAccessLog(AccessType.MOVED, guildId, userId, voiceChannelId);
+                        }
+                    }
                 });
             }
         } catch (Exception e) {
