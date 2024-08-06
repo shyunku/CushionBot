@@ -39,9 +39,10 @@ public class SseHandler extends IntermediateHttpHandler {
                         try {
                             os.write(":\n\n".getBytes()); // 주기적으로 ping을 보내 연결을 유지
                             os.flush();
-                            Thread.sleep(15000); // 15초마다 ping 전송
+                            Thread.sleep(1000);
                         } catch (IOException e) {
                             Thread.currentThread().interrupt();
+                            closeConnection();
                         }
                     }
                 } catch (InterruptedException e) {
