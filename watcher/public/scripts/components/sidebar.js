@@ -70,8 +70,8 @@ function displaySidebar() {
       intervals.add(start, end);
     }
 
-    console.log(todaySessions);
-    console.log(intervals.toArray());
+    // console.log(todaySessions);
+    // console.log(intervals.toArray());
     const intervalSlice = intervals.toSlice();
     const dataPoints = [];
     for (let i = 0; i < intervalSlice.length; i++) {

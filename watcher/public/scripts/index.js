@@ -17,6 +17,7 @@ $(document).ready(async () => {
   if (channelId != null) {
     const sidebarElem = $(".sidebar")[0];
     sidebarElem.style.display = "none";
+    selectedGuildId = channelId;
   }
 
   setTimeout(async () => {

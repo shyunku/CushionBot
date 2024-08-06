@@ -18,8 +18,8 @@
 
       const botHost = "<%= botHost %>";
       const botPort = "<%= botPort %>";
-      let channelId = "<%= channelId %>";
-      if (channelId == "null") channelId = null;
+      let channelId = "<%= channelId %>".trim();
+      if (channelId == "null" || channelId == "") channelId = null;
     </script>
     <script src="/scripts/util.js"></script>
     <script src="/scripts/variable.js"></script>
