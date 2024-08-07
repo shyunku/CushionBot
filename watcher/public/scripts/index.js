@@ -37,7 +37,9 @@ async function loadData() {
     localStorage.setItem("selected_guild_id", selectedGuildId);
   }
 
-  for (let guildId in data) {
+  const guildIds = Object.keys(data);
+  for (let i = 0; i < guildIds.length; i++) {
+    const guildId = guildIds[i];
     if (guilds[guildId] == null) {
       const guildData = await httpGet(`/guild/${guildId}`);
       guilds[guildId] = guildData;
@@ -46,9 +48,17 @@ async function loadData() {
     const userSessions = data[guildId];
     for (let userId in userSessions) {
       if (users[userId] != null) continue;
-      const userData = await httpGet(`/user/${guildId}/${userId}`);
+      let userData = null;
+      try {
+        userData = await httpGet(`/user/${guildId}/${userId}`);
+      } catch (err) {
+        // console.error("Error loading user data", err);
+        userData = { id: userId, effectiveName: "Unknown", nickname: "Unknown", avatarUrl: null };
+      }
       users[userId] = userData;
     }
+
+    // console.log(`loading data for guild ${guildId}, (${i + 1}/${guildIds.length})`);
   }
   displaySidebar();
   if (selectedGuildId != null) {
