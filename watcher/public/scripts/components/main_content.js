@@ -2,7 +2,7 @@ var sessionList = [];
 var userSeats = {};
 var updateSessionsInterval = null;
 
-const boxLeftPad = 16;
+const boxLeftPad = 30;
 
 function displayMainContent() {
   const guildId = selectedGuildId;
@@ -21,6 +21,11 @@ function displayMainContent() {
 
   mainContent.append(`
         <div id="channel_title" class="title">${guildData?.name ?? "Unknown"} (${intervalText})</div>
+        <div class="modes">
+            <button class="btn ${mode === Modes.INTERVAL ? "selected" : ""}" id="mode_interval">일반</button>
+            <button class="btn ${mode === Modes.DAY ? "selected" : ""}" id="mode_day">일간</button>
+            <button class="btn ${mode === Modes.WEEK ? "selected" : ""}" id="mode_week">주간</button>
+        </div>
         <div class="options">
             <div class="left">
                 <button class="btn" id="prev_day">1일 전</button>
@@ -51,6 +56,14 @@ function displayMainContent() {
           </div>
         </div>
     `);
+
+  const modeBtns = $(".modes .btn");
+  modeBtns.each((i, elem) => {
+    elem.addEventListener("click", () => {
+      modeBtns.removeClass("selected");
+      elem.classList.add("selected");
+    });
+  });
 
   const channelTitleElem = $("#channel_title")[0];
   channelTitleElem.addEventListener("click", () => {
@@ -102,7 +115,7 @@ function displayMainContent() {
     }
   }
 
-  const format = isHourUnit ? "H시" : isDayUnit ? "M/DD" : "M.DD H시";
+  let format = isHourUnit ? "H시" : isDayUnit ? "M/DD" : "M.DD H시";
   const timeUnit = hourUnit * 60 * 60 * 1000;
   const startTime = targetInterval.start.getTime();
   const endTime = targetInterval.end.getTime();
@@ -125,6 +138,9 @@ function displayMainContent() {
     const x = boxLeft + r * boxWidth;
     const isDay = i % (24 * 60 * 60 * 1000) === 15 * 60 * 60 * 1000;
     const isMonth = dayjs(i).date() === 1 && dayjs(i).hour() === 0;
+    if (isDay) format = "M/DD";
+    else if (isMonth) format = "YY/MM";
+    else format = "H시";
     segmentsElem.append(`
       <div class="segment ${isDay ? "u-day" : ""} ${isMonth ? "u-month" : ""}" style="left: ${x}px; top: ${boxTop}px;">
           <div class="segment-label">${dayjs(i).format(format)}</div>
@@ -228,12 +244,12 @@ function calculateSessions(userSessionMap) {
     for (let i = 0; i < userSessions.length; i++) {
       const session = { ...userSessions[i] };
       session.user = user;
-      session.id = hashStrAsStr(userId + "-" + session.joinTime);
+      session.id = Crypto.hash(userId + "-" + session.joinTime);
       session.joinTimeStr = dayjs(session.joinTime).format("YY.MM.DD HH:mm:ss");
       session.leaveTimeStr = session.leaveTime ? dayjs(session.leaveTime).format("YY.MM.DD HH:mm:ss") : null;
 
       const start = new Date(session.joinTime);
-      const end = session.leaveTime !== 0 ? new Date(session.leaveTime) : new Date();
+      const end = session.leaveTime !== 0 ? new Date(session.leaveTime) : new Date(now);
 
       const startEqual = isInInterval(start);
       const endEqual = end != null && isInInterval(end);
@@ -271,7 +287,7 @@ function calculateSessions(userSessionMap) {
     }
   }
 
-  sessionList = sessions.sort((s1, s2) => s1.joinTime - s2.joinTime);
+  sessionList = sessions.sort((s1, s2) => s2.leaveTime - s1.leaveTime);
   const seatUsers = {};
   userSeats = {};
   const maxYindex = 100;
@@ -302,19 +318,34 @@ function calculateSessions(userSessionMap) {
     const lastSession1 = s1[s1.length - 1];
     const lastSession2 = s2[s2.length - 1];
 
+    if (lastSession1.online !== lastSession2.online) {
+      // 온라인인 사람이 먼저
+      return lastSession2.online ? 1 : -1;
+    }
+
     const lastLeaveTime1 = lastSession1.leaveTime;
     const lastLeaveTime2 = lastSession2.leaveTime;
     if (lastLeaveTime1 !== lastLeaveTime2) {
+      // 마지막 퇴장 시간이 늦은 순서대로
       return lastLeaveTime2 - lastLeaveTime1;
     }
 
+    const lastSessionDuration1 = lastSession1.leaveTime - lastSession1.joinTime;
+    const lastSessionDuration2 = lastSession2.leaveTime - lastSession2.joinTime;
+    if (lastSessionDuration1 !== lastSessionDuration2) {
+      // 마지막 세션의 지속 시간이 긴 순서대로
+      return lastSessionDuration2 - lastSessionDuration1;
+    }
+
     if (lastSession1.channelName !== lastSession2.channelName) {
+      // 마지막 세션의 채널 이름이 사전 순서대로
       return (lastSession1.channelName ?? "Unknown").localeCompare(lastSession2.channelName ?? "Unknown");
     }
 
     const duration1 = s1.reduce((acc, cur) => acc + (cur.leaveTime - cur.joinTime), 0);
     const duration2 = s2.reduce((acc, cur) => acc + (cur.leaveTime - cur.joinTime), 0);
     if (duration1 !== duration2) {
+      // 전체 세션의 지속 시간이 긴 순서대로
       return duration2 - duration1;
     }
 
@@ -347,6 +378,8 @@ function calculateSessions(userSessionMap) {
       }
     }
   }
+
+  console.log(`user session calculated`, { userSeats, sortedUserIds });
 }
 
 function drawSessions() {
@@ -373,7 +406,7 @@ function drawSessions() {
 
     const x = boxLeft + startR * boxWidth;
     const yIndex = userSeats[session.user.id];
-    const y = boxTop + 15 + (yIndex + 1) * 50;
+    const y = boxTop + 15 + (yIndex + 1) * 42;
     const w = (endR - startR) * boxWidth;
     const color = Color.generateRandomColorWithSeed(session.channelName ?? "Unknown")
       .adjustSaturation(0.8)
@@ -388,8 +421,8 @@ function drawSessions() {
     const hideContent = w < 100 && nextSessionDistance < 100;
 
     sessionsElem.append(`
-            <div class="session ss-${session.id} ${
-      session.online ? "current" : ""
+            <div class="session ss-${session.id} ${session.online ? "current" : ""} ${session.isLast ? "last" : ""} ${
+      hideContent ? "hide" : ""
     }" style="left: ${x}px; top: ${y}px; width: ${w}px; background-color: ${color};">
                 <div class="session-content">
                     ${

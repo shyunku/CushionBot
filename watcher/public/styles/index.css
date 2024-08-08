@@ -1,5 +1,6 @@
 html,
-body {
+body,
+#root {
   height: 100%;
   margin: 0;
   padding: 0;
@@ -8,14 +9,14 @@ body {
   overflow: hidden;
 }
 
-#watcher {
+#home {
   display: flex;
   width: 100%;
   height: 100%;
   overflow: hidden;
 }
 
-.sidebar {
+#sidebar {
   display: flex;
   flex-direction: column;
   width: 280px;
@@ -111,7 +112,8 @@ body {
     }
   }
 
-  .options {
+  .options,
+  .modes {
     display: flex;
     justify-content: space-between;
     margin-bottom: 15px;
@@ -132,6 +134,22 @@ body {
 
       &:focus {
         outline: none;
+      }
+    }
+  }
+
+  .modes {
+    display: flex;
+    justify-content: flex-start;
+    margin-bottom: 10px;
+
+    button {
+      margin-right: 5px;
+
+      &.selected,
+      &:hover {
+        border: 1px solid #44e7a3;
+        color: #44e7a3;
       }
     }
   }
@@ -204,7 +222,7 @@ body {
           height: 100%;
           width: 0;
           transform: translate(-50%);
-          border-right: 1px solid rgba(255, 255, 255, 0.2);
+          border-right: 1px solid rgba(255, 255, 255, 0.1);
         }
       }
     }
@@ -227,14 +245,25 @@ body {
       &.current {
         border: 1px solid #44e7a3 !important;
         box-shadow: 0 0 10px 1px #44e7a3;
+        z-index: 2;
 
-        .session-content .name {
-          color: #44e7a3;
+        .session-content {
+          pointer-events: auto;
+
+          .name {
+            color: #44e7a3;
+          }
+        }
+      }
+
+      &:not(.hide) {
+        .session-content {
+          pointer-events: auto;
         }
       }
 
       &:not(.current) {
-        opacity: 0.8;
+        opacity: 0.7;
       }
 
       &:hover {
@@ -255,6 +284,7 @@ body {
         text-overflow: ellipsis;
         white-space: nowrap;
         color: white;
+        pointer-events: none;
 
         .icon {
           min-width: 20px;

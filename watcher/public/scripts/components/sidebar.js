@@ -1,3 +1,37 @@
+import UI from "../utils/ui.js";
+
+class Sidebar extends UI {
+  constructor(props) {
+    super(props);
+  }
+
+  afterUpdate() {
+    console.log(this.states.data);
+  }
+
+  define() {
+    console.log(this.states.data);
+    return `
+      <div id="sidebar">
+        <div class="title">서버 연결 현황</div>
+        <div id="today">${Object.values(this.states.data ?? {}).map((guild) => {
+          return `
+            <div class="today-item server-${guild.id}">
+              <div class="header">
+                <img src="${guild.iconUrl}" alt="Server Icon" class="icon" />
+                <div class="name">${guild.name}</div>
+              </div>
+              <div class="content">
+                <canvas id="today_chart_${guild.id}" class="today-chart" />
+              </div>
+            </div>
+          `;
+        })}</div>
+      </div>
+    `;
+  }
+}
+
 function displaySidebar() {
   const todayElem = $("#today");
   todayElem.empty();
@@ -156,3 +190,5 @@ function displaySidebar() {
     });
   }
 }
+
+export default Sidebar;

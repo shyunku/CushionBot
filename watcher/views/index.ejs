@@ -21,19 +21,25 @@
       let channelId = "<%= channelId %>".trim();
       if (channelId == "null" || channelId == "") channelId = null;
     </script>
-    <script src="/scripts/util.js"></script>
-    <script src="/scripts/variable.js"></script>
-    <script src="/scripts/components/sidebar.js"></script>
-    <script src="/scripts/components/main_content.js"></script>
-    <script src="/scripts/index.js"></script>
+    <!-- <script src="/scripts/utils/color.js"></script>
+    <script src="/scripts/utils/common.js"></script>
+    <script src="/scripts/utils/crypto.js"></script>
+    <script src="/scripts/utils/datetime.js"></script>
+    <script src="/scripts/utils/http.js"></script>
+    <script src="/scripts/utils/platform.js"></script> -->
+
+    <!-- <script src="/scripts/variable.js"></script> -->
+    <!-- <script src="/scripts/components/sidebar.js"></script> -->
+    <!-- <script src="/scripts/components/main_content.js"></script> -->
+    <script src="/scripts/index.js" type="module"></script>
   </head>
   <body>
-    <div id="watcher">
+    <!-- <div id="watcher">
       <div class="sidebar">
         <div class="title">서버 연결 현황</div>
         <div id="today"></div>
       </div>
       <div id="main_content"></div>
-    </div>
+    </div> -->
   </body>
 </html>
