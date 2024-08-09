@@ -18,7 +18,24 @@ class Home extends UI {
     this.startSSE();
   }
 
+  onGuildIdSelect = (guildId) => {
+    localStorage.setItem("selected_guild_id", guildId);
+    this.setState("selectedGuildId", guildId);
+  };
+
+  define() {
+    return `
+      <div id="home">
+        <Sidebar $data={$data} 
+                 $selectedGuildId={$selectedGuildId}
+                 $onGuildIdSelect={this.onGuildIdSelect}/>
+        <div id="main_content"></div>
+      </div>
+    `;
+  }
+
   async loadData() {
+    console.log("update");
     this.setState("data", async (prev) => {
       const data = { ...prev };
       const rawData = await Http.get("/data");
@@ -73,15 +90,6 @@ class Home extends UI {
     } else {
       console.log("SSE not supported in this browser.");
     }
-  }
-
-  define() {
-    return `
-      <div id="home">
-        <Sidebar data={this.states.data}/>
-        <div id="main_content"></div>
-      </div>
-    `;
   }
 }
 

@@ -1,6 +1,9 @@
 import { deepCompare, trimAndClearString } from "./common.js";
 import Crypto from "./crypto.js";
 import OrderedHashMap from "./data_structures/OrderedHashMap.js";
+import { HtmlParser, VirtualElement } from "./html.js";
+
+const DebugMode = false;
 
 const NativeHTMLTags = [
   "html",
@@ -117,52 +120,83 @@ const NativeHTMLTags = [
   "menu",
 ];
 
-const componentRootRegex = /^<(\w+)(\s+[^>]+)?>([\s\S]*?)<\/\1>$|^<(\w+)(\s+[^>]+)?\/>$/g;
-const componentRootDetailRegex = /^<(\w+)(\s+[^>]+)?>([\s\S]*?)<\/\1>$|^<(\w+)(\s+[^>]+)?\/>$/i;
-const componentRegex = /<(\w+)(\s+[^>]+)?>([\s\S]*?)<\/\1>|<(\w+)(\s+[^>]+)?\/>/g;
-const componentDetailRegex = /<(\w+)(\s+[^>]+)?>([\s\S]*?)<\/\1><?|<(\w+)(\s+[^>]+)?\/>/i;
-const attrRegex = /(\w+)=\{([^}]+)\}|(\w+)=\"([^"]+)\"/g;
-const attrDetailRegex = /(\w+)=\{([^}]+)\}|(\w+)=\"([^"]+)\"/i;
-
 export default class UI {
   static root = null;
   static components = {};
 
   constructor(
     props = {
-      id: null,
       tag: null,
       key: null,
       initialState: {},
+      parent: null,
       definition: null,
+      template: null,
       native: false,
-      virtual: false,
       parentNode: null,
+      layer: 0,
     }
   ) {
     this.tag = props?.tag ?? null;
-    this.id = props?.id ?? null;
     this.key = props?.key ?? null;
+
+    this.uuid = Crypto.uuid();
+    this.layer = props?.layer ?? 0;
+
+    this.native = props?.native ?? false;
+    this.mounted = false;
+    this.active = true;
+    this.template = props?.template ?? null;
+    this.lastParsedTree = null;
+    this.parser = new HtmlParser((value) => {
+      try {
+        value = value.replace(/\$/g, "this.states.");
+        // console.log("eval", value, this.states);
+        return eval(value);
+      } catch (e) {
+        if (this.native) {
+          return this.parent.parser.executor(value);
+        } else {
+          console.error(`Error parsing value: ${value}`);
+          throw e;
+        }
+      }
+    });
+
+    this.node = null;
+    this.parent = props?.parent ?? null; // indicates the parent component (not the parent node)
+    this.parentNode = props?.parentNode ?? document.body;
+    this.children = new OrderedHashMap();
+
+    this.parentStates = this.native ? props.parent.states : null;
     this.states = new Proxy(props?.initialState ?? {}, {
       set: (target, key, value) => {
-        this.rerender(target, key, value);
+        const prevState = { ...target };
+        let newState = null;
+        if (key === "replace") newState = { ...value };
+        else newState = { ...target, [key]: value };
+
+        if (key === "replace") {
+          for (let key in value) {
+            target[key] = value[key];
+          }
+        } else {
+          target[key] = value;
+        }
+
+        if (!this.stateReadLock) {
+          this.rerender(prevState, newState);
+        }
+
         return true;
       },
     });
+    this.stateReadLock = false;
 
-    this.uuid = Crypto.uuid();
-
-    this.native = props?.native ?? false;
-    this.virtual = props?.virtual ?? false;
-    this.mounted = false;
-
-    this.node = null;
-    this.parentNode = props?.parentNode ?? document.body;
-    this.children = new OrderedHashMap();
-    this.inheritedDefinition = props?.definition ?? null;
-    this.definition = trimAndClearString(this.define() ?? this.inheritedDefinition);
-
-    // console.debug(`created ${this.id}`, this);
+    if (window.components == null) {
+      window.components = {};
+    }
+    window.components[this.uuid] = this;
   }
 
   shouldRerender(prevState, newState) {
@@ -171,11 +205,15 @@ export default class UI {
   afterMount() {}
   afterUpdate() {}
   beforeUnmount() {}
-
   setStates(newState) {
     this.states.replace = { ...newState };
   }
-
+  setSilentStates(newState) {
+    // console.log(this.uuid, "silent set", newState);
+    this.stateReadLock = true;
+    this.states.replace = { ...newState };
+    this.stateReadLock = false;
+  }
   async setState(key, newValue) {
     if (typeof newValue === "function") {
       this.states[key] = await newValue(this.states[key]);
@@ -184,187 +222,138 @@ export default class UI {
     }
   }
 
-  rerender(target, key, value) {
-    const prevState = { ...target };
-    let newState = null;
-    if (key === "replace") {
-      console.debug(`[${this.uuid}] rerender requested for replace value:`, value);
-      newState = { ...value };
-      for (let key in value) {
-        target[key] = value[key];
-      }
-    } else {
-      console.debug(`[${this.uuid}] rerender requested for ${key} with value:`, value);
-      newState = { ...target, [key]: value };
-      target[key] = value;
-    }
+  rerender(prevState, newState) {
+    this.log(`>> [${this.uuid}] rerender requested for replace value:`, prevState, "->", newState);
 
     if (!this.shouldRerender(prevState, newState)) return;
     this.render();
   }
 
-  render() {
-    // console.log(this.define(), this.inheritedDefinition);
-    this.definition = trimAndClearString(this.define() ?? this.inheritedDefinition);
-    console.debug("=== Rendering", this.id, this.definition, this.states);
+  render(tree = this.parseTemplate()) {
+    this.lastParsedTree = tree;
+    this.log(`======================= Render ${this.uuid} =======================`, tree);
+    this.log("> Parsed Tree", tree, this.define());
 
-    // parse definition
-    const parsed = this.parseDefinition();
-    if (parsed == null) return;
-
-    const { className, props, children } = parsed;
-    console.debug("== Parsed", parsed);
-
-    // check if it's created
+    // mount if not mounted
+    let newlyMounted = false;
     if (!this.mounted) {
-      if (UI.isComponent(className)) {
-        // wrapper?
-        throw new Error("Component root must be a native HTML tag");
-      }
-      this.node = this.mount(className, this.native ? this.states : props);
-    }
-
-    // render children
-    for (let childIndex = 0; childIndex < children.length; childIndex++) {
-      const child = children[childIndex];
-      // console.debug("rendering child", child);
-      if (typeof child === "string") {
-        this.node.innerHTML = child;
-        continue;
-      }
-
-      const { className: childClassName, props: childProps, rawChildren: childRawChildren } = child;
-      // key 추론
-      const key =
-        childProps?.key ?? childProps?.id != null
-          ? Crypto.hash(childProps.id)
-          : Crypto.hash(`${this.uuid}-${childIndex}`);
-
-      let component = this.children.get(key);
-      if (component == null) {
-        component = this.create(childClassName, childProps, childRawChildren, childIndex);
-        this.children.add(component.key, component);
-      } else {
-        console.debug(`Component ${component.id} already exists`);
-      }
-
-      // console.log(component);
-
-      if (!component.mounted || component.shouldRerender()) {
-        component.inheritedDefinition = childRawChildren;
-        component.setStates({ ...component.states, ...childProps });
-        // component.render(this.node, this);
-      } else {
-        console.log(`Skipping rendering ${component.id}`);
-      }
-    }
-
-    this.afterUpdate();
-  }
-
-  parseDefinition() {
-    if (this.definition == null) return null;
-    const componentMatches = this.definition.match(componentRootRegex);
-    if (componentMatches != null) {
-      return this.parseComponent(true, this.definition);
-    } else if (this.native) {
-      return { className: this.tag, props: {}, children: [this.definition] };
+      if (UI.isComponent(tree.tag)) throw new Error("Component root must be a native HTML tag");
+      this.stateReadLock = true;
+      this.mount(tree.tag, tree.props);
+      this.stateReadLock = false;
+      newlyMounted = true;
     } else {
-      console.error("Invalid definition", this.definition);
+      this.applyProps(tree.props);
     }
-    return null;
-  }
 
-  parseComponent(isWrapper = false, raw) {
-    const regex = isWrapper ? componentRootRegex : componentRegex;
-    const detailRegex = isWrapper ? componentRootDetailRegex : componentDetailRegex;
+    // inactive all children
+    this.children.foreach((child, key) => {
+      child.active = false;
+    });
 
-    const componentMatches = raw.match(regex);
-    if (componentMatches != null) {
-      const componentInnerMatches = raw.match(detailRegex);
-      let className = componentInnerMatches[1] ?? componentInnerMatches[4];
-      let rawProps = componentInnerMatches[2] ?? componentInnerMatches[5] ?? null;
-      let rawChildren = componentInnerMatches[3]?.trim() ?? null;
+    // mount children if not mounted
+    const children = tree.children;
+    if (Array.isArray(children)) {
+      // this.log("children", children);
 
-      let props = {};
-      const attrMatches = rawProps?.match(attrRegex) ?? [];
-      for (let attrMatch of attrMatches) {
-        const attrInnerMatches = attrMatch.match(attrDetailRegex);
-        const key = attrInnerMatches[1] ?? attrInnerMatches[3];
-        const value = attrInnerMatches[2] != null ? eval(`${attrInnerMatches[2]}`) : attrInnerMatches[4];
-        props[key] = value;
-      }
+      for (let childIndex = 0; childIndex < children.length; childIndex++) {
+        const child = children[childIndex];
+        const key = child.props?.key ?? Crypto.hash(`${this.uuid}-${childIndex}`);
+        let childComponent = this.children.get(key);
+        if (childComponent == null) {
+          // create new component
+          const newComponent = this.create(child.tag, child.props);
+          newComponent.key = key;
 
-      const children = [];
-      if (rawChildren != null && !this.virtual) {
-        const childrenMatches = rawChildren.match(componentRegex);
-        if (childrenMatches != null) {
-          let index = 0;
-          for (let match of childrenMatches) {
-            const detailChildMatches = match.match(componentDetailRegex);
-            const childClassName = detailChildMatches[1] ?? detailChildMatches[4];
-            const childRawProps = detailChildMatches[2] ?? detailChildMatches[5] ?? null;
-
-            let childProps = {};
-            const childAttrMatches = childRawProps?.match(attrRegex) ?? [];
-            for (let attrMatch of childAttrMatches) {
-              const attrInnerMatches = attrMatch.match(attrDetailRegex);
-              const key = attrInnerMatches[1] ?? attrInnerMatches[3];
-              const value = attrInnerMatches[2] != null ? eval(`${attrInnerMatches[2]}`) : attrInnerMatches[4];
-              childProps[key] = value;
-            }
-
-            let child = null;
-            if (UI.isComponent(childClassName)) {
-              const virtualComponent = this.create(childClassName, {}, null, index, true);
-              child = virtualComponent.parseDefinition();
-              child.className = childClassName;
-            } else {
-              child = this.parseComponent(true, match);
-            }
-
-            if (child != null) {
-              child.props = { ...child.props, ...childProps };
-              children.push(child);
-            }
-
-            index++;
-          }
+          this.children.add(key, newComponent);
+          childComponent = newComponent;
         }
-      }
 
-      return { className, props, children: children, rawChildren: rawChildren };
+        childComponent.setSilentStates(child.props);
+
+        const childRender = () => {
+          if (childComponent.native) {
+            childComponent.render(child);
+          } else {
+            // childComponent.template = child.children;
+            childComponent.render();
+          }
+        };
+
+        childRender();
+        childComponent.active = true;
+      }
     } else {
+      if (this.node.innerHTML !== children) this.node.innerHTML = children;
+    }
+
+    // unmount inactive children
+    this.children.foreach((child, key) => {
+      if (!child.active) {
+        child.unmount();
+        this.children.remove(key);
+      }
+    });
+
+    if (newlyMounted) {
+      this.afterMount();
+    } else {
+      this.afterUpdate();
+    }
+    this.log(`======================= Render ${this.uuid} Done =======================`, tree);
+  }
+
+  /**
+   * @returns {VirtualElement}
+   */
+  parseTemplate() {
+    const template = this.define();
+    if (template == null) {
       return null;
     }
+
+    const parseTree = this.parser.parseHtml(template);
+    if (Array.isArray(parseTree.children)) {
+      const size = parseTree.children.length;
+      if (size > 1) throw new Error("Component element must be a single element");
+    } else if (typeof parseTree.children === "string") {
+      throw new Error("Component element must not be string");
+    } else {
+      throw new Error("Invalid tree structure");
+    }
+    return parseTree.children[0];
   }
 
-  create(className, props, definition = null, index = 0, virtual = false) {
+  isTreeUpdated() {
+    const lastTree = { ...this.lastParsedTree };
+    const currentTree = this.parseTemplate();
+    return !deepCompare(lastTree, currentTree);
+  }
+
+  create(className, props) {
     if (!UI.isComponent(className) && !UI.isNativeHTMLTag(className)) {
       throw new Error(`Component ${className} is not registered`);
     }
 
-    // console.log("create", className, props);
+    this.log(`> Create Component`, className, props);
 
     const native = UI.isNativeHTMLTag(className);
     const Component = UI.components[className] ?? NativeHTMLComponent;
-    const id = props?.id ?? null;
-    delete props.id;
+    const parent = this.native ? this.parent : this;
 
     return new Component({
-      ...props,
-      id,
-      key: id != null ? Crypto.hash(id) : Crypto.hash(`${this.uuid}-${index}`),
-      virtual,
-      definition,
-      initialState: props,
+      key: props?.key ?? null,
       tag: native ? className : null,
+      initialState: props,
       parentNode: this.node,
+      parent,
       native,
+      layer: this.layer + 1,
     });
   }
 
   unmount() {
+    this.log(`> unmount`, this);
     this.beforeUnmount();
     for (let child of this.children) {
       child.unmount();
@@ -375,22 +364,43 @@ export default class UI {
   }
 
   mount(tag, props) {
-    console.debug(`mounting ${tag} with props`, props, this);
+    this.log(`> mount ${tag} with props`, props, this);
     const node = document.createElement(tag);
+    this.node = node;
 
-    if (this.id != null) node.id = this.id;
-    for (let key in props) {
-      if (key === "key" || key === "id") continue;
-      node.setAttribute(key, props[key]);
-    }
+    if (props?.id != null) node.id = props?.id;
+    this.applyProps(props);
+    node.setAttribute("data-uuid", this.uuid);
     this.parentNode.appendChild(node);
     this.mounted = true;
-    this.afterMount();
     return node;
   }
 
+  applyProps(props) {
+    for (let key in props) {
+      if (key.startsWith("$")) continue;
+      if (key.startsWith("on")) {
+        this.node.addEventListener(key.slice(2).toLowerCase(), (...args) => {
+          const func = props[key] ?? null;
+          func.call(this, ...args);
+        });
+        continue;
+      }
+      this.node.setAttribute(key, props[key]);
+    }
+  }
+
   define() {
-    return null;
+    const attributes = Object.keys(this.states)
+      .filter((key) => !key.startsWith("$"))
+      .map((key) => ` ${key}={${JSON.stringify(this.states[key])}}`)
+      .join("");
+    return `<${this.tag} ${attributes}>${this.template ?? ""}</${this.tag}>`;
+  }
+
+  log(...args) {
+    if (!DebugMode) return;
+    console.debug("\t".repeat(this.layer), ...args);
   }
 
   /* ------------------------------------ static functions ------------------------------------ */
@@ -402,8 +412,9 @@ export default class UI {
     return NativeHTMLTags.includes(tag);
   }
 
-  static $createRoot(definition) {
-    const root = new UI({ id: "root", definition: `<div id="root">${definition}</div>` });
+  static $createRoot(template) {
+    const root = new UI({ tag: "div", id: "root" });
+    root.define = () => `<div id="root">${template}</div>`;
     root.isRoot = true;
     return root;
   }
@@ -427,10 +438,7 @@ class NativeHTMLComponent extends UI {
   }
 
   shouldRerender(prevState, newState) {
-    return true || !deepCompare(prevState, newState);
-  }
-
-  define() {
-    return null;
+    console.log("should rerender", prevState, newState, !deepCompare(prevState, newState));
+    return !deepCompare(prevState, newState);
   }
 }

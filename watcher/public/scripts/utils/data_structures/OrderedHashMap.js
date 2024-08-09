@@ -40,4 +40,10 @@ export default class OrderedHashMap {
   toArray() {
     return this.keys.map((key) => this.map.get(key));
   }
+
+  foreach(callback) {
+    for (let key of this.keys) {
+      callback(this.map.get(key), key);
+    }
+  }
 }

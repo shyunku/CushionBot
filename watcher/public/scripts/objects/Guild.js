@@ -11,6 +11,14 @@ export default class Guild {
     this.users = {};
   }
 
+  get connectedUserCount() {
+    return Object.keys(this.users).reduce((acc, userId) => {
+      const user = this.users[userId];
+      const online = user.sessions.some((session) => session.online);
+      return acc + (online ? 1 : 0);
+    }, 0);
+  }
+
   async updateSessions(userSessions) {
     for (let userId in userSessions) {
       let user = this.users[userId];
@@ -34,5 +42,9 @@ export default class Guild {
     guild.memberCount = guildData.memberCount;
 
     return guild;
+  }
+
+  toString() {
+    return JSON.stringify(this);
   }
 }

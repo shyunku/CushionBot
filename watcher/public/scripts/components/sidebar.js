@@ -1,3 +1,4 @@
+import { fastInterval } from "../utils/common.js";
 import UI from "../utils/ui.js";
 
 class Sidebar extends UI {
@@ -5,28 +6,29 @@ class Sidebar extends UI {
     super(props);
   }
 
+  afterMount() {
+    console.log(this);
+  }
+
   afterUpdate() {
-    console.log(this.states.data);
+    // console.log(this.states);
   }
 
   define() {
-    console.log(this.states.data);
     return `
       <div id="sidebar">
         <div class="title">서버 연결 현황</div>
-        <div id="today">${Object.values(this.states.data ?? {}).map((guild) => {
-          return `
-            <div class="today-item server-${guild.id}">
-              <div class="header">
-                <img src="${guild.iconUrl}" alt="Server Icon" class="icon" />
-                <div class="name">${guild.name}</div>
-              </div>
-              <div class="content">
-                <canvas id="today_chart_${guild.id}" class="today-chart" />
-              </div>
-            </div>
-          `;
-        })}</div>
+        <div id="today">
+          ${Object.keys(this.states.data ?? {})
+            .map((guildId) => {
+              return `
+              <TodayItem $guild={$data?.["${guildId}"]} 
+                         $selected={$selectedGuildId == "${guildId}"}
+                         $onGuildIdSelect={$onGuildIdSelect}/>
+              `;
+            })
+            .join("")}
+        </div>
       </div>
     `;
   }
