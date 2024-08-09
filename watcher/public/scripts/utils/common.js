@@ -25,3 +25,7 @@ export function trimAndClearString(str) {
   if (result.length === 0) return str;
   return result;
 }
+
+export function isClass(v) {
+  return typeof v === "function" && /^\s*class\s+/.test(v.toString());
+}

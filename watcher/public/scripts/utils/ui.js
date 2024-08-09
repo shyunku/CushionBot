@@ -1,4 +1,4 @@
-import { deepCompare, trimAndClearString } from "./common.js";
+import { deepCompare, isClass, trimAndClearString } from "./common.js";
 import Crypto from "./crypto.js";
 import OrderedHashMap from "./data_structures/OrderedHashMap.js";
 import { HtmlParser, VirtualElement } from "./html.js";
@@ -130,10 +130,9 @@ export default class UI {
       key: null,
       initialState: {},
       parent: null,
-      definition: null,
+      parentNode: null,
       template: null,
       native: false,
-      parentNode: null,
       layer: 0,
     }
   ) {
@@ -151,7 +150,7 @@ export default class UI {
     this.parser = new HtmlParser((value) => {
       try {
         value = value.replace(/\$/g, "this.states.");
-        // console.log("eval", value, this.states);
+        // console.log("eval", value, "->", eval(value), this.states);
         return eval(value);
       } catch (e) {
         if (this.native) {
@@ -167,6 +166,8 @@ export default class UI {
     this.parent = props?.parent ?? null; // indicates the parent component (not the parent node)
     this.parentNode = props?.parentNode ?? document.body;
     this.children = new OrderedHashMap();
+
+    this.eventListeners = {};
 
     this.parentStates = this.native ? props.parent.states : null;
     this.states = new Proxy(props?.initialState ?? {}, {
@@ -184,14 +185,27 @@ export default class UI {
           target[key] = value;
         }
 
-        if (!this.stateReadLock) {
+        if (!this.stateLock) {
           this.rerender(prevState, newState);
         }
 
         return true;
       },
+      get: (target, key, receiver) => {
+        if (this.native) {
+          return this.parent.states[key];
+        } else {
+          const value = target[key];
+          if (value instanceof Function) {
+            return function (...args) {
+              return value.apply(this === receiver ? target : this, args);
+            };
+          }
+          return value;
+        }
+      },
     });
-    this.stateReadLock = false;
+    this.stateLock = false;
 
     if (window.components == null) {
       window.components = {};
@@ -204,22 +218,32 @@ export default class UI {
   }
   afterMount() {}
   afterUpdate() {}
+  beforeRender() {}
+  afterRender() {}
   beforeUnmount() {}
   setStates(newState) {
-    this.states.replace = { ...newState };
+    if (this.native) {
+      this.parent.setStates(newState);
+    } else {
+      this.states.replace = { ...newState };
+    }
+  }
+  async setState(key, newValue) {
+    if (this.native) {
+      this.parent.setState(key, newValue);
+    } else {
+      if (typeof newValue === "function") {
+        this.states[key] = await newValue(this.states[key]);
+      } else {
+        this.states[key] = newValue;
+      }
+    }
   }
   setSilentStates(newState) {
     // console.log(this.uuid, "silent set", newState);
-    this.stateReadLock = true;
+    this.stateLock = true;
     this.states.replace = { ...newState };
-    this.stateReadLock = false;
-  }
-  async setState(key, newValue) {
-    if (typeof newValue === "function") {
-      this.states[key] = await newValue(this.states[key]);
-    } else {
-      this.states[key] = newValue;
-    }
+    this.stateLock = false;
   }
 
   rerender(prevState, newState) {
@@ -230,17 +254,21 @@ export default class UI {
   }
 
   render(tree = this.parseTemplate()) {
+    this.stateLock = true;
+    this.beforeRender();
+    this.stateLock = false;
+
     this.lastParsedTree = tree;
-    this.log(`======================= Render ${this.uuid} =======================`, tree);
+    this.log(`======================= Render ${this.uuid} =======================`, tree, this);
     this.log("> Parsed Tree", tree, this.define());
 
     // mount if not mounted
     let newlyMounted = false;
     if (!this.mounted) {
       if (UI.isComponent(tree.tag)) throw new Error("Component root must be a native HTML tag");
-      this.stateReadLock = true;
+      this.stateLock = true;
       this.mount(tree.tag, tree.props);
-      this.stateReadLock = false;
+      this.stateLock = false;
       newlyMounted = true;
     } else {
       this.applyProps(tree.props);
@@ -258,6 +286,7 @@ export default class UI {
 
       for (let childIndex = 0; childIndex < children.length; childIndex++) {
         const child = children[childIndex];
+        this.log("Render child", child);
         const key = child.props?.key ?? Crypto.hash(`${this.uuid}-${childIndex}`);
         let childComponent = this.children.get(key);
         if (childComponent == null) {
@@ -271,16 +300,13 @@ export default class UI {
 
         childComponent.setSilentStates(child.props);
 
-        const childRender = () => {
-          if (childComponent.native) {
-            childComponent.render(child);
-          } else {
-            // childComponent.template = child.children;
-            childComponent.render();
-          }
-        };
+        if (childComponent.native) {
+          childComponent.render(child);
+        } else {
+          // childComponent.template = child.children;
+          childComponent.render();
+        }
 
-        childRender();
         childComponent.active = true;
       }
     } else {
@@ -300,6 +326,7 @@ export default class UI {
     } else {
       this.afterUpdate();
     }
+    this.afterRender();
     this.log(`======================= Render ${this.uuid} Done =======================`, tree);
   }
 
@@ -330,18 +357,20 @@ export default class UI {
     return !deepCompare(lastTree, currentTree);
   }
 
+  forceUpdate() {
+    this.render();
+  }
+
   create(className, props) {
     if (!UI.isComponent(className) && !UI.isNativeHTMLTag(className)) {
       throw new Error(`Component ${className} is not registered`);
     }
 
-    this.log(`> Create Component`, className, props);
-
     const native = UI.isNativeHTMLTag(className);
     const Component = UI.components[className] ?? NativeHTMLComponent;
     const parent = this.native ? this.parent : this;
 
-    return new Component({
+    const args = {
       key: props?.key ?? null,
       tag: native ? className : null,
       initialState: props,
@@ -349,7 +378,11 @@ export default class UI {
       parent,
       native,
       layer: this.layer + 1,
-    });
+    };
+
+    this.log(`> Create Component`, className, props, args, "in", this.node);
+
+    return new Component(args);
   }
 
   unmount() {
@@ -377,13 +410,26 @@ export default class UI {
   }
 
   applyProps(props) {
+    // remove all listeners
+    for (let topic in this.eventListeners) {
+      const listeners = this.eventListeners[topic];
+      for (let listener of listeners) {
+        this.node.removeEventListener(topic, listener);
+      }
+    }
+
     for (let key in props) {
       if (key.startsWith("$")) continue;
       if (key.startsWith("on")) {
-        this.node.addEventListener(key.slice(2).toLowerCase(), (...args) => {
+        const topic = key.slice(2).toLowerCase();
+        const listener = (...args) => {
           const func = props[key] ?? null;
           func.call(this, ...args);
-        });
+        };
+
+        if (!this.eventListeners[topic]) this.eventListeners[topic] = [];
+        this.node.addEventListener(topic, listener);
+        this.eventListeners[topic].push(listener);
         continue;
       }
       this.node.setAttribute(key, props[key]);
@@ -419,16 +465,28 @@ export default class UI {
     return root;
   }
 
-  static registerComponent(className, component) {
+  static registerComponent(component) {
+    if (!isClass(component)) throw new Error(`Given component is not valid component.`);
+    if (!(component.prototype instanceof UI)) throw new Error(`Given component is not UI Component.`);
+
+    const className = component.name;
+    if (className == null) {
+      console.error(component);
+      throw new Error(`Can't find constructor name`);
+    }
     UI.components[className] = component;
   }
 
-  static $(selector) {
-    return document.querySelector(selector);
-  }
+  // static $(selector) {
+  //   return document.querySelector(selector);
+  // }
 
-  static $$(selector) {
-    return document.querySelectorAll(selector);
+  // static $$(selector) {
+  //   return document.querySelectorAll(selector);
+  // }
+
+  static $$(target, mapper) {
+    return target.map(mapper).join("");
   }
 }
 

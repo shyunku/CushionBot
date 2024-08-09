@@ -15,7 +15,7 @@ export default class User {
   setSessions(sessions) {
     this.sessions = [];
     for (let i = 0; i < sessions.length; i++) {
-      const session = new Session(sessions[i]);
+      const session = new Session(this, sessions[i]);
       this.sessions.push(session);
     }
   }

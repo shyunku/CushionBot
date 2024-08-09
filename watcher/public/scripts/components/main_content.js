@@ -66,21 +66,7 @@ function displayMainContent() {
   });
 
   const channelTitleElem = $("#channel_title")[0];
-  channelTitleElem.addEventListener("click", () => {
-    const route = "/channel/" + guildId;
-
-    // copy to clipboard
-    if (!!navigator.clipboard) {
-      navigator.clipboard.writeText(window.location.origin + route);
-    } else {
-      const el = document.createElement("textarea");
-      el.value = window.location.origin + route;
-      document.body.appendChild(el);
-      el.select();
-      document.execCommand("copy");
-      document.body.removeChild(el);
-    }
-  });
+  channelTitleElem.addEventListener("click", () => {});
 
   const mainAreaElem = $("#main_area");
   const segmentsElem = $("#segments");

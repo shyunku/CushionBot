@@ -43,7 +43,7 @@ export class HtmlParser {
     for (let i = 0; i < html.length; i++) {
       const char = html[i];
       if (char === "<") {
-        const tagEndIndex = html.indexOf(">", i);
+        const tagEndIndex = this.findCloseTagIndex(html, i);
         const enclosed = html.substring(i + 1, tagEndIndex);
 
         // console.log("layer", layer, "enclosed", enclosed);
@@ -99,6 +99,25 @@ export class HtmlParser {
       return html;
     }
     return subRootNodes;
+  }
+
+  findCloseTagIndex(html, after) {
+    let tagEndIndex = -1;
+    let bracketLayer = 0;
+    for (let j = after + 1; j < html.length; j++) {
+      if (html[j] === "{") {
+        bracketLayer++;
+      } else if (html[j] === "}") {
+        bracketLayer--;
+      } else if (html[j] === ">" && bracketLayer === 0) {
+        tagEndIndex = j;
+        break;
+      }
+    }
+    if (tagEndIndex === -1) {
+      throw new Error(`Invalid syntax: can't find closing tag`);
+    }
+    return tagEndIndex;
   }
 
   parseProps(content) {

@@ -1,4 +1,6 @@
-class Intervals {
+import Crypto from "../../utils/crypto.js";
+
+export class Intervals {
   constructor() {
     this.root = null;
   }
@@ -48,9 +50,9 @@ class Intervals {
   }
 }
 
-class Interval {
+export class Interval {
   constructor(start, end, count = 1) {
-    this.id = Crypto.hash(`${start}-${end}-${Date.now()}`);
+    this.id = Crypto.hash(`${start}-${end}-${Crypto.uuid()}`);
 
     this.start = start;
     this.end = end;

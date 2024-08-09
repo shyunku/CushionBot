@@ -1,4 +1,6 @@
+import { endOfDay, isToday, startOfDay } from "../utils/datetime.js";
 import Http from "../utils/http.js";
+import { Intervals } from "./platform/Intervals.js";
 import User from "./User.js";
 
 export default class Guild {
@@ -17,6 +19,38 @@ export default class Guild {
       const online = user.sessions.some((session) => session.online);
       return acc + (online ? 1 : 0);
     }, 0);
+  }
+
+  getIntervals() {
+    const intervals = new Intervals();
+    const userSessions = Object.values(this.users)
+      .map((u) => u.sessions)
+      .flat();
+    const todaySessions = userSessions
+      .map((session) => session.copy())
+      .filter((session) => {
+        return isToday(session.joinTime) || isToday(session.leaveTime);
+      })
+      .map((session) => {
+        let joinTime = session.joinTime;
+        let leaveTime = session.leaveTime;
+        if (!isToday(joinTime)) {
+          joinTime = startOfDay().getTime();
+        }
+        if (!isToday(leaveTime)) {
+          leaveTime = endOfDay().getTime();
+        }
+        return { ...session, joinTime, leaveTime };
+      })
+      .sort((a, b) => a.joinTime - b.joinTime);
+
+    for (let session of todaySessions) {
+      const start = session.joinTime;
+      const end = session.leaveTime;
+      intervals.add(start, end);
+    }
+
+    return intervals;
   }
 
   async updateSessions(userSessions) {

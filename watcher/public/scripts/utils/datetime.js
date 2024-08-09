@@ -15,14 +15,22 @@ function dateStr(date = Date.now()) {
   return `${year}.${md}.${dd}`;
 }
 
-function startOfDay(time = Date.now()) {
+export function startOfDay(time = Date.now()) {
   const date = new Date(time);
   return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
 }
 
-function endOfDay(time = Date.now()) {
+export function endOfDay(time = Date.now()) {
   const date = new Date(time);
   return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
+}
+
+export function isToday(time) {
+  const date = new Date(time);
+  const now = new Date();
+  return (
+    now.getFullYear() === date.getFullYear() && now.getMonth() === date.getMonth() && now.getDate() === date.getDate()
+  );
 }
 
 function durationStr(duration) {

@@ -29,13 +29,13 @@ class Home extends UI {
         <Sidebar $data={$data} 
                  $selectedGuildId={$selectedGuildId}
                  $onGuildIdSelect={this.onGuildIdSelect}/>
-        <div id="main_content"></div>
+        <MainContent $guild={$data?.[$selectedGuildId]}/>
       </div>
     `;
   }
 
   async loadData() {
-    console.log("update");
+    console.log("update data");
     this.setState("data", async (prev) => {
       const data = { ...prev };
       const rawData = await Http.get("/data");
