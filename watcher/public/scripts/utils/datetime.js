@@ -1,4 +1,4 @@
-const TimeUnit = {
+export const TimeUnit = {
   SECOND: 1000,
   MINUTE: 60 * 1000,
   HOUR: 60 * 60 * 1000,
@@ -33,7 +33,7 @@ export function isToday(time) {
   );
 }
 
-function durationStr(duration) {
+export function durationStr(duration) {
   if (duration === 0) return "0초";
 
   const days = Math.floor(duration / (24 * 60 * 60 * 1000));

@@ -1,4 +1,6 @@
-class Color {
+import Crypto from "./crypto.js";
+
+export default class Color {
   constructor(r, g, b) {
     this.r = r;
     this.g = g;
@@ -94,5 +96,9 @@ class Color {
 
   toString() {
     return `rgb(${this.r},${this.g},${this.b})`;
+  }
+
+  copy() {
+    return new Color(this.r, this.g, this.b);
   }
 }

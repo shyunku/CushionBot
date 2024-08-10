@@ -30,4 +30,5 @@ app.get("/channel/:id", async (req, res) => {
 
 app.listen(7919, async () => {
   console.log(`Server is running on http://${await publicIpv4()}:7919`);
+  console.log(`- Local Server is running on http://localhost:7919`);
 });

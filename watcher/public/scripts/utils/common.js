@@ -29,3 +29,11 @@ export function trimAndClearString(str) {
 export function isClass(v) {
   return typeof v === "function" && /^\s*class\s+/.test(v.toString());
 }
+
+export function getFactors(n) {
+  const factors = [];
+  for (let i = 1; i <= n; i++) {
+    if (n % i === 0) factors.push(i);
+  }
+  return factors;
+}

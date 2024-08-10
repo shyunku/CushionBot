@@ -220,6 +220,9 @@ export default class UI {
   afterUpdate() {}
   beforeRender() {}
   afterRender() {}
+  forceRender() {
+    this.render();
+  }
   beforeUnmount() {}
   setStates(newState) {
     if (this.native) {
@@ -357,10 +360,6 @@ export default class UI {
     return !deepCompare(lastTree, currentTree);
   }
 
-  forceUpdate() {
-    this.render();
-  }
-
   create(className, props) {
     if (!UI.isComponent(className) && !UI.isNativeHTMLTag(className)) {
       throw new Error(`Component ${className} is not registered`);
@@ -403,7 +402,7 @@ export default class UI {
 
     if (props?.id != null) node.id = props?.id;
     this.applyProps(props);
-    node.setAttribute("data-uuid", this.uuid);
+    if (DebugMode) node.setAttribute("data-uuid", this.uuid);
     this.parentNode.appendChild(node);
     this.mounted = true;
     return node;
@@ -477,13 +476,13 @@ export default class UI {
     UI.components[className] = component;
   }
 
-  // static $(selector) {
-  //   return document.querySelector(selector);
-  // }
+  static $find(selector) {
+    return document.querySelector(selector);
+  }
 
-  // static $$(selector) {
-  //   return document.querySelectorAll(selector);
-  // }
+  static $findAll(selector) {
+    return document.querySelectorAll(selector);
+  }
 
   static $$(target, mapper) {
     return target.map(mapper).join("");
