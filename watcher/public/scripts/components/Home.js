@@ -74,6 +74,10 @@ class Home extends UI {
         }
       });
 
+      source.onopen = (event) => {
+        console.log("SSE opened: ", event);
+      };
+
       source.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
@@ -86,6 +90,11 @@ class Home extends UI {
 
       source.onerror = (event) => {
         console.error("EventSource failed: ", event);
+        // reconnect
+        source.close();
+        setTimeout(() => {
+          this.startSSE();
+        }, 1000);
       };
     } else {
       console.log("SSE not supported in this browser.");
