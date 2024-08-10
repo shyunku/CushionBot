@@ -163,7 +163,7 @@ class Sessions extends Layer {
     engine.tool.drawClipedContext(
       (c) => {
         c.beginPath();
-        c.rect(leftPad, topPad, engine.width - leftPad - rightPad, engine.height - topPad);
+        c.rect(0, topPad, engine.width, engine.height - topPad);
         c.closePath();
       },
       (c) => {

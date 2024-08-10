@@ -17,34 +17,3 @@ document.addEventListener("DOMContentLoaded", () => {
   root.render();
   console.log(root.children.toArray());
 });
-
-// $(document).ready(async () => {
-//   data = {};
-//   guilds = {};
-//   users = {};
-
-//   selectedGuildId = localStorage.getItem("selected_guild_id") ?? Object.keys(data)?.[0] ?? null;
-//   localStorage.setItem("selected_guild_id", selectedGuildId);
-
-//   // resize detect
-//   window.addEventListener("resize", () => {
-//     if (selectedGuildId != null) {
-//       displayMainContent();
-//     }
-//   });
-
-//   if (channelId != null) {
-//     const sidebarElem = $(".sidebar")[0];
-//     sidebarElem.style.display = "none";
-//     selectedGuildId = channelId;
-//   }
-
-//   setTimeout(async () => {
-//     await loadData();
-//     startSSE();
-
-//     console.log("data", data);
-//     console.log("guilds", guilds);
-//     console.log("users", users);
-//   }, 500);
-// });
