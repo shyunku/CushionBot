@@ -1,4 +1,4 @@
-import Home from "./components/home.js";
+import Home from "./components/Home.js";
 import MainContent from "./components/molecules/MainContent.js";
 import TodayItem from "./components/molecules/TodayItem.js";
 import Sidebar from "./components/sidebar.js";
