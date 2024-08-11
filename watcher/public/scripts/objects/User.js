@@ -12,6 +12,10 @@ export default class User {
     this.sessions = [];
   }
 
+  get totalDuration() {
+    return this.sessions.reduce((acc, session) => acc + session.duration, 0);
+  }
+
   setSessions(sessions) {
     this.sessions = [];
     for (let i = 0; i < sessions.length; i++) {

@@ -15,6 +15,10 @@ export default class Session {
     }
   }
 
+  get duration() {
+    return (this.online ? Date.now() : this.leaveTime) - this.joinTime;
+  }
+
   copy() {
     return new Session(this.user, {
       channelName: this.channelName,

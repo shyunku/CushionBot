@@ -74,14 +74,14 @@ class Sessions extends Layer {
         return leaveTime2 - leaveTime1;
       }
 
+      if (last1.channelName !== last2.channelName) {
+        return last1.channelName.localeCompare(last2.channelName);
+      }
+
       const lastDuration1 = now - last1.joinTime;
       const lastDuration2 = now - last2.joinTime;
       if (lastDuration1 !== lastDuration2) {
         return lastDuration2 - lastDuration1;
-      }
-
-      if (last1.channelName !== last2.channelName) {
-        return last1.channelName.localeCompare(last2.channelName);
       }
 
       const totalDuration1 = sessions1.reduce((acc, s) => acc + (s.endTime - s.joinTime), 0);
@@ -102,7 +102,7 @@ class Sessions extends Layer {
       const endX = s.online ? this.calculateX(now) : this.calculateX(s.leaveTime);
 
       const color = Color.generateRandomColorWithSeed(s.channelName ?? "Unknown")
-        .adjustSaturation(0.8)
+        .adjustSaturation(0.6)
         .adjustBrightness(0.35);
 
       return {
@@ -185,7 +185,7 @@ class Sessions extends Layer {
               engine.mousePos.y <= y + sessionBoxHeight;
             const showUser = next == null || next.startX - endX > 40 + engine.tool.getTextWidth(user.effectiveName);
 
-            engine.tool.setOpacity(online ? 1 : hovered ? 0.6 : 0.5);
+            engine.tool.setOpacity(online ? 1 : hovered ? 0.7 : 0.6);
 
             // draw session box
             if (online) {
@@ -240,44 +240,58 @@ class Sessions extends Layer {
       const { session, user } = hoveredSession;
 
       const { x, y } = engine.mousePos;
+      const xFlip = x > engine.width / 2;
+      const yFlip = y > engine.height / 2;
+
       const pad = 10;
       const imageRadius = 12;
       const lineHeight = 24;
-      engine.tool.fillRect(
-        x,
-        y,
-        240,
-        pad * 3 + imageRadius + lineHeight * (session.online ? 3 : 4),
-        "rgb(0, 0, 0, 0.8)"
-      );
+      const width = 240;
+
+      const segmentCount = 4;
+      const height = pad * 3 + imageRadius + lineHeight * (session.online ? segmentCount : segmentCount + 1);
+
+      engine.tool.fillRect(x - (xFlip ? width : 0), y - (yFlip ? height : 0), width, height, "rgb(0, 0, 0, 0.85)");
       const userImage = this.getImage(user.avatarUrl);
       if (userImage) {
         engine.setFont(13);
-        engine.tool.drawCenteredRoundImage(userImage, x + pad + imageRadius, y + pad + imageRadius, imageRadius);
-        engine.tool.drawText2(user.effectiveName, x + pad + imageRadius * 2 + 8, y + pad + imageRadius, 1, 0, "white");
+        engine.tool.drawCenteredRoundImage(
+          userImage,
+          x + pad + imageRadius - (xFlip ? width : 0),
+          y + pad + imageRadius - (yFlip ? height : 0),
+          imageRadius
+        );
+        engine.tool.drawText2(
+          user.effectiveName,
+          x + pad + imageRadius * 2 + 8 - (xFlip ? width : 0),
+          y + pad + imageRadius - (yFlip ? height : 0),
+          1,
+          0,
+          "white"
+        );
         engine.setFont(12);
         let index = 1;
         engine.tool.drawText2(
           `"${session.channelName}" 채널`,
-          x + pad,
-          y + pad + imageRadius + lineHeight * index++,
+          x + pad - (xFlip ? width : 0),
+          y + pad + imageRadius + lineHeight * index++ - (yFlip ? height : 0),
           1,
           0,
           session.brightColor
         );
         engine.tool.drawText2(
-          `${dayjs(session.start).format("YYYY년 MM월 DD일 HH시 mm분 ss초 입장")}`,
-          x + pad,
-          y + pad + imageRadius + lineHeight * index++,
+          `${dayjs(session.start).format("YYYY년 MM월 DD일 H시 mm분 ss초 입장")}`,
+          x + pad - (xFlip ? width : 0),
+          y + pad + imageRadius + lineHeight * index++ - (yFlip ? height : 0),
           1,
           0,
           EnterColor
         );
         if (!session.online) {
           engine.tool.drawText2(
-            `${dayjs(session.end).format("YYYY년 MM월 DD일 HH시 mm분 ss초 퇴장")}`,
-            x + pad,
-            y + pad + imageRadius + lineHeight * index++,
+            `${dayjs(session.end).format("YYYY년 MM월 DD일 H시 mm분 ss초 퇴장")}`,
+            x + pad - (xFlip ? width : 0),
+            y + pad + imageRadius + lineHeight * index++ - (yFlip ? height : 0),
             1,
             0,
             LeaveColor
@@ -285,11 +299,19 @@ class Sessions extends Layer {
         }
         engine.tool.drawText2(
           `${durationStr(session.end - session.start)} 동안 연결`,
-          x + pad,
-          y + pad + imageRadius + lineHeight * index++,
+          x + pad - (xFlip ? width : 0),
+          y + pad + imageRadius + lineHeight * index++ - (yFlip ? height : 0),
           1,
           0,
           "white"
+        );
+        engine.tool.drawText2(
+          `총 연결: ${durationStr(user.totalDuration)}`,
+          x + pad - (xFlip ? width : 0),
+          y + pad + imageRadius + lineHeight * index++ - (yFlip ? height : 0),
+          1,
+          0,
+          "#777"
         );
       }
     }
