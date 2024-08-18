@@ -151,7 +151,7 @@ public class TrackScheduler {
     }
 
     public void onTrackException(TrackExceptionEvent e) {
-        logger.error(String.format("Track exception occurred while playing %s", e.getTrack().getInfo().getTitle()), e.getException());
+        logger.error(String.format("Track exception occurred while playing %s: %s", e.getTrack().getInfo().getTitle(), e.getException().getMessage()));
     }
 
     public void onTrackStuck(TrackStuckEvent e) {
