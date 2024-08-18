@@ -105,6 +105,10 @@ public class CustomAudioResultHandler implements AudioLoadResultHandler {
 
     @Override
     public void loadFailed(FriendlyException exception) {
+
         this.logger.error("Load failed", exception);
+        musicChannel.sendMessage("로드 실패: " + exception.getMessage()).queue(message -> {
+            message.delete().queueAfter(5, java.util.concurrent.TimeUnit.SECONDS);
+        });
     }
 }

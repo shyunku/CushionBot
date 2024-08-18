@@ -2,6 +2,15 @@ plugins {
     id 'java'
 }
 
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 17
+}
+
 ext {
     springBootVersion = '1.4.2.RELEASE'
     slf4jVersion = '1.7.36'
@@ -11,8 +20,6 @@ ext {
 
 group 'Shyunku'
 version '1.0-SNAPSHOT'
-
-sourceCompatibility = 11
 
 jar {
     manifest {
@@ -32,7 +39,7 @@ repositories {
 }
 
 dependencies {
-    testCompile group: 'junit', name: 'junit', version: '4.12'
+    testImplementation group: 'junit', name: 'junit', version: '4.12'
     implementation 'net.dv8tion:JDA:5.0.0-beta.24'
     implementation 'dev.arbjerg:lavaplayer:2.2.1'
     implementation 'dev.lavalink.youtube:v2:1.6.0'
@@ -42,13 +49,12 @@ dependencies {
     implementation 'org.yaml:snakeyaml:1.30'
     implementation 'net.ricecode:string-similarity:1.0.0'
 
-    compile("commons-logging:commons-logging:${commonsLogging}")
-    compile("org.slf4j:slf4j-api:${slf4jVersion}")
-    compile("org.apache.logging.log4j:log4j-api:${log4j2Version}")
-    compile("org.apache.logging.log4j:log4j-core:${log4j2Version}")
-    compile("org.apache.logging.log4j:log4j-slf4j-impl:${log4j2Version}")
-    compile("org.apache.logging.log4j:log4j-slf4j2-impl:${log4j2Version}")
+    implementation "commons-logging:commons-logging:${commonsLogging}"
+    implementation "org.slf4j:slf4j-api:${slf4jVersion}"
+    implementation "org.apache.logging.log4j:log4j-api:${log4j2Version}"
+    implementation "org.apache.logging.log4j:log4j-core:${log4j2Version}"
+    implementation "org.apache.logging.log4j:log4j-slf4j-impl:${log4j2Version}"
+    implementation "org.apache.logging.log4j:log4j-slf4j2-impl:${log4j2Version}"
 }
 
 compileJava.options.encoding = 'UTF-8'
-targetCompatibility = JavaVersion.VERSION_11

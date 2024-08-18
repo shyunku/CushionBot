@@ -12,6 +12,8 @@ import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.channel.concrete.VoiceChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.AudioChannel;
 import net.dv8tion.jda.api.entities.channel.unions.AudioChannelUnion;
+import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
+import net.dv8tion.jda.api.events.guild.GuildLeaveEvent;
 import net.dv8tion.jda.api.events.guild.voice.GuildVoiceUpdateEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
@@ -69,31 +71,7 @@ public class InternalEventListener extends ListenerAdapter {
         logger.info("=====================================================================");
 
         for (Guild g : guilds) {
-            if (Version.PRODUCTION_MODE || g.getId().equals("979067006223536239"))
-                Service.addGuildManagerIfNotExists(g);
-            g.updateCommands().addCommands(
-                    Commands.slash("test", "test description"),
-                    Commands.slash("clear", "최근 메시지들을 삭제합니다.")
-                            .addOption(OptionType.INTEGER, "message_count", "삭제할 메시지 수를 입력하세요. (1~300)", true),
-                    Commands.slash("점검완료", "점검 완료 후 봇을 정상 운영합니다."),
-                    Commands.slash("서버랭킹", "서버 참여 랭킹을 출력합니다."),
-                    Commands.slash("내랭킹", "내 랭킹을 출력합니다."),
-                    Commands.slash("음악채널", "이 텍스트 채널을 음악 채널로 지정합니다."),
-                    Commands.slash("음악셔플", "재생목록을 셔플합니다."),
-                    Commands.slash("음악볼륨", "볼륨을 조절합니다.")
-                            .addOption(OptionType.INTEGER, "볼륨", "볼륨을 입력하세요. (0~100)", true),
-                    Commands.slash("내전채널", "이 텍스트 채널을 내전 채널로 지정합니다."),
-                    Commands.slash("내전모으기", "내전 일정을 생성합니다.")
-                            .addOption(OptionType.INTEGER, "시간", "모집 시간을 입력하세요. (0~47) 24 이상은 내일을 나타냅니다.", true)
-                            .addOption(OptionType.INTEGER, "분", "모집 시간을 입력하세요. (0~59)", true),
-                    Commands.slash("내전시간변경", "내전 일정을 변경합니다.")
-                            .addOption(OptionType.INTEGER, "시간", "모집 시간을 입력하세요. (0~47) 24 이상은 내일을 나타냅니다.", true)
-                            .addOption(OptionType.INTEGER, "분", "모집 시간을 입력하세요. (0~59)", true),
-                    Commands.slash("내전정보", "내전 정보를 출력합니다."),
-                    Commands.slash("내전호출", "내전 참여자 모두를 호출합니다."),
-                    Commands.slash("내전종료", "내전 인원 모집을 종료합니다."),
-                    Commands.slash("내전취소", "내전을 취소합니다.")
-            ).queue();
+            setupGuild(g);
         }
 
         GuildWatcher.initialize();
@@ -102,6 +80,52 @@ public class InternalEventListener extends ListenerAdapter {
 //        for(Guild g : guilds) {
 //            g.getAudioManager().closeAudioConnection();
 //        }
+    }
+
+    private void setupGuild(Guild guild) {
+        if (Version.PRODUCTION_MODE || guild.getId().equals("979067006223536239")) {
+            Service.addGuildManagerIfNotExists(guild);
+        }
+        guild.updateCommands().addCommands(
+                Commands.slash("test", "test description"),
+                Commands.slash("clear", "최근 메시지들을 삭제합니다.")
+                        .addOption(OptionType.INTEGER, "message_count", "삭제할 메시지 수를 입력하세요. (1~300)", true),
+                Commands.slash("점검완료", "점검 완료 후 봇을 정상 운영합니다."),
+                Commands.slash("서버랭킹", "서버 참여 랭킹을 출력합니다."),
+                Commands.slash("내랭킹", "내 랭킹을 출력합니다."),
+                Commands.slash("음악채널", "이 텍스트 채널을 음악 채널로 지정합니다."),
+                Commands.slash("음악셔플", "재생목록을 셔플합니다."),
+                Commands.slash("음악볼륨", "볼륨을 조절합니다.")
+                        .addOption(OptionType.INTEGER, "볼륨", "볼륨을 입력하세요. (0~100)", true),
+                Commands.slash("내전채널", "이 텍스트 채널을 내전 채널로 지정합니다."),
+                Commands.slash("내전모으기", "내전 일정을 생성합니다.")
+                        .addOption(OptionType.INTEGER, "시간", "모집 시간을 입력하세요. (0~47) 24 이상은 내일을 나타냅니다.", true)
+                        .addOption(OptionType.INTEGER, "분", "모집 시간을 입력하세요. (0~59)", true),
+                Commands.slash("내전시간변경", "내전 일정을 변경합니다.")
+                        .addOption(OptionType.INTEGER, "시간", "모집 시간을 입력하세요. (0~47) 24 이상은 내일을 나타냅니다.", true)
+                        .addOption(OptionType.INTEGER, "분", "모집 시간을 입력하세요. (0~59)", true),
+                Commands.slash("내전정보", "내전 정보를 출력합니다."),
+                Commands.slash("내전호출", "내전 참여자 모두를 호출합니다."),
+                Commands.slash("내전종료", "내전 인원 모집을 종료합니다."),
+                Commands.slash("내전취소", "내전을 취소합니다.")
+        ).queue();
+
+        this.logger.debug("Guild {} setup completed.", guild.getName());
+    }
+
+    @Override
+    public void onGuildJoin(@NotNull GuildJoinEvent event) {
+        super.onGuildJoin(event);
+
+        Guild guild = event.getGuild();
+        setupGuild(guild);
+    }
+
+    @Override
+    public void onGuildLeave(@NotNull GuildLeaveEvent event) {
+        super.onGuildLeave(event);
+
+        this.logger.debug("Guild {} left.", event.getGuild().getName());
     }
 
     @Override
