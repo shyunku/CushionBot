@@ -1,10 +1,10 @@
 package service.music.Core;
 
-import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
-import com.sedmelluq.discord.lavaplayer.player.event.AudioEventAdapter;
-import com.sedmelluq.discord.lavaplayer.tools.FriendlyException;
-import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
-import com.sedmelluq.discord.lavaplayer.track.AudioTrackEndReason;
+import dev.arbjerg.lavalink.client.event.TrackEndEvent;
+import dev.arbjerg.lavalink.client.event.TrackExceptionEvent;
+import dev.arbjerg.lavalink.client.event.TrackStartEvent;
+import dev.arbjerg.lavalink.client.event.TrackStuckEvent;
+import dev.arbjerg.lavalink.client.player.LavalinkPlayer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import service.music.object.MusicPlayMode;
@@ -15,54 +15,52 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.Queue;
 
-public class TrackScheduler extends AudioEventAdapter {
+public class TrackScheduler {
     private final Logger logger = LoggerFactory.getLogger(TrackScheduler.class);
-    private AudioPlayer audioPlayer;
+    private final LavalinkPlayer player;
     private MusicTrack currentTrack;
     private final Queue<MusicTrack> trackQueue = new LinkedList<>();
-
     private MusicPlayMode musicPlayMode = MusicPlayMode.NORMAL;
+    private final MusicBoxUpdateHandler musicBoxUpdateHandler;
 
-    private MusicBoxUpdateHandler musicBoxUpdateHandler;
-
-
-    public TrackScheduler(AudioPlayer audioPlayer, MusicBoxUpdateHandler musicTrackEndHandler) {
-        this.audioPlayer = audioPlayer;
+    public TrackScheduler(LavalinkPlayer player, MusicBoxUpdateHandler musicTrackEndHandler) {
+        this.player = player;
         this.musicBoxUpdateHandler = musicTrackEndHandler;
     }
 
-    public void playTrack(MusicTrack musicTrack, boolean allowInterrupt) {
-        boolean started = audioPlayer.startTrack(musicTrack.audioTrack, !allowInterrupt);
-        if (!started) {
-            trackQueue.offer(musicTrack);
-        } else {
-            this.currentTrack = musicTrack;
-        }
+    private void playTrack(MusicTrack musicTrack) {
+        player.setTrack(musicTrack.track).block();
+        this.currentTrack = musicTrack;
     }
 
     public void addMusicTrack(MusicTrack musicTrack) {
-        this.playTrack(musicTrack, false);
+        if (currentTrack == null) {
+            this.playTrack(musicTrack);
+        } else {
+            trackQueue.offer(musicTrack);
+        }
     }
 
     public void nextTrack() {
         if (musicPlayMode == MusicPlayMode.REPEAT_ALL) {
-            trackQueue.offer(currentTrack.makeClone());
+            trackQueue.offer(currentTrack.copy());
         }
         if (trackQueue.isEmpty()) {
+            this.player.stopTrack().block();
             this.currentTrack = null;
             return;
         }
-        this.playTrack(trackQueue.poll(), true);
+        this.playTrack(trackQueue.poll());
     }
 
     public void skipUntilTrack(String trackId) {
         MusicTrack polled = null;
         while (!trackQueue.isEmpty()) {
             polled = trackQueue.poll();
-            if (polled.trackInfo.getId().equals(trackId)) break;
+            if (polled.getIdentifier().equals(trackId)) break;
         }
         if (polled != null) {
-            this.playTrack(polled, true);
+            this.playTrack(polled);
         } else {
             logger.error("Track not found");
         }
@@ -70,7 +68,8 @@ public class TrackScheduler extends AudioEventAdapter {
 
     public void clearTracks() {
         trackQueue.clear();
-        audioPlayer.stopTrack();
+        player.stopTrack().block();
+        this.currentTrack = null;
     }
 
     public void shuffleTracks() {
@@ -81,9 +80,9 @@ public class TrackScheduler extends AudioEventAdapter {
         trackQueue.addAll(tracks);
     }
 
-    public MusicTrack getMusicTrackByAudioTrack(AudioTrack audioTrack) {
+    public MusicTrack getMusicTrackByAudioTrack(MusicTrack track) {
         for (MusicTrack musicTrack : trackQueue) {
-            if (musicTrack.audioTrack.getIdentifier().equals(audioTrack.getIdentifier())) {
+            if (musicTrack.getIdentifier().equals(track.getIdentifier())) {
                 return musicTrack;
             }
         }
@@ -125,44 +124,38 @@ public class TrackScheduler extends AudioEventAdapter {
         return new ArrayList<>(trackQueue);
     }
 
-    @Override
-    public void onTrackStart(AudioPlayer player, AudioTrack track) {
-        super.onTrackStart(player, track);
-        logger.debug(String.format("Track Start: %s", track.getInfo().title));
+    public void onTrackStart(TrackStartEvent e) {
+        logger.debug(String.format("Track Start: %s", e.getTrack().getInfo().getTitle()));
     }
 
-    @Override
-    public void onTrackEnd(AudioPlayer player, AudioTrack track, AudioTrackEndReason endReason) {
-        super.onTrackEnd(player, track, endReason);
-        logger.debug(String.format("Track End: %s", track.getInfo().title));
+    public void onTrackEnd(TrackEndEvent e) {
+        logger.debug(String.format("Track End: %s", e.getTrack().getInfo().getTitle()));
 
-        if (endReason.mayStartNext) {
+        if (e.getEndReason().getMayStartNext()) {
             switch (musicPlayMode) {
                 case NORMAL:
                     nextTrack();
                     break;
                 case REPEAT_ALL:
-                    MusicTrack clone = getCurrentTrack().makeClone();
+                    MusicTrack clone = getCurrentTrack().copy();
                     nextTrack();
                     this.addMusicTrack(clone);
                     break;
                 case REPEAT_SINGLE:
-                    clone = getCurrentTrack().makeClone();
-                    this.playTrack(clone, true);
+                    clone = getCurrentTrack().copy();
+                    this.playTrack(clone);
                     break;
             }
         }
         musicBoxUpdateHandler.onActionEnd();
     }
 
-    @Override
-    public void onTrackException(AudioPlayer player, AudioTrack track, FriendlyException exception) {
-        logger.error(String.format("Track exception occurred while playing %s", track.getInfo().title), exception);
+    public void onTrackException(TrackExceptionEvent e) {
+        logger.error(String.format("Track exception occurred while playing %s", e.getTrack().getInfo().getTitle()), e.getException());
     }
 
-    @Override
-    public void onTrackStuck(AudioPlayer player, AudioTrack track, long thresholdMs) {
-        logger.error(String.format("Track stuck while playing %s", track.getInfo().title));
+    public void onTrackStuck(TrackStuckEvent e) {
+        logger.error(String.format("Track stuck while playing %s", e.getTrack().getInfo().getTitle()));
     }
 
     public MusicBoxUpdateHandler getMusicBoxUpdateHandler() {

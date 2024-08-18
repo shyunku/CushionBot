@@ -1,7 +1,10 @@
 package service.music.Core;
 
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
+import core.CushionBot;
 import core.Version;
+import dev.arbjerg.lavalink.client.LavalinkClient;
+import dev.arbjerg.lavalink.client.Link;
 import exceptions.MusicNotFoundException;
 import exceptions.MusicUrlInvalidException;
 import net.dv8tion.jda.api.entities.Guild;
@@ -19,8 +22,6 @@ import service.discord.MessageEmbedProps;
 import service.guild.core.GuildUtil;
 import service.inmemory.RedisClient;
 import service.music.object.MusicTrack;
-import service.music.object.YoutubeTrackInfo;
-import service.music.tools.YoutubeCrawler;
 
 import java.awt.*;
 import java.util.ArrayList;
@@ -30,6 +31,7 @@ public class MusicBox implements ControlBox {
     private AudioManager audioManager;
     private Guild guild;
     private Message musicBoxMessage;
+    //    private MusicStreamer streamer;
     private MusicStreamer streamer;
 
     public MusicBox(Guild guild, TextChannel musicChannel) {
@@ -77,22 +79,17 @@ public class MusicBox implements ControlBox {
             if (searchUrl.contains("www.youtube.com") || searchUrl.contains("music.youtube.com")) {
                 if (searchUrl.contains("list=")) {
                     // playlist
-                    streamer.addTrackListToQueue(requester, searchUrl);
+                    streamer.addPlaylistByUrl(requester, searchUrl);
                 } else {
                     // music link
-                    streamer.addTrackToQueue(requester, searchUrl);
+                    streamer.addTrackByUrl(requester, searchUrl);
                 }
             } else {
                 throw new MusicUrlInvalidException();
             }
 
         } else {
-            ArrayList<YoutubeTrackInfo> trackCandidates = YoutubeCrawler.getVideoCandidates(searchQuery, 1, requester);
-            if (trackCandidates.isEmpty()) {
-                throw new MusicNotFoundException();
-            }
-            YoutubeTrackInfo selectedTrackInfo = trackCandidates.get(0);
-            streamer.addTrackToQueue(requester, selectedTrackInfo);
+            streamer.addTrackByQuery(requester, searchQuery);
         }
     }
 
@@ -112,9 +109,9 @@ public class MusicBox implements ControlBox {
     }
 
     private MessageEmbedProps getCurrentMusicActionEmbed() {
-        TrackScheduler trackScheduler = streamer.getTrackScheduler();
-        MusicTrack currentTrack = trackScheduler.getCurrentTrack();
-        ArrayList<MusicTrack> trackInfoList = trackScheduler.getCurrentMusicTracks();
+        TrackScheduler scheduler = streamer.getScheduler();
+        MusicTrack currentTrack = scheduler.getCurrentTrack();
+        ArrayList<MusicTrack> trackInfoList = scheduler.getCurrentMusicTracks();
 
         AudioChannel connectedChannel = audioManager.getConnectedChannel();
         String title = "쿠션 봇 음악 재생기";
@@ -126,8 +123,8 @@ public class MusicBox implements ControlBox {
         MusicActionEmbedBuilder builder = new MusicActionEmbedBuilder();
         builder.setTitle(title)
                 .setColor(new Color(0, 255, 187))
-                .setControlButtons(streamer.isPaused(), trackScheduler.getMusicPlayMode())
-                .setTrackList(currentTrack, trackInfoList, trackScheduler.getMusicPlayMode(), streamer.getVolume());
+                .setControlButtons(streamer.isPaused(), scheduler.getMusicPlayMode())
+                .setTrackList(currentTrack, trackInfoList, scheduler.getMusicPlayMode(), streamer.getVolume());
 
         if (trackInfoList.isEmpty() && currentTrack == null) {
             builder.setDescription("재생할 음악이 없습니다. 이 채널에 검색어를 입력하면 자동으로 재생됩니다.");
@@ -137,6 +134,7 @@ public class MusicBox implements ControlBox {
 
     @Override
     public void updateEmbed() {
+        this.logger.debug("Updating music box embed.");
         MessageEmbedProps embed = getCurrentMusicActionEmbed();
         if (musicBoxMessage == null) {
             embed.sendMessageEmbedWithHook(getMusicChannel(), message -> {
@@ -170,17 +168,24 @@ public class MusicBox implements ControlBox {
         return streamer.getMusicChannel();
     }
 
-    public AudioManager getAudioManager() {
-        return audioManager;
-    }
-
     public void setMusicChannel(TextChannel musicChannel) {
         if (musicChannel == null) return;
-        this.streamer = new MusicStreamer(musicChannel, audioManager, this::updateEmbed);
+        LavalinkClient client = CushionBot.lavalinkClient;
+        if (client == null) {
+            logger.error("Lavalink client is not initialized.");
+            return;
+        }
+
+        if (this.streamer != null) {
+            this.streamer.destroy();
+        }
+
+        Link link = client.getOrCreateLink(guild.getIdLong());
+        this.streamer = new MusicStreamer(musicChannel, link, this::updateEmbed);
+        this.streamer.clearTracksOfQueue();
 
         // initial update embed
         this.updateEmbed();
-        this.streamer.setMusicChannel(musicChannel);
         RedisClient.set(GuildUtil.musicChannelKey(guild.getId()), musicChannel.getId());
     }
 
