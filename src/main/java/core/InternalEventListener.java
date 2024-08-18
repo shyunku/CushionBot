@@ -166,8 +166,7 @@ public class InternalEventListener extends ListenerAdapter {
                 if (voiceChannel.getId().equals(audioChannel.getId())) {
                     streamer.clearTracksOfQueue();
                     musicBox.updateEmbed();
-                    voiceChannel.getGuild().getAudioManager().closeAudioConnection();
-                    audioManager.closeAudioConnection();
+                    JdaUtil.LeaveCurrentAudioChannel(guild);
                     musicBox.getMusicChannel().sendMessage("모든 참가자가 음성 채널을 나갔습니다. 음악 재생을 종료합니다.").queue(sentMessage -> {
                         sentMessage.delete().queueAfter(5, java.util.concurrent.TimeUnit.SECONDS);
                     });

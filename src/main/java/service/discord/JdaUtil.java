@@ -15,14 +15,15 @@ public class JdaUtil {
 
     public static void LeaveCurrentAudioChannel(Guild guild) {
         try {
-            GuildVoiceState voiceState = guild.getSelfMember().getVoiceState();
-            if (voiceState == null) {
-                throw new Exception("voiceState is null");
-            }
-            AudioChannel connectedChannel = voiceState.getChannel();
-            if (connectedChannel != null) {
-                guild.getAudioManager().closeAudioConnection();
-            }
+//            GuildVoiceState voiceState = guild.getSelfMember().getVoiceState();
+//            if (voiceState == null) {
+//                throw new Exception("voiceState is null");
+//            }
+//            AudioChannel connectedChannel = voiceState.getChannel();
+//            if (connectedChannel != null) {
+//                guild.getAudioManager().closeAudioConnection();
+//            }
+            CushionBot.jda.getDirectAudioController().disconnect(guild);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -30,21 +31,6 @@ public class JdaUtil {
 
     public static void JoinAudioChannel(AudioChannel audioChannel) throws AudioChannelNotFoundException {
         if (audioChannel == null) throw new AudioChannelNotFoundException();
-        Guild guild = audioChannel.getGuild();
-//        AudioManager audioManager = guild.getAudioManager();
-//        ConnectionStatus status = audioManager.getConnectionStatus();
-//        switch (status) {
-//            case CONNECTED:
-//            case CONNECTING_ATTEMPTING_UDP_DISCOVERY:
-//                AudioChannel connectedChannel = audioManager.getConnectedChannel();
-//                assert connectedChannel != null;
-//                if (connectedChannel.getIdLong() != audioChannel.getIdLong()) {
-//                    logger.warn("Already connected to a different channel. Disconnecting from current channel.");
-//                    audioManager.closeAudioConnection();
-//                }
-//                break;
-//        }
-//        audioManager.openAudioConnection(audioChannel);
         CushionBot.jda.getDirectAudioController().connect(audioChannel);
     }
 
