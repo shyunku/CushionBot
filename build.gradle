@@ -48,6 +48,7 @@ dependencies {
     implementation 'com.google.api-client:google-api-client:1.30.8'
     implementation 'org.yaml:snakeyaml:1.30'
     implementation 'net.ricecode:string-similarity:1.0.0'
+    implementation 'org.apache.commons:commons-pool2:2.11.1'
 
     implementation "commons-logging:commons-logging:${commonsLogging}"
     implementation "org.slf4j:slf4j-api:${slf4jVersion}"
