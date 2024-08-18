@@ -23,7 +23,7 @@ public class MusicStreamer {
         this.audioPlayerManager = new DefaultAudioPlayerManager();
         this.audioPlayerManager.getConfiguration().setFrameBufferFactory(NonAllocatingAudioFrameBuffer::new);
 
-        YoutubeAudioSourceManager youtubeAudioSourceManager = new dev.lavalink.youtube.YoutubeAudioSourceManager();
+        YoutubeAudioSourceManager youtubeAudioSourceManager = new YoutubeAudioSourceManager();
         this.audioPlayerManager.registerSourceManager(youtubeAudioSourceManager);
 
 //        AudioSourceManagers.registerLocalSource(audioPlayerManager);
