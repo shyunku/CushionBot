@@ -38,7 +38,7 @@ public class Watcher {
     }
 
     public static void sendData(SseResponse res) {
-        System.out.println("Sending data to " + clients.size() + " clients");
+//        System.out.println("Sending data to " + clients.size() + " clients");
         synchronized (clients) {
             for (SseHandler client : clients) {
                 client.sendData(res);

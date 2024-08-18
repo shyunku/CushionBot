@@ -1,120 +1,101 @@
 package service.music.Core;
 
-
-import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
-import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager;
-import com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager;
-import com.sedmelluq.discord.lavaplayer.track.playback.NonAllocatingAudioFrameBuffer;
-import dev.lavalink.youtube.YoutubeAudioSourceManager;
+import dev.arbjerg.lavalink.client.LavalinkNode;
+import dev.arbjerg.lavalink.client.Link;
+import dev.arbjerg.lavalink.client.event.TrackEndEvent;
+import dev.arbjerg.lavalink.client.event.TrackExceptionEvent;
+import dev.arbjerg.lavalink.client.event.TrackStartEvent;
+import dev.arbjerg.lavalink.client.event.TrackStuckEvent;
+import dev.arbjerg.lavalink.client.player.LavalinkPlayer;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
-import net.dv8tion.jda.api.managers.AudioManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import service.music.object.MusicPlayMode;
-import service.music.object.YoutubeTrackInfo;
-import service.music.tools.MusicUtil;
 
 public class MusicStreamer {
-    private final AudioPlayer audioPlayer;
-    private final TrackScheduler trackScheduler;
-    private TextChannel musicChannel;
-    private final AudioPlayerManager audioPlayerManager;
+    private final Logger logger = LoggerFactory.getLogger(MusicStreamer.class);
 
-    public MusicStreamer(TextChannel textChannel, AudioManager audioManager, MusicBoxUpdateHandler musicBoxUpdateHandler) {
-        this.audioPlayerManager = new DefaultAudioPlayerManager();
-        this.audioPlayerManager.getConfiguration().setFrameBufferFactory(NonAllocatingAudioFrameBuffer::new);
+    private final TextChannel musicChannel;
+    private final TrackScheduler scheduler;
+    private final Link link;
+    private final LavalinkPlayer player;
+    private final MusicBoxUpdateHandler musicBoxUpdateHandler;
+    private long volume = 100;
+    private boolean paused = false;
 
-        YoutubeAudioSourceManager youtubeAudioSourceManager = new YoutubeAudioSourceManager();
-        this.audioPlayerManager.registerSourceManager(youtubeAudioSourceManager);
-
-//        AudioSourceManagers.registerLocalSource(audioPlayerManager);
-//        AudioSourceManagers.registerRemoteSources(this.audioPlayerManager, com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager.class);
-
-        audioPlayer = audioPlayerManager.createPlayer();
-
-        AudioPlayerSendHandler sendHandler = new AudioPlayerSendHandler(audioPlayer);
-        audioManager.setSendingHandler(sendHandler);
-
+    public MusicStreamer(TextChannel textChannel, Link link, MusicBoxUpdateHandler musicBoxUpdateHandler) {
         this.musicChannel = textChannel;
+        this.link = link;
+        this.player = link.createOrUpdatePlayer().block();
+        this.musicBoxUpdateHandler = musicBoxUpdateHandler;
+        this.scheduler = new TrackScheduler(this.player, musicBoxUpdateHandler);
 
-        trackScheduler = new TrackScheduler(audioPlayer, musicBoxUpdateHandler);
-        audioPlayer.addListener(trackScheduler);
+        LavalinkNode node = link.getNode();
+        node.on(TrackStartEvent.class).subscribe(scheduler::onTrackStart);
+        node.on(TrackEndEvent.class).subscribe(scheduler::onTrackEnd);
+        node.on(TrackExceptionEvent.class).subscribe(scheduler::onTrackException);
+        node.on(TrackStuckEvent.class).subscribe(scheduler::onTrackStuck);
     }
 
-    public void addTrackToQueue(Member requester, YoutubeTrackInfo track) {
-        this.loadItem(requester, track);
+    public void addTrackByUrl(Member requester, String url) {
+        LavaAudioLoader loader = new LavaAudioLoader(requester, musicChannel, scheduler);
+        this.link.loadItem(url).subscribe(loader);
     }
 
-    // if requester requested tracks as youtube music link
-    public void addTrackToQueue(Member requester, String url) {
-        this.loadItemList(requester, url);
+    public void addPlaylistByUrl(Member requester, String url) {
+        LavaAudioLoader loader = new LavaAudioLoader(requester, musicChannel, scheduler);
+        this.link.loadItem(url).subscribe(loader);
     }
 
-    // if requester requested tracks as youtube music playlist
-    public void addTrackListToQueue(Member requester, String url) {
-        this.loadItemList(requester, url);
-    }
-
-    public void repeatTrackToQueue(MusicPlayMode musicPlayMode) {
-        trackScheduler.setMusicPlayMode(musicPlayMode);
+    public void addTrackByQuery(Member requester, String query) {
+        LavaAudioLoader loader = new LavaAudioLoader(requester, musicChannel, scheduler);
+        this.link.loadItem("ytsearch:" + query).subscribe(loader);
     }
 
     public void shuffleTracksOnQueue() {
-        trackScheduler.shuffleTracks();
+        scheduler.shuffleTracks();
     }
 
     public void clearTracksOfQueue() {
-        trackScheduler.clearTracks();
-        trackScheduler.removeCurrentTrack();
+        scheduler.clearTracks();
     }
 
     public void skipCurrentTracksOfQueue() {
-        trackScheduler.nextTrack();
+        scheduler.nextTrack();
     }
 
-    public String getPlayModeDescription() {
-        return MusicUtil.getMusicPlayModeDescription(trackScheduler.getMusicPlayMode());
+    public void repeatTrackToQueue(MusicPlayMode musicPlayMode) {
+        scheduler.setMusicPlayMode(musicPlayMode);
     }
 
-    public void setVolume(int volume) {
-        audioPlayer.setVolume(volume);
-    }
-
-    public int getVolume() {
-        return audioPlayer.getVolume();
-    }
-
-    public TrackScheduler getTrackScheduler() {
-        return trackScheduler;
-    }
-
-    /* ----------------------------- Internal Functions ----------------------------- */
-    private void loadItem(Member requester, YoutubeTrackInfo trackInfo) {
-        CustomAudioResultHandler handler = new CustomAudioResultHandler(requester, musicChannel, trackScheduler, trackInfo);
-        this.audioPlayerManager.loadItemOrdered(this, trackInfo.getVideoUrl(), handler);
-    }
-
-    private void loadItemList(Member requester, String url) {
-        CustomAudioResultHandler handler = new CustomAudioResultHandler(requester, musicChannel, trackScheduler);
-        this.audioPlayerManager.loadItemOrdered(this, url, handler);
-    }
-
-    public boolean isPaused() {
-        return this.audioPlayer.isPaused();
-    }
-
-    public void setPaused(boolean pause) {
-        this.audioPlayer.setPaused(pause);
+    public TrackScheduler getScheduler() {
+        return scheduler;
     }
 
     public TextChannel getMusicChannel() {
         return musicChannel;
     }
 
-    public void setMusicChannel(TextChannel channel) {
-        this.musicChannel = channel;
+    public boolean isPaused() {
+        return this.paused;
     }
 
-    public AudioPlayer getAudioPlayer() {
-        return audioPlayer;
+    public void setPaused(boolean paused) {
+        player.setPaused(paused).block();
+        this.paused = paused;
+    }
+
+    public long getVolume() {
+        return this.volume;
+    }
+
+    public void setVolume(int volume) {
+        player.setVolume(volume).block();
+        this.volume = volume;
+    }
+
+    public void destroy() {
+        this.link.destroy().block();
     }
 }

@@ -10,7 +10,6 @@ import service.discord.MessageEmbedProps;
 import service.music.object.MusicBoxComponents;
 import service.music.object.MusicPlayMode;
 import service.music.object.MusicTrack;
-import service.music.object.YoutubeTrackInfo;
 import service.music.tools.MusicUtil;
 
 import java.awt.*;
@@ -44,18 +43,18 @@ public class MusicActionEmbedBuilder {
     }
 
     public MusicActionEmbedBuilder setTrackList(MusicTrack currentTrack, ArrayList<MusicTrack> tracks,
-                                                MusicPlayMode playMode, int volume) {
+                                                MusicPlayMode playMode, long volume) {
         this.trackCount = tracks.size();
         if (currentTrack != null) this.trackCount++;
         for (int i = 0; i < tracks.size() && i < 25; i++) {
-            YoutubeTrackInfo trackInfo = tracks.get(i).trackInfo;
+            MusicTrack musicTrack = tracks.get(i);
 
-            String duration = trackInfo.getDurationString();
-            String requester = trackInfo.getRequester().getEffectiveName();
+            String duration = musicTrack.getDurationString();
+            String requester = musicTrack.requester.getEffectiveName();
 
-            String label = String.format("%d. %s", i, trackInfo.getTitle());
-            String optionId = String.format("track-%s", trackInfo.getId());
-            String description = String.format("[%s] %s (%s)", requester, trackInfo.getChannelTitle(), duration);
+            String label = String.format("%d. %s", i, musicTrack.getTitle());
+            String optionId = String.format("track-%s", musicTrack.getIdentifier());
+            String description = String.format("[%s] %s (%s)", requester, musicTrack.getChannelTitle(), duration);
 
             trackMenuBuilder.addOption(label, optionId, description);
         }
@@ -64,24 +63,24 @@ public class MusicActionEmbedBuilder {
 
         // set image
         if (currentTrack != null) {
-            YoutubeTrackInfo firstTrack = currentTrack.trackInfo;
-            String duration = firstTrack.getDurationString();
+            String duration = currentTrack.getDurationString();
 
             try {
-                embedBuilder.setThumbnail(firstTrack.getThumbnailURL());
+                embedBuilder.setThumbnail(currentTrack.getThumbnailURL());
             } catch (IllegalArgumentException exception) {
             }
 
-            embedBuilder.addField("현재 재생 중", TextStyler.Link(firstTrack.getTitle(), firstTrack.getVideoUrl()), false);
+            embedBuilder.addField("현재 재생 중", TextStyler.Link(currentTrack.getTitle(), currentTrack.getVideoURL()), false);
             embedBuilder.addField("노래 길이", TextStyler.Block(duration), true);
             embedBuilder.addField("남은 곡 수", TextStyler.Block(tracks.size() + ""), true);
             embedBuilder.addField("반복 모드", TextStyler.Block(MusicUtil.getMusicPlayModeDescription(playMode)), true);
-            embedBuilder.addField("신청자", String.format("<@%s>", firstTrack.getRequester().getId()), true);
-            embedBuilder.addField("채널", TextStyler.Block(firstTrack.getChannelTitle()), true);
+            embedBuilder.addField("신청자", String.format("<@%s>", currentTrack.requester.getId()), true);
+            embedBuilder.addField("채널", TextStyler.Block(currentTrack.getChannelTitle()), true);
             embedBuilder.addField("볼륨", TextStyler.Block(volume + "%"), true);
+//            embedBuilder.addField("업데이트 시간", String.valueOf(System.currentTimeMillis()), false);
 
             if (tracks.size() > 0) {
-                YoutubeTrackInfo nextTrack = tracks.get(0).trackInfo;
+                MusicTrack nextTrack = tracks.get(0);
                 trackMenuBuilder.setPlaceholder(String.format("다음: %s", nextTrack.getTitle()));
             }
         }

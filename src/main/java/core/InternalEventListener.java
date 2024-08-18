@@ -244,7 +244,7 @@ public class InternalEventListener extends ListenerAdapter {
         try {
             MusicBox musicBox = Service.GetMusicBoxByGuildId(guildId);
             MusicStreamer musicStreamer = musicBox.getStreamer();
-            TrackScheduler trackScheduler = musicStreamer.getTrackScheduler();
+            TrackScheduler trackScheduler = musicStreamer.getScheduler();
             if (value.startsWith("track-")) {
                 String trackId = value.replace("track-", "");
                 trackScheduler.skipUntilTrack(trackId);
@@ -272,7 +272,7 @@ public class InternalEventListener extends ListenerAdapter {
             try {
                 MusicBox musicBox = Service.GetMusicBoxByGuildId(guildId);
                 MusicStreamer musicStreamer = musicBox.getStreamer();
-                TrackScheduler trackScheduler = musicStreamer.getTrackScheduler();
+                TrackScheduler trackScheduler = musicStreamer.getScheduler();
 
                 switch (componentId) {
                     case "musicBoxStop":
