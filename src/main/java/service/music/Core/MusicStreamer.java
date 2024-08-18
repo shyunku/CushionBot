@@ -32,10 +32,30 @@ public class MusicStreamer {
         this.scheduler = new TrackScheduler(this.player, musicBoxUpdateHandler);
 
         LavalinkNode node = link.getNode();
-        node.on(TrackStartEvent.class).subscribe(scheduler::onTrackStart);
-        node.on(TrackEndEvent.class).subscribe(scheduler::onTrackEnd);
-        node.on(TrackExceptionEvent.class).subscribe(scheduler::onTrackException);
-        node.on(TrackStuckEvent.class).subscribe(scheduler::onTrackStuck);
+        node.on(TrackStartEvent.class).subscribe(this::onTrackStart);
+        node.on(TrackEndEvent.class).subscribe(this::onTrackEnd);
+        node.on(TrackExceptionEvent.class).subscribe(this::onTrackException);
+        node.on(TrackStuckEvent.class).subscribe(this::onTrackStuck);
+    }
+
+    void onTrackStart(TrackStartEvent e) {
+        if (e.getGuildId() != this.musicChannel.getGuild().getIdLong()) return;
+        this.scheduler.onTrackStart(e);
+    }
+
+    void onTrackEnd(TrackEndEvent e) {
+        if (e.getGuildId() != this.musicChannel.getGuild().getIdLong()) return;
+        this.scheduler.onTrackEnd(e);
+    }
+
+    void onTrackException(TrackExceptionEvent e) {
+        if (e.getGuildId() != this.musicChannel.getGuild().getIdLong()) return;
+        this.scheduler.onTrackException(e);
+    }
+
+    void onTrackStuck(TrackStuckEvent e) {
+        if (e.getGuildId() != this.musicChannel.getGuild().getIdLong()) return;
+        this.scheduler.onTrackStuck(e);
     }
 
     public void addTrackByUrl(Member requester, String url) {
