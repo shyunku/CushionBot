@@ -5,6 +5,9 @@ server: # REST and WS server
     enabled: false # Whether to enable HTTP/2 support
 plugins:
   youtube:
+    pot:
+      token: "MnSN3xA5jkeZlY3n5-_VsQgZiQAqTHaAtcLF4nXH85YAi1jOOOnoEbTsjInn1QMaJ3r29iglyTz7rViyHugHKF8UG0fifJKeekwoJywgq3Z2VLe42rV9kD0CYpotcSya9vRl4TR3Xf3JUoDMAnc0h8hr24cavQ=="
+      visitorData: "CgtYd1VyQlp6WExZNCicwoe2BjIKCgJLUhIEGgAgWQ%3D%3D"
     enabled: true # Whether this source can be used.
     allowSearch: true # Whether "ytsearch:" and "ytmsearch:" can be used.
     allowDirectVideoIds: true # Whether just video IDs can match. If false, only complete URLs will be loaded.
@@ -71,8 +74,8 @@ lavalink:
       #youtubeConfig: # Required for avoiding all age restrictions by YouTube, some restricted videos still can be played without.
       #email: "" # Email of Google account
       #password: "" # Password of Google account
-      #httpConfig: # Useful for blocking bad-actors from ip-grabbing your music node and attacking it, this way only the http proxy will be attacked
-      #proxyHost: "20.210.113.32" # Hostname of the proxy, (ip or domain)
+    #httpConfig: # Useful for blocking bad-actors from ip-grabbing your music node and attacking it, this way only the http proxy will be attacked
+    #proxyHost: "20.210.113.32" # Hostname of the proxy, (ip or domain)
     #proxyPort: 8123 # Proxy port, 3128 is the default for squidProxy
     #proxyUser: "" # Optional user for basic authentication fields, leave blank if you don't use basic auth
     #proxyPassword: "" # Password for basic authentication
