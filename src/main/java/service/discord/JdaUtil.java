@@ -15,14 +15,6 @@ public class JdaUtil {
 
     public static void LeaveCurrentAudioChannel(Guild guild) {
         try {
-//            GuildVoiceState voiceState = guild.getSelfMember().getVoiceState();
-//            if (voiceState == null) {
-//                throw new Exception("voiceState is null");
-//            }
-//            AudioChannel connectedChannel = voiceState.getChannel();
-//            if (connectedChannel != null) {
-//                guild.getAudioManager().closeAudioConnection();
-//            }
             CushionBot.jda.getDirectAudioController().disconnect(guild);
         } catch (Exception e) {
             e.printStackTrace();

@@ -8,8 +8,8 @@ import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.entities.Activity;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.GuildVoiceState;
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.channel.concrete.VoiceChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.AudioChannel;
 import net.dv8tion.jda.api.entities.channel.unions.AudioChannelUnion;
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
@@ -23,7 +23,6 @@ import net.dv8tion.jda.api.events.session.ReadyEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
-import net.dv8tion.jda.api.managers.AudioManager;
 import net.dv8tion.jda.api.managers.Presence;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -159,17 +158,18 @@ public class InternalEventListener extends ListenerAdapter {
                 this.logger.debug("All participants left the voice channel. Clearing the queue.");
                 MusicBox musicBox = Service.GetMusicBoxByGuildId(guild.getId());
                 MusicStreamer streamer = musicBox.getStreamer();
-                AudioManager audioManager = guild.getAudioManager();
-                AudioChannelUnion connectedChannel = audioManager.getConnectedChannel();
-                if (connectedChannel == null) return;
-                VoiceChannel voiceChannel = connectedChannel.asVoiceChannel();
-                if (voiceChannel.getId().equals(audioChannel.getId())) {
-                    streamer.clearTracksOfQueue();
-                    musicBox.updateEmbed();
-                    JdaUtil.LeaveCurrentAudioChannel(guild);
-                    musicBox.getMusicChannel().sendMessage("모든 참가자가 음성 채널을 나갔습니다. 음악 재생을 종료합니다.").queue(sentMessage -> {
-                        sentMessage.delete().queueAfter(5, java.util.concurrent.TimeUnit.SECONDS);
-                    });
+
+                GuildVoiceState voiceState = guild.getSelfMember().getVoiceState();
+                if (voiceState != null) {
+                    AudioChannel connectedChannel = voiceState.getChannel();
+                    if (connectedChannel != null && audioChannel.getId().equals(connectedChannel.getId())) {
+                        JdaUtil.LeaveCurrentAudioChannel(guild);
+                        streamer.clearTracksOfQueue();
+                        musicBox.updateEmbed();
+                        musicBox.getMusicChannel().sendMessage("모든 참가자가 음성 채널을 나갔습니다. 음악 재생을 종료합니다.").queue(sentMessage -> {
+                            sentMessage.delete().queueAfter(5, java.util.concurrent.TimeUnit.SECONDS);
+                        });
+                    }
                 }
             } catch (GuildManagerNotFoundException ex) {
                 logger.error("GuildManagerNotFoundException occurred while trying to get MusicBox.");

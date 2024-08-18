@@ -45,7 +45,7 @@ public class GuildCommandRouter {
         boolean isLolChannel = lolChannel != null && lolChannel.getId().equals(textChannel.getId());
 
         // exclude empty string
-        if (rawMessage.length() == 0) return;
+        if (rawMessage.isEmpty()) return;
 
         // handle bot message
         if (user.isBot() && userId.equals(TokenManager.BOT_CLIENT_ID)) {
