@@ -69,12 +69,12 @@ lavalink:
       #searchTriggersFail: true # Whether a search 429 should trigger marking the ip as failing
       #retryLimit: 3 # -1 = use default lavaplayer value | 0 = infinity | >0 = retry will happen this numbers times
       #youtubeConfig: # Required for avoiding all age restrictions by YouTube, some restricted videos still can be played without.
-    #email: "" # Email of Google account
-    #password: "" # Password of Google account
-    httpConfig: # Useful for blocking bad-actors from ip-grabbing your music node and attacking it, this way only the http proxy will be attacked
-      proxyHost: "20.210.113.32" # Hostname of the proxy, (ip or domain)
-      proxyPort: 8123 # Proxy port, 3128 is the default for squidProxy
-      #proxyUser: "" # Optional user for basic authentication fields, leave blank if you don't use basic auth
+      #email: "" # Email of Google account
+      #password: "" # Password of Google account
+      #httpConfig: # Useful for blocking bad-actors from ip-grabbing your music node and attacking it, this way only the http proxy will be attacked
+      #proxyHost: "20.210.113.32" # Hostname of the proxy, (ip or domain)
+    #proxyPort: 8123 # Proxy port, 3128 is the default for squidProxy
+    #proxyUser: "" # Optional user for basic authentication fields, leave blank if you don't use basic auth
     #proxyPassword: "" # Password for basic authentication
 
 metrics:
