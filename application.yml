@@ -62,20 +62,20 @@ lavalink:
     youtubeSearchEnabled: true
     soundcloudSearchEnabled: true
     gc-warnings: true
-    ratelimit:
-      ipBlocks: [ "255.255.255.0/24" ] # list of ip blocks
+      #ratelimit:
+      #ipBlocks: [ "255.255.255.0/24" ] # list of ip blocks
       #excludedIps: ["...", "..."] # ips which should be explicit excluded from usage by lavalink
-      strategy: "RotateOnBan" # RotateOnBan | LoadBalance | NanoSwitch | RotatingNanoSwitch
-      searchTriggersFail: true # Whether a search 429 should trigger marking the ip as failing
-      retryLimit: 3 # -1 = use default lavaplayer value | 0 = infinity | >0 = retry will happen this numbers times
+      #strategy: "RotateOnBan" # RotateOnBan | LoadBalance | NanoSwitch | RotatingNanoSwitch
+      #searchTriggersFail: true # Whether a search 429 should trigger marking the ip as failing
+      #retryLimit: 3 # -1 = use default lavaplayer value | 0 = infinity | >0 = retry will happen this numbers times
       #youtubeConfig: # Required for avoiding all age restrictions by YouTube, some restricted videos still can be played without.
-      #email: "" # Email of Google account
-      #password: "" # Password of Google account
-      #httpConfig: # Useful for blocking bad-actors from ip-grabbing your music node and attacking it, this way only the http proxy will be attacked
-      #proxyHost: "localhost" # Hostname of the proxy, (ip or domain)
-      #proxyPort: 3128 # Proxy port, 3128 is the default for squidProxy
+    #email: "" # Email of Google account
+    #password: "" # Password of Google account
+    httpConfig: # Useful for blocking bad-actors from ip-grabbing your music node and attacking it, this way only the http proxy will be attacked
+      proxyHost: "20.210.113.32" # Hostname of the proxy, (ip or domain)
+      proxyPort: 8123 # Proxy port, 3128 is the default for squidProxy
       #proxyUser: "" # Optional user for basic authentication fields, leave blank if you don't use basic auth
-      #proxyPassword: "" # Password for basic authentication
+    #proxyPassword: "" # Password for basic authentication
 
 metrics:
   prometheus:
