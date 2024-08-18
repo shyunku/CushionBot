@@ -7,10 +7,6 @@ java {
     targetCompatibility = JavaVersion.VERSION_17
 }
 
-tasks.withType(JavaCompile).configureEach {
-    options.release = 17
-}
-
 ext {
     springBootVersion = '1.4.2.RELEASE'
     slf4jVersion = '1.7.36'
@@ -22,6 +18,8 @@ group 'Shyunku'
 version '1.0-SNAPSHOT'
 
 jar {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
     manifest {
         attributes "Main-Class": 'core.CushionBot'
     }
