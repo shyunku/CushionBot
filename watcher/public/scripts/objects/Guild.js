@@ -53,7 +53,8 @@ export default class Guild {
     return intervals;
   }
 
-  async updateSessions(userSessions) {
+  async updateSessions(userSessions, onProgress) {
+    let count = 0;
     for (let userId in userSessions) {
       let user = this.users[userId];
       if (user == null) {
@@ -64,6 +65,7 @@ export default class Guild {
 
       const sessions = userSessions[userId];
       user.setSessions(sessions);
+      onProgress?.(++count, Object.keys(userSessions).length);
     }
   }
 

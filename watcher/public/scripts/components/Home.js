@@ -9,6 +9,8 @@ class Home extends UI {
       initialState: {
         data: {},
         selectedGuildId: localStorage.getItem("selected_guild_id") ?? null,
+        loadingTotal: 1,
+        loadingCurrent: 0,
       },
     });
   }
@@ -26,6 +28,9 @@ class Home extends UI {
   define() {
     return `
       <div id="home">
+        <div id="loader">
+          <div class="filler {$loadingCurrent == $loadingTotal ? 'filled' : ''}" style="width: {$loadingCurrent*100/$loadingTotal}%;"></div>
+        </div>
         <Sidebar $data={$data} 
                  $selectedGuildId={$selectedGuildId}
                  $onGuildIdSelect={this.onGuildIdSelect}/>
@@ -36,6 +41,8 @@ class Home extends UI {
 
   async loadData() {
     console.log("update data");
+    let currentAcc = 0;
+    let total = 0;
     this.setState("data", async (prev) => {
       const data = { ...prev };
       const rawData = await Http.get("/data");
@@ -47,6 +54,9 @@ class Home extends UI {
         localStorage.setItem("selected_guild_id", selectedGuildId);
       }
 
+      total = Object.values(rawData).reduce((acc, guild) => acc + Object.keys(guild).length, 0);
+      this.setState("loadingTotal", total);
+
       for (let guildId in rawData) {
         let guild = data[guildId];
         if (guild == null) {
@@ -55,7 +65,11 @@ class Home extends UI {
           data[guildId] = guild;
         }
 
-        await guild.updateSessions(rawData[guildId]);
+        await guild.updateSessions(rawData[guildId], (curr, total) => {
+          this.setState("loadingCurrent", currentAcc + curr);
+        });
+
+        currentAcc += Object.keys(rawData[guildId]).length;
       }
 
       return data;
