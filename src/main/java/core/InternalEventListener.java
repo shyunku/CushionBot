@@ -2,8 +2,10 @@ package core;
 
 import Utilities.TokenManager;
 import core.command.CommandRouter;
-import core.command.SlashCommandParser;
 import exceptions.GuildManagerNotFoundException;
+import listeners.ButtonInteractionListener;
+import listeners.ModalInteractionListener;
+import listeners.SlashCommandInteractionListener;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.entities.Activity;
@@ -15,8 +17,6 @@ import net.dv8tion.jda.api.entities.channel.unions.AudioChannelUnion;
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
 import net.dv8tion.jda.api.events.guild.GuildLeaveEvent;
 import net.dv8tion.jda.api.events.guild.voice.GuildVoiceUpdateEvent;
-import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
-import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.GenericSelectMenuInteractionEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.session.ReadyEvent;
@@ -28,11 +28,9 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import service.discord.JdaUtil;
-import service.leagueoflegends.Core.LolBox;
 import service.music.Core.MusicBox;
 import service.music.Core.MusicStreamer;
 import service.music.Core.TrackScheduler;
-import service.music.object.MusicPlayMode;
 import service.watcher.AccessType;
 import service.watcher.GuildWatcher;
 
@@ -42,7 +40,7 @@ import java.util.List;
 public class InternalEventListener extends ListenerAdapter {
     private final Logger logger = LoggerFactory.getLogger(InternalEventListener.class);
     private final CommandRouter commandRouter = new CommandRouter();
-    private SlashCommandParser slashCommandParser = new SlashCommandParser();
+
 
     public InternalEventListener() {
     }
@@ -79,6 +77,12 @@ public class InternalEventListener extends ListenerAdapter {
 //        for(Guild g : guilds) {
 //            g.getAudioManager().closeAudioConnection();
 //        }
+
+        // set up listeners
+        jda.addEventListener(new AutoCompleteListener());
+        jda.addEventListener(new ModalInteractionListener());
+        jda.addEventListener(new ButtonInteractionListener());
+        jda.addEventListener(new SlashCommandInteractionListener());
     }
 
     private void setupGuild(Guild guild) {
@@ -96,6 +100,7 @@ public class InternalEventListener extends ListenerAdapter {
                 Commands.slash("음악셔플", "재생목록을 셔플합니다."),
                 Commands.slash("음악볼륨", "볼륨을 조절합니다.")
                         .addOption(OptionType.INTEGER, "볼륨", "볼륨을 입력하세요. (0~100)", true),
+
                 Commands.slash("내전채널", "이 텍스트 채널을 내전 채널로 지정합니다."),
                 Commands.slash("내전모으기", "내전 일정을 생성합니다.")
                         .addOption(OptionType.INTEGER, "시간", "모집 시간을 입력하세요. (0~47) 24 이상은 내일을 나타냅니다.", true)
@@ -106,7 +111,12 @@ public class InternalEventListener extends ListenerAdapter {
                 Commands.slash("내전정보", "내전 정보를 출력합니다."),
                 Commands.slash("내전호출", "내전 참여자 모두를 호출합니다."),
                 Commands.slash("내전종료", "내전 인원 모집을 종료합니다."),
-                Commands.slash("내전취소", "내전을 취소합니다.")
+                Commands.slash("내전취소", "내전을 취소합니다."),
+
+                Commands.slash("구인채널생성", "구인 채널을 생성합니다.")
+                        .addOption(OptionType.CHANNEL, "채널", "(이미 있는 경우) 구인 채널을 입력하세요.", false),
+                Commands.slash("구인", "게임이나 활동을 함께할 사람들을 구합니다."),
+                Commands.slash("구인취소", "본인이 업로드한 모든 구인을 취소합니다.")
         ).queue();
 
         this.logger.debug("Guild {} setup completed.", guild.getName());
@@ -183,55 +193,6 @@ public class InternalEventListener extends ListenerAdapter {
         commandRouter.parseCommand(e);
     }
 
-    @Override
-    public void onSlashCommandInteraction(SlashCommandInteractionEvent e) {
-        String eventName = e.getName();
-        switch (eventName) {
-            case "test":
-                slashCommandParser.test(e);
-                break;
-            case "clear":
-                slashCommandParser.clear(e);
-                break;
-            case "점검완료":
-                slashCommandParser.finishMaintenance(e);
-                break;
-            case "서버랭킹":
-                slashCommandParser.serverRanking(e);
-                break;
-            case "내랭킹":
-                slashCommandParser.myRanking(e);
-                break;
-            case "음악채널":
-                slashCommandParser.music(e);
-                break;
-            case "음악셔플":
-                slashCommandParser.musicShuffle(e);
-                break;
-            case "음악볼륨":
-                slashCommandParser.musicVolume(e);
-                break;
-            case "내전채널":
-                slashCommandParser.lol5vs5(e);
-                break;
-            case "내전모으기":
-                slashCommandParser.lol5vs5StartOrStop(e, true);
-                break;
-            case "내전시간변경":
-                slashCommandParser.lol5vs5ChangeStartTime(e);
-                break;
-            case "내전정보":
-                slashCommandParser.lol5vs5PrintInfo(e);
-                break;
-            case "내전호출":
-                slashCommandParser.lol5vs5Call(e);
-                break;
-            case "내전종료":
-            case "내전취소":
-                slashCommandParser.lol5vs5StartOrStop(e, false);
-                break;
-        }
-    }
 
     @Override
     public void onGenericSelectMenuInteraction(@NotNull GenericSelectMenuInteractionEvent e) {
@@ -253,77 +214,6 @@ public class InternalEventListener extends ListenerAdapter {
             }
         } catch (Exception exception) {
             e.reply("음악 채널이 아직 설정되지 않았습니다. /music 명령어로 먼저 설정해주세요.").queue();
-        }
-    }
-
-    @Override
-    public void onButtonInteraction(ButtonInteractionEvent e) {
-        Guild guild = e.getGuild();
-        String guildId = guild.getId();
-        String componentId = e.getComponentId();
-
-        if (!Service.guildManagers.containsKey(guildId)) {
-            logger.warn("GuildManager is not set in this guild.");
-            return;
-        }
-
-        if (componentId.startsWith("music")) {
-            try {
-                MusicBox musicBox = Service.GetMusicBoxByGuildId(guildId);
-                MusicStreamer musicStreamer = musicBox.getStreamer();
-                TrackScheduler trackScheduler = musicStreamer.getScheduler();
-
-                switch (componentId) {
-                    case "musicBoxStop":
-                        musicStreamer.clearTracksOfQueue();
-//                    JdaUtil.LeaveCurrentAudioChannel(guild);
-                        break;
-                    case "musicBoxPause":
-                        musicStreamer.setPaused(true);
-                        break;
-                    case "musicBoxPlay":
-                        musicStreamer.setPaused(false);
-                        break;
-                    case "musicBoxSkip":
-                        musicStreamer.skipCurrentTracksOfQueue();
-                        break;
-                    case "musicBoxRepeat":
-                        MusicPlayMode nextPlayMode = trackScheduler.getNextMusicPlayMode();
-                        musicStreamer.repeatTrackToQueue(nextPlayMode);
-                        break;
-                    case "musicBoxLeave":
-                        musicStreamer.clearTracksOfQueue();
-                        JdaUtil.LeaveCurrentAudioChannel(guild);
-                        break;
-                }
-
-                e.deferEdit().queue();
-                musicBox.updateEmbed();
-            } catch (GuildManagerNotFoundException exception) {
-                e.reply("음악 채널이 아직 설정되지 않았습니다. /music 명령어로 먼저 설정해주세요.").queue();
-            }
-        } else if (componentId.startsWith("lol")) {
-            try {
-                LolBox lolBox = Service.GetLolBoxByGuildId(guildId);
-                Member sender = e.getMember();
-
-                switch (componentId) {
-                    case "lolJoin":
-                        lolBox.addMemberAnswer(sender, true);
-                        break;
-                    case "lolNotJoin":
-                        lolBox.addMemberAnswer(sender, false);
-                        break;
-                    case "lolDontKnow":
-                        lolBox.removeMemberAnswer(sender);
-                        break;
-                }
-
-                e.deferEdit().queue();
-                lolBox.updateEmbed();
-            } catch (GuildManagerNotFoundException exception) {
-                e.reply("내전 채널이 아직 설정되지 않았습니다. /내전채널 명령어로 먼저 설정해주세요.").queue();
-            }
         }
     }
 
