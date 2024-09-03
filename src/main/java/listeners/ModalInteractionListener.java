@@ -82,7 +82,7 @@ public class ModalInteractionListener extends ListenerAdapter {
 
                     boolean isTimeSpecified = hour != -1;
 
-                    Recruit recruit = new Recruit(gameName, recruitingNum, registeredAt, isTimeSpecified ? recruitAt.getTimeInMillis() : 0, duration);
+                    Recruit recruit = new Recruit(guild, gameName, recruitingNum, registeredAt, isTimeSpecified ? recruitAt.getTimeInMillis() : 0, duration);
                     recruitManager.registerRecruit(member, recruit);
                     event.reply("구인이 등록되었습니다.").queue(m -> {
                         m.deleteOriginal().queueAfter(10, java.util.concurrent.TimeUnit.SECONDS);

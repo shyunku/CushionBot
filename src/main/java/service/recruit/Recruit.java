@@ -3,6 +3,7 @@ package service.recruit;
 import Utilities.TextStyler;
 import exceptions.RecruitPublishException;
 import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageEmbed;
@@ -24,12 +25,14 @@ public class Recruit {
     private long recruitAt;
     private long duration;
 
+    private Guild guild;
     private Set<Member> participants = new HashSet<>();
     private Message message = null;
 
     public boolean isDead = false;
 
-    public Recruit(String gameName, long recruitNum, long registeredAt, long recruitAt, long duration) {
+    public Recruit(Guild guild, String gameName, long recruitNum, long registeredAt, long recruitAt, long duration) {
+        this.guild = guild;
         this.gameName = gameName;
         this.recruitNum = recruitNum;
         this.registeredAt = registeredAt;
@@ -43,7 +46,7 @@ public class Recruit {
         }
 
         MessageEmbed embed = getEmbed();
-        this.message = channel.sendMessageEmbeds(embed).complete();
+        this.message = channel.sendMessage("@everyone").setEmbeds(embed).complete();
         this.message.addReaction(Emoji.fromUnicode("✅")).queue();
         this.addParticipant(publisher);
 
@@ -111,6 +114,7 @@ public class Recruit {
 
         EmbedBuilder embedBuilder = new EmbedBuilder();
         embedBuilder.setTitle(String.format("%s%s", gameName, isStarted ? " (모집 종료)" : (isRecruitDone ? " (모집 완료)" : " (모집 중)")));
+        // refer everyone
         embedBuilder.setDescription("같이하실 분을 모집합니다.\n");
         embedBuilder.setColor(0x3D99FF);
         if (recruitAt != 0) embedBuilder.addField("모집/시작시간", TextStyler.Block(recruitTime()), false);
