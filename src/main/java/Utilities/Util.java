@@ -13,6 +13,18 @@ import java.util.Collection;
 import java.util.TimeZone;
 
 public class Util {
+    public static int parseInt(String str) throws NumberFormatException {
+        return Integer.parseInt(str.trim());
+    }
+
+    public static long parseLong(String str) throws NumberFormatException {
+        return Long.parseLong(str.trim());
+    }
+
+    public static double parseDouble(String str) throws NumberFormatException {
+        return Double.parseDouble(str.trim());
+    }
+
     public static double getStringDistance(String s1, String s2) {
         SimilarityStrategy strategy = new JaroWinklerStrategy();
         StringSimilarityService service = new StringSimilarityServiceImpl(strategy);

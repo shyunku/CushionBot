@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import service.leagueoflegends.Core.LolBox;
 import service.music.Core.MusicBox;
+import service.recruit.RecruitManager;
 
 public class GuildManager {
     private final Logger logger = LoggerFactory.getLogger(GuildManager.class);
@@ -12,12 +13,14 @@ public class GuildManager {
     private GuildCommandRouter guildCommandRouter;
     private MusicBox musicBox;
     private LolBox lolBox;
+    private RecruitManager recruitManager;
 
     public GuildManager(Guild guild) {
         this.guild = guild;
         this.guildCommandRouter = new GuildCommandRouter(guild);
         this.musicBox = new MusicBox(guild, null);
         this.lolBox = new LolBox(guild, null);
+        this.recruitManager = new RecruitManager(guild);
     }
 
     public GuildCommandRouter getGuildCommandRouter() {
@@ -30,5 +33,9 @@ public class GuildManager {
 
     public LolBox getLolBox() {
         return lolBox;
+    }
+
+    public RecruitManager getRecruitManager() {
+        return recruitManager;
     }
 }

@@ -8,23 +8,27 @@ import exceptions.InvalidLolStartTimeException;
 import exceptions.PermissionInsufficientException;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.Permission;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.MessageEmbed;
-import net.dv8tion.jda.api.entities.MessageHistory;
+import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
 import net.dv8tion.jda.api.interactions.components.ItemComponent;
+import net.dv8tion.jda.api.interactions.components.text.TextInput;
+import net.dv8tion.jda.api.interactions.components.text.TextInputStyle;
+import net.dv8tion.jda.api.interactions.modals.Modal;
+import net.dv8tion.jda.api.managers.channel.concrete.TextChannelManager;
 import net.dv8tion.jda.api.requests.restaction.interactions.ReplyCallbackAction;
 import net.dv8tion.jda.internal.utils.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import service.discord.MessageEmbedProps;
+import service.guild.core.GuildUtil;
+import service.inmemory.RedisClient;
 import service.leagueoflegends.Core.LolBox;
 import service.music.Core.MusicBox;
 import service.music.Core.MusicStreamer;
+import service.recruit.RecruitManager;
 import service.watcher.AccessSession;
 import service.watcher.GuildWatcher;
 
@@ -478,6 +482,146 @@ public class SlashCommandParser {
         } catch (Exception err) {
             err.printStackTrace();
         }
+    }
+
+    public void recruitChannel(SlashCommandInteractionEvent e) {
+        try {
+            Guild guild = e.getGuild();
+            if (guild == null) {
+                this.sendVolatileReply(e, "이 명령어는 guild 내에서만 사용 가능합니다.", 5);
+                return;
+            }
+            String guildId = guild.getId();
+            Service.addGuildManagerIfNotExists(guild);
+            RecruitManager recruitManager = Service.GetRecruitManagerByGuildId(guildId);
+            String recruitChannelKey = GuildUtil.recruitChannelKey(guildId);
+
+            if (!this.isManager(e.getMember())) throw new PermissionInsufficientException();
+
+            OptionMapping channelOpt = e.getOption("채널");
+            if (channelOpt == null) {
+                // create new channel
+                guild.createTextChannel("구인채널").queue(textChannel -> {
+                    RedisClient.set(recruitChannelKey, textChannel.getId());
+                    recruitManager.recruitChannel = textChannel;
+                    this.setRecruitChannel(textChannel);
+                    e.reply(String.format("구인 채널이 지정되었습니다. 이제 %s 채널에서 구인 정보를 확인하실 수 있습니다.", textChannel.getAsMention())).queue();
+                });
+            } else {
+                TextChannel textChannel = channelOpt.getAsChannel().asTextChannel();
+
+                // save channel
+                RedisClient.set(recruitChannelKey, textChannel.getId());
+                recruitManager.recruitChannel = textChannel;
+                this.setRecruitChannel(textChannel);
+                e.reply(String.format("구인 채널이 지정되었습니다. 이제 %s 채널에서 구인 정보를 확인하실 수 있습니다.", textChannel.getAsMention())).queue();
+            }
+        } catch (Exception err) {
+            err.printStackTrace();
+        }
+    }
+
+    public void recruit(SlashCommandInteractionEvent e) {
+        try {
+            Guild guild = e.getGuild();
+            if (guild == null) {
+                this.sendVolatileReply(e, "이 명령어는 guild 내에서만 사용 가능합니다.", 5);
+                return;
+            }
+            String guildId = guild.getId();
+            Service.addGuildManagerIfNotExists(guild);
+            RecruitManager recruitManager = Service.GetRecruitManagerByGuildId(guildId);
+            if (recruitManager == null || recruitManager.recruitChannel == null) {
+                this.sendVolatileReply(e, "구인 채널이 설정되지 않았습니다. /구인채널 명령어로 설정해주세요.", 8);
+                return;
+            }
+
+            Member member = e.getMember();
+            if (member == null) {
+                this.sendVolatileReply(e, "구인 정보를 등록할 수 없습니다.", 5);
+                return;
+            }
+
+            TextInput gameNameInput = TextInput.create("gameName", "게임 이름/이벤트 이름을 입력해주세요.", TextInputStyle.SHORT)
+                    .setPlaceholder("게임 이름/이벤트 이름 (ex. 자랭)")
+                    .setRequired(true)
+                    .build();
+            TextInput recruitingNumInput = TextInput.create("recruitNum", "모집 인원을 숫자로 입력해주세요.", TextInputStyle.SHORT)
+                    .setPlaceholder("모집 인원 (ex. 5)")
+                    .setRequired(false)
+                    .build();
+            TextInput timeInput = TextInput.create("time", "모집 시간을 입력해주세요. 현재 시각보다 전일 경우 내일로 설정됩니다.", TextInputStyle.SHORT)
+                    .setPlaceholder("모집 시간 (ex. 21:30)")
+                    .setRequired(false)
+                    .build();
+            TextInput durationInput = TextInput.create("duration", "예상 소요 시간을 입력해주세요. (1시간 단위)", TextInputStyle.SHORT)
+                    .setPlaceholder("소요 시간 (ex. 1시간 반 -> 1.5)")
+                    .setRequired(false)
+                    .build();
+
+            Modal modal = Modal.create("recruitModal", "구인 등록")
+                    .addActionRow(gameNameInput)
+                    .addActionRow(recruitingNumInput)
+                    .addActionRow(timeInput)
+                    .addActionRow(durationInput)
+                    .build();
+
+            e.replyModal(modal).queue();
+        } catch (Exception err) {
+            err.printStackTrace();
+        }
+    }
+
+    public void recruitCancel(SlashCommandInteractionEvent e) {
+        try {
+            Guild guild = e.getGuild();
+            if (guild == null) {
+                this.sendVolatileReply(e, "이 명령어는 guild 내에서만 사용 가능합니다.", 5);
+                return;
+            }
+            String guildId = guild.getId();
+            Service.addGuildManagerIfNotExists(guild);
+            RecruitManager recruitManager = Service.GetRecruitManagerByGuildId(guildId);
+            if (recruitManager == null) {
+                this.sendVolatileReply(e, "구인 채널이 설정되지 않았습니다. /구인채널 명령어로 설정해주세요.", 8);
+                return;
+            }
+
+            Member member = e.getMember();
+            if (member == null) {
+                this.sendVolatileReply(e, "구인 정보를 삭제할 수 없습니다.", 5);
+                return;
+            }
+
+            recruitManager.unregisterRecruit(member);
+            this.sendVolatileReply(e, "구인이 취소되었습니다.", 5);
+        } catch (Exception err) {
+            err.printStackTrace();
+        }
+    }
+
+    private void setRecruitChannel(TextChannel textChannel) {
+        TextChannelManager textChannelManager = textChannel.getManager();
+        textChannelManager.setTopic("게임이나 활동을 함께할 사람들을 이 채널에서 모집하세요. ✅를 눌러 참여하거나 취소하세요.").queue();
+
+        Role everyoneRole = textChannel.getGuild().getPublicRole();
+        Member botMember = textChannel.getGuild().getSelfMember();
+
+        textChannel.upsertPermissionOverride(everyoneRole)
+                .deny(Permission.MESSAGE_SEND)
+                .queue(success -> {
+                    logger.debug("Permission denied for everyone role on recruit channel.");
+                }, failure -> {
+                    logger.error("Failed to deny permission for everyone role on recruit channel.");
+                });
+
+        textChannel.upsertPermissionOverride(botMember)
+                .grant(Permission.MESSAGE_MANAGE)
+                .queue(success -> {
+                    logger.debug("Permission granted for bot on recruit channel.");
+                }, failure -> {
+                    logger.error("Failed to grant permission for bot on recruit channel.");
+                });
     }
 
     private void sendReply(SlashCommandInteractionEvent e, String message) {

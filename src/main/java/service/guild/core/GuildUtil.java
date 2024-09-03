@@ -5,6 +5,10 @@ public class GuildUtil {
         return "guildMusicBoxMessage-" + guildId;
     }
 
+    public static String recruitChannelKey(String guildId) {
+        return "guildRecruitChannel-" + guildId;
+    }
+
     public static String musicChannelKey(String guildId) {
         return "guildMusicChannel-" + guildId;
     }

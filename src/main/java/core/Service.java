@@ -7,6 +7,7 @@ import net.dv8tion.jda.api.events.Event;
 import service.guild.core.GuildManager;
 import service.leagueoflegends.Core.LolBox;
 import service.music.Core.MusicBox;
+import service.recruit.RecruitManager;
 
 import java.util.HashMap;
 import java.util.List;
@@ -38,6 +39,12 @@ public class Service {
         if (!guildManagers.containsKey(guildId)) throw new GuildManagerNotFoundException();
         GuildManager guildManager = guildManagers.get(guildId);
         return guildManager.getLolBox();
+    }
+
+    public static RecruitManager GetRecruitManagerByGuildId(String guildId) throws GuildManagerNotFoundException {
+        if (!guildManagers.containsKey(guildId)) throw new GuildManagerNotFoundException();
+        GuildManager guildManager = guildManagers.get(guildId);
+        return guildManager.getRecruitManager();
     }
 
     public static void finishMaintenance(Event e) {
