@@ -1,6 +1,7 @@
 package core.command;
 
 import Utilities.TextStyler;
+import Utilities.TimeUtil;
 import Utilities.Util;
 import core.Service;
 import core.Version;
@@ -658,7 +659,7 @@ public class SlashCommandParser {
                 throw new IllegalArgumentException("시간 형식이 올바르지 않습니다: (e.g., 21:30).");
             }
 
-            Calendar recruitAt = Calendar.getInstance();
+            Calendar recruitAt = TimeUtil.getKstCalendar();
             recruitAt.set(Calendar.HOUR_OF_DAY, hour);
             recruitAt.set(Calendar.MINUTE, minute);
             recruitAt.set(Calendar.SECOND, 0);
