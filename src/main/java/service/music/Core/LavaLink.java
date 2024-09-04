@@ -33,7 +33,7 @@ public class LavaLink {
             pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
             pb.redirectError(ProcessBuilder.Redirect.INHERIT);
             Process process = pb.start();
-            logger.debug("Lavalink server started.");
+            logger.info("Lavalink server started.");
 
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 logger.warn("Shutting down Lavalink server.");

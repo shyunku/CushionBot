@@ -125,11 +125,11 @@ public class TrackScheduler {
     }
 
     public void onTrackStart(TrackStartEvent e) {
-        logger.debug(String.format("Track Start: %s", e.getTrack().getInfo().getTitle()));
+        logger.info(String.format("Track Start: %s", e.getTrack().getInfo().getTitle()));
     }
 
     public void onTrackEnd(TrackEndEvent e) {
-        logger.debug(String.format("Track End: %s", e.getTrack().getInfo().getTitle()));
+        logger.info(String.format("Track End: %s", e.getTrack().getInfo().getTitle()));
 
         if (e.getEndReason().getMayStartNext()) {
             switch (musicPlayMode) {

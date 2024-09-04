@@ -32,7 +32,7 @@ public class LavaAudioLoader extends AbstractAudioLoadResultHandler {
         Track track = trackLoaded.getTrack();
         TrackInfo trackInfo = track.getInfo();
         scheduler.addMusicTrack(new MusicTrack(requester, track));
-        logger.debug("Track loaded: {}", trackInfo.getTitle());
+        logger.info("Track loaded: {}", trackInfo.getTitle());
 
         Duration duration = Duration.ofMillis(trackInfo.getLength());
         StringBuilder message = new StringBuilder();
@@ -53,7 +53,7 @@ public class LavaAudioLoader extends AbstractAudioLoadResultHandler {
         for (Track track : trackList) {
             scheduler.addMusicTrack(new MusicTrack(requester, track));
         }
-        logger.debug("Playlist loaded: {}", playlistLoaded.getInfo().getName());
+        logger.info("Playlist loaded: {}", playlistLoaded.getInfo().getName());
 
         musicChannel.sendMessage("플레이리스트 " +
                 TextStyler.Bold(playlistLoaded.getInfo().getName()) + " : " + trackList.size() + "개의 트랙이 로드되었습니다.").queue(sentMessage -> {
@@ -65,14 +65,14 @@ public class LavaAudioLoader extends AbstractAudioLoadResultHandler {
 
     @Override
     public void onSearchResultLoaded(@NotNull SearchResult searchResult) {
-        logger.debug("Search result loaded: {}", searchResult.getTracks().size());
+        logger.info("Search result loaded: {}", searchResult.getTracks().size());
         Track firstTrack = null;
         int index = 0;
         for (Track track : searchResult.getTracks()) {
             if (index == 0) {
                 firstTrack = track;
             }
-            logger.debug("\t- {}.{}", ++index, track.getInfo().getTitle());
+            logger.info("\t- {}.{}", ++index, track.getInfo().getTitle());
             if (index >= 5) {
                 break;
             }
@@ -110,7 +110,7 @@ public class LavaAudioLoader extends AbstractAudioLoadResultHandler {
 
     @Override
     public void noMatches() {
-        logger.debug("No matches found");
+        logger.info("No matches found");
         musicChannel.sendMessage("매치되는 결과가 없습니다.").queue(message -> {
             message.delete().queueAfter(10, java.util.concurrent.TimeUnit.SECONDS);
         });

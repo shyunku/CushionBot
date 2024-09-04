@@ -82,14 +82,17 @@ public class ModalInteractionListener extends ListenerAdapter {
 
                     boolean isTimeSpecified = hour != -1;
 
-                    Recruit recruit = new Recruit(guild, gameName, recruitingNum, registeredAt, isTimeSpecified ? recruitAt.getTimeInMillis() : 0, duration);
+                    String recruitKey = Util.generateRandomNumber(5);
+                    Recruit recruit = new Recruit(guild, recruitKey, gameName, recruitingNum, registeredAt, isTimeSpecified ? recruitAt.getTimeInMillis() : 0, duration);
                     recruitManager.registerRecruit(member, recruit);
                     event.reply("구인이 등록되었습니다.").queue(m -> {
                         m.deleteOriginal().queueAfter(10, java.util.concurrent.TimeUnit.SECONDS);
                     });
                 } catch (Exception e) {
                     e.printStackTrace();
-                    event.reply("구인 등록 중 오류가 발생했습니다: " + e.getMessage()).queue();
+                    event.getHook().sendMessage("구인 등록 중 오류가 발생했습니다: " + e.getMessage()).queue(m -> {
+                        m.delete().queueAfter(10, java.util.concurrent.TimeUnit.SECONDS);
+                    });
                 }
                 break;
         }

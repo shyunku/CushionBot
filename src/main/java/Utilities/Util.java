@@ -40,10 +40,63 @@ public class Util {
         return builder.toString();
     }
 
+    public static String generateRandomUUID(int length) {
+        StringBuilder sb = new StringBuilder();
+        String tokens = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        for (int i = 0; i < length; i++) {
+            int index = (int) (Math.random() * tokens.length());
+            sb.append(tokens.charAt(index));
+        }
+        return sb.toString();
+    }
+
+    public static String generateRandomNumber(int length) {
+        StringBuilder sb = new StringBuilder();
+        String tokens = "123456789";
+        for (int i = 0; i < length; i++) {
+            int index = (int) (Math.random() * tokens.length());
+            sb.append(tokens.charAt(index));
+        }
+        return sb.toString();
+    }
+
     public static String timeFormat(long milli, String format) {
         SimpleDateFormat sdf = new SimpleDateFormat(format, java.util.Locale.KOREA);
         sdf.setTimeZone(TimeZone.getTimeZone("Asia/Seoul"));
         return sdf.format(milli);
+    }
+
+    public static String getRemainTime(long milli) {
+        long current = System.currentTimeMillis();
+        long diff = milli - current;
+        if (diff < 0) return "종료";
+
+        diff = Math.abs(diff);
+        long second = (diff / 1000) % 60;
+        long minute = (diff / (1000 * 60)) % 60;
+        long hour = (diff / (1000 * 60 * 60)) % 24;
+        long day = (diff / (1000 * 60 * 60 * 24));
+
+        if (day > 0) return String.format("%d일 %02d시간 %02d분 %02d초", day, hour, minute, second);
+        if (hour > 0) return String.format("%02d시간 %02d분 %02d초", hour, minute, second);
+        if (minute > 0) return String.format("%02d분 %02d초", minute, second);
+        return String.format("%02d초", second);
+    }
+
+    public static String getRemainTimeMinute(long milli) {
+        long current = System.currentTimeMillis();
+        long diff = milli - current;
+        if (diff < 0) return "종료";
+
+        diff = Math.abs(diff);
+        long minute = (diff / (1000 * 60)) % 60;
+        long hour = (diff / (1000 * 60 * 60)) % 24;
+        long day = (diff / (1000 * 60 * 60 * 24));
+
+        if (day > 0) return String.format("%d일 %02d시간 %02d분", day, hour, minute);
+        if (hour > 0) return String.format("%d시간 %02d분", hour, minute);
+        if (minute > 0) return String.format("%d분", minute);
+        return "1분 미만";
     }
 
     public static String getRelativeTime(long milli) {
@@ -65,8 +118,21 @@ public class Util {
         long hour = (milli / (1000 * 60 * 60)) % 24;
         long day = (milli / (1000 * 60 * 60 * 24));
 
-        if (day > 0) return String.format("%d일 %02d:%02d:%02d", day, hour, minute, second);
-        return String.format("%d:%02d:%02d", hour, minute, second);
+        if (day > 0) return String.format("%d일 %02d시간 %02d분 %02d초", day, hour, minute, second);
+        if (hour > 0) return String.format("%d시간 %02d분 %02d초", hour, minute, second);
+        if (minute > 0) return String.format("%d분 %02d초", minute, second);
+        return String.format("%d초", second);
+    }
+
+    public static String getDurationStringMinute(long milli) {
+        long minute = (milli / (1000 * 60)) % 60;
+        long hour = (milli / (1000 * 60 * 60)) % 24;
+        long day = (milli / (1000 * 60 * 60 * 24));
+
+        if (day > 0) return String.format("%d일 %02d시간 %02d분", day, hour, minute);
+        if (hour > 0) return String.format("%d시간 %02d분", hour, minute);
+        if (minute > 0) return String.format("%d분", minute);
+        return "1분 미만";
     }
 
     public static String dirtyRelativeDay(long milli) {

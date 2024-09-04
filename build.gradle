@@ -47,6 +47,7 @@ dependencies {
     implementation 'org.apache.commons:commons-pool2:2.11.1'
     implementation "dev.arbjerg:lavalink-client:3.0.0"
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.0'
+    implementation 'ch.qos.logback:logback-classic:1.4.12'
 
     implementation "commons-logging:commons-logging:${commonsLogging}"
     implementation "org.slf4j:slf4j-api:${slf4jVersion}"

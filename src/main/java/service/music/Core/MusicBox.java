@@ -134,7 +134,7 @@ public class MusicBox implements ControlBox {
 
     @Override
     public void updateEmbed() {
-        this.logger.debug("Updating music box embed.");
+        this.logger.info("Updating music box embed.");
         MessageEmbedProps embed = getCurrentMusicActionEmbed();
         if (musicBoxMessage == null) {
             embed.sendMessageEmbedWithHook(getMusicChannel(), message -> {
