@@ -1,5 +1,6 @@
 package listeners;
 
+import Utilities.TimeUtil;
 import Utilities.Util;
 import core.Service;
 import net.dv8tion.jda.api.entities.Guild;
@@ -70,8 +71,8 @@ public class ModalInteractionListener extends ListenerAdapter {
                             (durationInput == null || durationInput.getAsString().isEmpty() ? 1
                                     : Util.parseDouble(durationInput.getAsString())) * 60 * 60 * 1000);
 
-                    Calendar current = Calendar.getInstance();
-                    Calendar recruitAt = Calendar.getInstance();
+                    Calendar current = TimeUtil.getKstCalendar();
+                    Calendar recruitAt = TimeUtil.getKstCalendar();
                     recruitAt.set(Calendar.HOUR_OF_DAY, hour);
                     recruitAt.set(Calendar.MINUTE, minute);
                     recruitAt.set(Calendar.SECOND, 0);
