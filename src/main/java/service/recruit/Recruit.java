@@ -1,6 +1,7 @@
 package service.recruit;
 
 import Utilities.TextStyler;
+import Utilities.TimeUtil;
 import Utilities.Util;
 import exceptions.RecruitPublishException;
 import net.dv8tion.jda.api.EmbedBuilder;
@@ -148,7 +149,7 @@ public class Recruit {
 
     private String recruitTime() {
         if (recruitAt == 0) return "지금 바로";
-        Calendar calendar = Calendar.getInstance();
+        Calendar calendar = TimeUtil.getKstCalendar();
         calendar.setTimeInMillis(recruitAt);
         boolean isToday = calendar.get(Calendar.DAY_OF_MONTH) == Calendar.getInstance().get(Calendar.DAY_OF_MONTH);
 
