@@ -11,6 +11,10 @@ public class TextStyler {
         return wrap(str, "`");
     }
 
+    public static String Blockf(String fmt, Object... args) {
+        return Block(String.format(fmt, args));
+    }
+
     public static String Link(String label, String url) {
         return String.format("[%s](%s)", label, url);
     }

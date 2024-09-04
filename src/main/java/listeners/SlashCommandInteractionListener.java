@@ -63,6 +63,9 @@ public class SlashCommandInteractionListener extends ListenerAdapter {
             case "구인취소":
                 slashCommandParser.recruitCancel(e);
                 break;
+            case "구인시간변경":
+                slashCommandParser.recruitChangeTime(e);
+                break;
         }
     }
 }

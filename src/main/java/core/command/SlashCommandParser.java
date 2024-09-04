@@ -33,7 +33,11 @@ import service.watcher.AccessSession;
 import service.watcher.GuildWatcher;
 
 import java.awt.*;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
 
@@ -532,7 +536,7 @@ public class SlashCommandParser {
             Service.addGuildManagerIfNotExists(guild);
             RecruitManager recruitManager = Service.GetRecruitManagerByGuildId(guildId);
             if (recruitManager == null || recruitManager.recruitChannel == null) {
-                this.sendVolatileReply(e, "구인 채널이 설정되지 않았습니다. /구인채널 명령어로 설정해주세요.", 8);
+                this.sendVolatileReply(e, "구인 채널이 설정되지 않았습니다. /구인채널생성 명령어로 설정해주세요.", 8);
                 return;
             }
 
@@ -593,8 +597,80 @@ public class SlashCommandParser {
                 return;
             }
 
-            recruitManager.unregisterRecruit(member);
+            OptionMapping recruitKeyInput = e.getOption("구인코드");
+            if (recruitKeyInput == null || recruitKeyInput.getAsString().isEmpty()) {
+                recruitManager.unregisterRecruit(member, null);
+            } else {
+                String recruitKey = recruitKeyInput.getAsString();
+                boolean success = recruitManager.unregisterRecruit(member, recruitKey);
+                if (!success) {
+                    this.sendVolatileReply(e, "구인 정보를 찾을 수 없습니다.", 5);
+                    return;
+                }
+            }
+
             this.sendVolatileReply(e, "구인이 취소되었습니다.", 5);
+        } catch (Exception err) {
+            err.printStackTrace();
+        }
+    }
+
+    public void recruitChangeTime(SlashCommandInteractionEvent e) {
+        try {
+            Guild guild = e.getGuild();
+            if (guild == null) {
+                this.sendVolatileReply(e, "이 명령어는 guild 내에서만 사용 가능합니다.", 5);
+                return;
+            }
+            String guildId = guild.getId();
+            Service.addGuildManagerIfNotExists(guild);
+            RecruitManager recruitManager = Service.GetRecruitManagerByGuildId(guildId);
+            if (recruitManager == null) {
+                this.sendVolatileReply(e, "구인 채널이 설정되지 않았습니다. /구인채널 명령어로 설정해주세요.", 8);
+                return;
+            }
+
+            Member member = e.getMember();
+            if (member == null) {
+                this.sendVolatileReply(e, "구인 정보를 변경할 수 없습니다.", 5);
+                return;
+            }
+
+            OptionMapping recruitKeyInput = e.getOption("구인코드");
+            if (recruitKeyInput == null || recruitKeyInput.getAsString().isEmpty()) {
+                this.sendVolatileReply(e, "구인 코드를 입력해주세요.", 5);
+                return;
+            }
+
+            OptionMapping timeInput = e.getOption("시간");
+            if (timeInput == null || timeInput.getAsString().isEmpty()) {
+                this.sendVolatileReply(e, "구인 시간을 입력해주세요.", 5);
+                return;
+            }
+
+            DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
+            int hour, minute;
+            try {
+                LocalTime time = LocalTime.parse(timeInput.getAsString(), timeFormatter);
+                hour = time.getHour();
+                minute = time.getMinute();
+            } catch (DateTimeParseException e2) {
+                throw new IllegalArgumentException("시간 형식이 올바르지 않습니다: (e.g., 21:30).");
+            }
+
+            Calendar recruitAt = Calendar.getInstance();
+            recruitAt.set(Calendar.HOUR_OF_DAY, hour);
+            recruitAt.set(Calendar.MINUTE, minute);
+            recruitAt.set(Calendar.SECOND, 0);
+
+            String recruitKey = recruitKeyInput.getAsString();
+            boolean success = recruitManager.changeRecruitTime(member, recruitKey, recruitAt.getTimeInMillis());
+            if (!success) {
+                this.sendVolatileReply(e, "구인 정보를 찾을 수 없습니다.", 5);
+                return;
+            }
+
+            this.sendVolatileReply(e, "구인 시간이 변경되었습니다.", 5);
         } catch (Exception err) {
             err.printStackTrace();
         }
@@ -610,7 +686,7 @@ public class SlashCommandParser {
         textChannel.upsertPermissionOverride(everyoneRole)
                 .deny(Permission.MESSAGE_SEND)
                 .queue(success -> {
-                    logger.debug("Permission denied for everyone role on recruit channel.");
+                    logger.info("Permission denied for everyone role on recruit channel.");
                 }, failure -> {
                     logger.error("Failed to deny permission for everyone role on recruit channel.");
                 });
@@ -618,7 +694,7 @@ public class SlashCommandParser {
         textChannel.upsertPermissionOverride(botMember)
                 .grant(Permission.MESSAGE_MANAGE)
                 .queue(success -> {
-                    logger.debug("Permission granted for bot on recruit channel.");
+                    logger.info("Permission granted for bot on recruit channel.");
                 }, failure -> {
                     logger.error("Failed to grant permission for bot on recruit channel.");
                 });

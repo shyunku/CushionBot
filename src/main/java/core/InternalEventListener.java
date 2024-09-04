@@ -83,6 +83,8 @@ public class InternalEventListener extends ListenerAdapter {
         jda.addEventListener(new ModalInteractionListener());
         jda.addEventListener(new ButtonInteractionListener());
         jda.addEventListener(new SlashCommandInteractionListener());
+
+        this.logger.info("All setup completed. Ready to go!");
     }
 
     private void setupGuild(Guild guild) {
@@ -116,10 +118,14 @@ public class InternalEventListener extends ListenerAdapter {
                 Commands.slash("구인채널생성", "구인 채널을 생성합니다.")
                         .addOption(OptionType.CHANNEL, "채널", "(이미 있는 경우) 구인 채널을 입력하세요.", false),
                 Commands.slash("구인", "게임이나 활동을 함께할 사람들을 구합니다."),
-                Commands.slash("구인취소", "본인이 업로드한 모든 구인을 취소합니다.")
+                Commands.slash("구인취소", "본인이 업로드한 모든 구인을 취소하거나 특정 구인을 취소합니다.")
+                        .addOption(OptionType.STRING, "구인코드", "취소할 구인의 코드를 입력하세요.", false),
+                Commands.slash("구인시간변경", "본인이 업로드한 특정 구인의 모집 시간을 변경합니다.")
+                        .addOption(OptionType.STRING, "구인코드", "변경할 구인의 코드를 입력하세요.", true)
+                        .addOption(OptionType.STRING, "시간", "변경할 모집 시간을 형식에 맞게 입력하세요. (ex. 23:30)", true)
         ).queue();
 
-        this.logger.debug("Guild {} setup completed.", guild.getName());
+        this.logger.info("Guild {} setup completed.", guild.getName());
     }
 
     @Override
@@ -134,7 +140,7 @@ public class InternalEventListener extends ListenerAdapter {
     public void onGuildLeave(@NotNull GuildLeaveEvent event) {
         super.onGuildLeave(event);
 
-        this.logger.debug("Guild {} left.", event.getGuild().getName());
+        this.logger.info("Guild {} left.", event.getGuild().getName());
     }
 
     @Override
@@ -165,7 +171,7 @@ public class InternalEventListener extends ListenerAdapter {
 
         if (leftParticipants == 0) {
             try {
-                this.logger.debug("All participants left the voice channel. Clearing the queue.");
+                this.logger.info("All participants left the voice channel. Clearing the queue.");
                 MusicBox musicBox = Service.GetMusicBoxByGuildId(guild.getId());
                 MusicStreamer streamer = musicBox.getStreamer();
 
