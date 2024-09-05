@@ -552,15 +552,15 @@ public class SlashCommandParser {
                     .setPlaceholder("게임 이름/이벤트 이름 (ex. 자랭)")
                     .setRequired(true)
                     .build();
-            TextInput recruitingNumInput = TextInput.create("recruitNum", "모집 인원을 숫자로 입력해주세요.", TextInputStyle.SHORT)
+            TextInput recruitingNumInput = TextInput.create("recruitNum", "모집 인원을 숫자로 입력해주세요. (옵션)", TextInputStyle.SHORT)
                     .setPlaceholder("모집 인원 (ex. 5)")
                     .setRequired(false)
                     .build();
-            TextInput timeInput = TextInput.create("time", "모집 시간을 입력해주세요. 현재 시각보다 전일 경우 내일로 설정됩니다.", TextInputStyle.SHORT)
+            TextInput timeInput = TextInput.create("time", "모집 시간을 입력해주세요. 현재 시각보다 전일 경우 내일로 설정됩니다. (옵션)", TextInputStyle.SHORT)
                     .setPlaceholder("모집 시간 (ex. 21:30)")
                     .setRequired(false)
                     .build();
-            TextInput durationInput = TextInput.create("duration", "예상 소요 시간을 입력해주세요. (1시간 단위)", TextInputStyle.SHORT)
+            TextInput durationInput = TextInput.create("duration", "예상 소요 시간을 입력해주세요. (옵션, 1시간 단위)", TextInputStyle.SHORT)
                     .setPlaceholder("소요 시간 (ex. 1시간 반 -> 1.5)")
                     .setRequired(false)
                     .build();
