@@ -33,6 +33,7 @@ public class Recruit {
     private long duration;
 
     private Guild guild;
+    private Member registerer;
     private Set<Member> participants = new HashSet<>();
     private Message message = null;
 
@@ -43,9 +44,10 @@ public class Recruit {
     private ScheduledFuture<?> notifyFuture;
     private ScheduledFuture<?> destroyFuture;
 
-    public Recruit(Guild guild, String key, String gameName, long recruitNum, long registeredAt, long recruitAt, long duration) {
+    public Recruit(Guild guild, String key, Member registerer, String gameName, long recruitNum, long registeredAt, long recruitAt, long duration) {
         this.guild = guild;
         this.key = key;
+        this.registerer = registerer;
         this.gameName = gameName;
         this.recruitNum = recruitNum;
         this.registeredAt = registeredAt;
@@ -123,7 +125,8 @@ public class Recruit {
         // refer everyone
         embedBuilder.setDescription("같이하실 분을 모집합니다.\n");
         embedBuilder.setColor(isStarted ? 0x444444 : 0x3D99FF);
-        embedBuilder.addField("구인코드", TextStyler.Block(key), false);
+        embedBuilder.addField("구인코드", TextStyler.Block(key), true);
+        if (registerer != null) embedBuilder.addField("등록자", registerer.getAsMention(), true);
         if (recruitAt != 0) {
             embedBuilder.addField("모집/시작시간", TextStyler.Block(recruitTime()), false);
             if (recruitAt > System.currentTimeMillis()) {
@@ -174,21 +177,7 @@ public class Recruit {
 
             if (timeLeftUntilNotify > 0 && this.message != null) {
                 // 새 알림 스케줄 예약 및 ScheduledFuture 객체 저장
-                notifyFuture = scheduler.schedule(() -> {
-                    if (message != null) {
-                        TextChannel channel = message.getChannel().asTextChannel();
-                        StringBuilder sb = new StringBuilder();
-                        sb.append(TextStyler.Bold("[알림] "));
-                        sb.append(String.format("%s 이벤트가 5분 후 시작/모집종료됩니다. 아래 참여자들은 준비해주세요.", gameName));
-                        sb.append("\n");
-                        for (Member member : participants) {
-                            sb.append(member.getAsMention()).append(" ");
-                        }
-                        channel.sendMessage(sb.toString()).queue(m -> {
-                            m.delete().queueAfter(5, java.util.concurrent.TimeUnit.MINUTES);
-                        });
-                    }
-                }, timeLeftUntilNotify, TimeUnit.MILLISECONDS);
+                notifyFuture = scheduler.schedule(this::notifyUsers, timeLeftUntilNotify, TimeUnit.MILLISECONDS);
 
                 logger.info("Recruit notify schedule set for: {} in {} seconds", gameName, timeLeftUntilNotify / 1000);
             } else {
@@ -212,6 +201,22 @@ public class Recruit {
         }
     }
 
+    private void notifyUsers() {
+        if (message != null) {
+            TextChannel channel = message.getChannel().asTextChannel();
+            StringBuilder sb = new StringBuilder();
+            sb.append(TextStyler.Bold("[알림] "));
+            sb.append(String.format("%s 이벤트가 5분 후 시작/모집종료됩니다. 아래 참여자들은 준비해주세요.", gameName));
+            sb.append("\n");
+            for (Member member : participants) {
+                sb.append(member.getAsMention()).append(" ");
+            }
+            channel.sendMessage(sb.toString()).queue(m -> {
+                m.delete().queueAfter(5, java.util.concurrent.TimeUnit.MINUTES);
+            });
+        }
+    }
+
     public void destroy() {
         // remove message
         if (message != null) {
@@ -232,6 +237,13 @@ public class Recruit {
 
         // reset destroy schedule
         setDestroySchedule();
+
+        // update content
+        updateContent();
+    }
+
+    public void setRecruitNum(long recruitNum) {
+        this.recruitNum = recruitNum;
 
         // update content
         updateContent();

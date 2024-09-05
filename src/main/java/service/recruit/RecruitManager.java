@@ -107,6 +107,16 @@ public class RecruitManager extends ListenerAdapter {
         return true;
     }
 
+    public Recruit getRecruit(String key) {
+        for (Map<String, Recruit> recruitMap : recruits.values()) {
+            Recruit recruit = recruitMap.get(key);
+            if (recruit != null) {
+                return recruit;
+            }
+        }
+        return null;
+    }
+
     public boolean changeRecruitTime(Member registerer, String key, long newRecruitAt) {
         if (!recruits.containsKey(registerer.getId())) {
             return false;
@@ -116,6 +126,22 @@ public class RecruitManager extends ListenerAdapter {
         Recruit recruit = userRecruits.get(key);
         if (recruit != null) {
             recruit.setRecruitAt(newRecruitAt);
+            return true;
+        } else {
+            logger.warn("Recruit not found for key: {}", key);
+            return false;
+        }
+    }
+
+    public boolean changeRecruitNum(Member registerer, String key, int newRecruitNum) {
+        if (!recruits.containsKey(registerer.getId())) {
+            return false;
+        }
+
+        Map<String, Recruit> userRecruits = recruits.get(registerer.getId());
+        Recruit recruit = userRecruits.get(key);
+        if (recruit != null) {
+            recruit.setRecruitNum(newRecruitNum);
             return true;
         } else {
             logger.warn("Recruit not found for key: {}", key);

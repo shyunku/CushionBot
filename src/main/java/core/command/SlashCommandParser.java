@@ -29,6 +29,7 @@ import service.inmemory.RedisClient;
 import service.leagueoflegends.Core.LolBox;
 import service.music.Core.MusicBox;
 import service.music.Core.MusicStreamer;
+import service.recruit.Recruit;
 import service.recruit.RecruitManager;
 import service.watcher.AccessSession;
 import service.watcher.GuildWatcher;
@@ -616,7 +617,7 @@ public class SlashCommandParser {
         }
     }
 
-    public void recruitChangeTime(SlashCommandInteractionEvent e) {
+    public void recruitModify(SlashCommandInteractionEvent e) {
         try {
             Guild guild = e.getGuild();
             if (guild == null) {
@@ -644,34 +645,97 @@ public class SlashCommandParser {
             }
 
             OptionMapping timeInput = e.getOption("시간");
-            if (timeInput == null || timeInput.getAsString().isEmpty()) {
-                this.sendVolatileReply(e, "구인 시간을 입력해주세요.", 5);
+            OptionMapping recruitNumInput = e.getOption("인원");
+            boolean timeGiven = timeInput != null && !timeInput.getAsString().isEmpty();
+            boolean recruitNumGiven = recruitNumInput != null && recruitNumInput.getAsInt() > 0;
+
+            if (!timeGiven && !recruitNumGiven) {
+                this.sendVolatileReply(e, "변경할 내용을 입력해주세요.", 5);
                 return;
             }
 
-            DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
-            int hour, minute;
-            try {
-                LocalTime time = LocalTime.parse(timeInput.getAsString(), timeFormatter);
-                hour = time.getHour();
-                minute = time.getMinute();
-            } catch (DateTimeParseException e2) {
-                throw new IllegalArgumentException("시간 형식이 올바르지 않습니다: (e.g., 21:30).");
+            if (timeGiven) {
+                DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
+                int hour, minute;
+                try {
+                    LocalTime time = LocalTime.parse(timeInput.getAsString(), timeFormatter);
+                    hour = time.getHour();
+                    minute = time.getMinute();
+                } catch (DateTimeParseException e2) {
+                    throw new IllegalArgumentException("시간 형식이 올바르지 않습니다: (e.g., 21:30).");
+                }
+
+                Calendar recruitAt = TimeUtil.getKstCalendar();
+                recruitAt.set(Calendar.HOUR_OF_DAY, hour);
+                recruitAt.set(Calendar.MINUTE, minute);
+                recruitAt.set(Calendar.SECOND, 0);
+
+                String recruitKey = recruitKeyInput.getAsString();
+                boolean success = recruitManager.changeRecruitTime(member, recruitKey, recruitAt.getTimeInMillis());
+                if (!success) {
+                    this.sendVolatileReply(e, "구인 정보를 찾을 수 없습니다.", 5);
+                    return;
+                }
             }
 
-            Calendar recruitAt = TimeUtil.getKstCalendar();
-            recruitAt.set(Calendar.HOUR_OF_DAY, hour);
-            recruitAt.set(Calendar.MINUTE, minute);
-            recruitAt.set(Calendar.SECOND, 0);
+            if (recruitNumGiven) {
+                int recruitNum = recruitNumInput.getAsInt();
+                String recruitKey = recruitKeyInput.getAsString();
+                boolean success = recruitManager.changeRecruitNum(member, recruitKey, recruitNum);
+                if (!success) {
+                    this.sendVolatileReply(e, "구인 정보를 찾을 수 없습니다.", 5);
+                    return;
+                }
+            }
+
+            this.sendVolatileReply(e, "구인 정보가 변경되었습니다.", 5);
+        } catch (Exception err) {
+            err.printStackTrace();
+        }
+    }
+
+    public void recruitAd(SlashCommandInteractionEvent e) {
+        try {
+            Guild guild = e.getGuild();
+            if (guild == null) {
+                this.sendVolatileReply(e, "이 명령어는 guild 내에서만 사용 가능합니다.", 5);
+                return;
+            }
+            String guildId = guild.getId();
+            Service.addGuildManagerIfNotExists(guild);
+            RecruitManager recruitManager = Service.GetRecruitManagerByGuildId(guildId);
+            if (recruitManager == null) {
+                this.sendVolatileReply(e, "구인 채널이 설정되지 않았습니다. /구인채널 명령어로 설정해주세요.", 8);
+                return;
+            }
+
+            Member member = e.getMember();
+            if (member == null) {
+                this.sendVolatileReply(e, "멤버가 아닙니다.", 5);
+                return;
+            }
+
+            OptionMapping recruitKeyInput = e.getOption("구인코드");
+            if (recruitKeyInput == null || recruitKeyInput.getAsString().isEmpty()) {
+                this.sendVolatileReply(e, "구인 코드를 입력해주세요.", 5);
+                return;
+            }
 
             String recruitKey = recruitKeyInput.getAsString();
-            boolean success = recruitManager.changeRecruitTime(member, recruitKey, recruitAt.getTimeInMillis());
-            if (!success) {
+            Recruit recruit = recruitManager.getRecruit(recruitKey);
+            if (recruit == null) {
                 this.sendVolatileReply(e, "구인 정보를 찾을 수 없습니다.", 5);
                 return;
             }
 
-            this.sendVolatileReply(e, "구인 시간이 변경되었습니다.", 5);
+            TextChannel currentChannel = e.getChannel().asTextChannel();
+            EmbedBuilder eb = new EmbedBuilder();
+            eb.setTitle("구인 광고");
+            eb.setDescription(String.format("현재 %s를(을) 같이하실 분을 구하고 있습니다.", recruit.getGameName()));
+            eb.setColor(0x3D99FF);
+            eb.addField("구인코드", TextStyler.Block(recruitKey), false);
+            eb.addField("참여하기", String.format("%s 채널에서 확인하세요.", recruitManager.recruitChannel.getAsMention()), false);
+            e.reply("@everyone").setEmbeds(eb.build()).queue();
         } catch (Exception err) {
             err.printStackTrace();
         }
