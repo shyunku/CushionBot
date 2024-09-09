@@ -158,6 +158,16 @@ class Sessions extends Layer {
     engine.setFont(12);
     const sortedUserSessions = this.preprocess(engine);
 
+    const totalSessionCount = sortedUserSessions.reduce((acc, u) => acc + u.sessions.length, 0);
+    engine.tool.drawText2(
+      `총 ${totalSessionCount}개의 세션, fps: ${parseInt(engine.fps)}`,
+      5,
+      topPad + 5,
+      1,
+      0,
+      "#aaa"
+    );
+
     // clip
     let hoveredSession = null;
     engine.tool.drawClipedContext(

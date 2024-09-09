@@ -51,7 +51,7 @@ class Home extends UI {
         (this.states.selectedGuildId != null && rawData[this.states.selectedGuildId] == null)
       ) {
         this.setState("selectedGuildId", Object.keys(rawData)?.[0] ?? null);
-        localStorage.setItem("selected_guild_id", selectedGuildId);
+        localStorage.setItem("selected_guild_id", this.states.selectedGuildId);
       }
 
       total = Object.values(rawData).reduce((acc, guild) => acc + Object.keys(guild).length, 0);

@@ -465,7 +465,7 @@ class CanvasEngine extends Callable {
     this.cameraTranslateX = lookAt.x - this.width / 2 / zoomLevel;
     this.cameraTranslateY = lookAt.y - this.height / 2 / zoomLevel;
 
-    this.context.clearRect(0, -1, this.width, this.height + 1);
+    this.context.clearRect(-1, -1, this.width + 1, this.height + 1);
     this.context.scale(zoomLevel, zoomLevel);
     // this.context.setTransform(1, 0, 0, 1, 0.5, 0.5);
     this.context.translate(-this.cameraTranslateX, -this.cameraTranslateY);
