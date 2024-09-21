@@ -20,4 +20,8 @@ public class GuildUtil {
     public static String lolChannelKey(String guildId) {
         return "guildLolChannel-" + guildId;
     }
+
+    public static String teamggSummonerKey(String guildId, String memberId) {
+        return "guildTeamggSummoner-" + guildId + "-" + memberId;
+    }
 }

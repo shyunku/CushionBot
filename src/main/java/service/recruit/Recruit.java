@@ -32,8 +32,8 @@ public class Recruit {
     private long recruitAt;
     private long duration;
 
-    private Guild guild;
-    private Member registerer;
+    private final Guild guild;
+    private final Member registerer;
     private Set<Member> participants = new HashSet<>();
     private Message message = null;
 

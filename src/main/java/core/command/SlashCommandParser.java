@@ -1,10 +1,12 @@
 package core.command;
 
+import Utilities.Request;
 import Utilities.TextStyler;
 import Utilities.TimeUtil;
 import Utilities.Util;
 import core.Service;
 import core.Version;
+import dtos.teamgg.SetSummonerLineFavorRequestDto;
 import exceptions.InvalidLolStartTimeException;
 import exceptions.PermissionInsufficientException;
 import net.dv8tion.jda.api.EmbedBuilder;
@@ -38,10 +40,8 @@ import java.awt.*;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class SlashCommandParser {
     private final Logger logger = LoggerFactory.getLogger(SlashCommandParser.class);
@@ -735,6 +735,115 @@ public class SlashCommandParser {
             eb.addField("구인코드", TextStyler.Block(recruitKey), true);
             eb.addField("참여하기", String.format("%s 채널에서 확인하세요.", recruitManager.recruitChannel.getAsMention()), false);
             e.reply("@everyone").setEmbeds(eb.build()).queue();
+        } catch (Exception err) {
+            err.printStackTrace();
+        }
+    }
+
+    public void teamggRegister(SlashCommandInteractionEvent e) {
+        try {
+            Guild guild = e.getGuild();
+            if (guild == null) {
+                this.sendVolatileReply(e, "이 명령어는 guild 내에서만 사용 가능합니다.", 5);
+                return;
+            }
+            String guildId = guild.getId();
+            Member member = e.getMember();
+            if (member == null) {
+                this.sendVolatileReply(e, "멤버를 식별할 수 없습니다.", 5);
+                return;
+            }
+
+            String summonerName = "";
+            String tag = "";
+
+            OptionMapping summonerNameInput = e.getOption("소환사명");
+            if (summonerNameInput == null || summonerNameInput.getAsString().isEmpty()) {
+                this.sendVolatileReply(e, "소환사명을 입력해주세요.", 5);
+                return;
+            } else {
+                summonerName = summonerNameInput.getAsString().trim();
+            }
+
+            OptionMapping tagInput = e.getOption("태그");
+            if (tagInput == null || tagInput.getAsString().isEmpty()) {
+                tag = "KR1";
+            } else {
+                tag = tagInput.getAsString().trim();
+            }
+
+            try {
+                String puuid = Request.get(String.format("https://teamgg.kr:7713/v1/api/summonerPuuid?gameName=%s&tagLine=%s", summonerName, tag), String.class);
+                RedisClient.set(GuildUtil.teamggSummonerKey(guildId, member.getId()), puuid);
+                e.reply(String.format("%s님의 소환사가 \"%s#%s\"로 등록되었습니다.", member.getAsMention(), summonerName, tag)).queue();
+            } catch (Exception err) {
+                err.printStackTrace();
+                e.reply("등록 실패: 서버 오류가 발생했습니다.").queue();
+            }
+        } catch (Exception err) {
+            err.printStackTrace();
+            e.reply("등록 실패: 오류가 발생했습니다.").queue();
+        }
+    }
+
+    public void teamggLineFavor(SlashCommandInteractionEvent e) {
+        try {
+            Guild guild = e.getGuild();
+            if (guild == null) {
+                this.sendVolatileReply(e, "이 명령어는 guild 내에서만 사용 가능합니다.", 5);
+                return;
+            }
+            String guildId = guild.getId();
+            Member member = e.getMember();
+            if (member == null) {
+                this.sendVolatileReply(e, "멤버를 식별할 수 없습니다.", 5);
+                return;
+            }
+
+            String puuid = RedisClient.get(GuildUtil.teamggSummonerKey(guildId, member.getId()));
+            if (puuid == null || puuid.isEmpty()) {
+                this.sendVolatileReply(e, "소환사 정보가 등록되지 않았습니다. /팀지지등록으로 등록해주세요.", 5);
+                return;
+            }
+
+            OptionMapping favorsInput = e.getOption("선호도");
+            if (favorsInput == null || favorsInput.getAsString().isEmpty()) {
+                this.sendVolatileReply(e, "선호도를 입력해주세요.", 5);
+                return;
+            }
+
+            String favors = favorsInput.getAsString();
+            ArrayList<String> favorList = new ArrayList<>(Arrays.asList(favors.split(",")));
+            ArrayList<Integer> favorIntList = new ArrayList<>();
+            for (String favor : favorList) {
+                try {
+                    favorIntList.add(Integer.parseInt(favor.trim()));
+                } catch (NumberFormatException err) {
+                    this.sendVolatileReply(e, "선호도는 숫자로 입력해주세요. (-1,0,1,2)", 5);
+                    return;
+                }
+            }
+            if (favorIntList.size() != 5) {
+                this.sendVolatileReply(e, "선호도는 5개의 숫자로 쉼표(,)로 구분하여 입력해주세요. (탑, 정글, 미드, 원딜, 서폿 순)", 5);
+                return;
+            }
+
+            int[] favorArray = new int[5];
+            for (int i = 0; i < 5; i++) {
+                favorArray[i] = favorIntList.get(i);
+            }
+
+            try {
+                String customGameConfigId = "345c559e-a037-45b3-bac1-e7e272bc29e1";
+                SetSummonerLineFavorRequestDto requestDto = new SetSummonerLineFavorRequestDto(customGameConfigId, puuid, favorArray);
+                String response = Request.post("https://teamgg.kr:7713/v1/api/summonerLineFavor", requestDto, String.class);
+                e.reply(String.format("%s님의 라인 선호도가 탑(%d) 정글(%d) 미드(%d) 원딜(%d) 서폿(%d)로 설정되었습니다.",
+                        member.getAsMention(), favorArray[0], favorArray[1], favorArray[2], favorArray[3], favorArray[4]
+                )).queue();
+            } catch (Exception err) {
+                err.printStackTrace();
+                e.reply("선호도 등록 실패: 서버 오류가 발생했습니다.").queue();
+            }
         } catch (Exception err) {
             err.printStackTrace();
         }

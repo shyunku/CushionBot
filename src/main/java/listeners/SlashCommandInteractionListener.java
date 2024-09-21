@@ -69,6 +69,12 @@ public class SlashCommandInteractionListener extends ListenerAdapter {
             case "구인광고":
                 slashCommandParser.recruitAd(e);
                 break;
+            case "팀지지등록":
+                slashCommandParser.teamggRegister(e);
+                break;
+            case "팀지지라인":
+                slashCommandParser.teamggLineFavor(e);
+                break;
         }
     }
 }
