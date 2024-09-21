@@ -125,8 +125,13 @@ public class InternalEventListener extends ListenerAdapter {
                         .addOption(OptionType.STRING, "시간", "변경할 모집 시간을 형식에 맞게 입력하세요. (ex. 23:30)", false)
                         .addOption(OptionType.INTEGER, "인원", "변경할 모집 인원을 입력하세요. (2~)", false),
                 Commands.slash("구인광고", "현재 채널에 특정 구인을 광고합니다.")
-                        .addOption(OptionType.STRING, "구인코드", "광고할 구인의 코드를 입력하세요.", true)
+                        .addOption(OptionType.STRING, "구인코드", "광고할 구인의 코드를 입력하세요.", true),
 
+                Commands.slash("팀지지등록", "team.gg에 자신의 소환사를 연동합니다. (최초 한번만 하면 되고, 닉네임이 변경되어도 추적됩니다.)")
+                        .addOption(OptionType.STRING, "소환사명", "team.gg에 등록할 소환사명을 입력하세요. (태그 제외)", true)
+                        .addOption(OptionType.STRING, "태그", "소환사 태그를 입력하세요.", true),
+                Commands.slash("팀지지라인", "team.gg에 등록된 소환사의 라인 선호도를 설정합니다.")
+                        .addOption(OptionType.STRING, "선호도", "라인별 선호도를 탑, 정글, 미드, 원딜, 서폿 순으로 -1,0,1,2 중에 입력하세요. -1은 가기 싫은 라인, 2는 자신있는/좋아하는 라인입니다. (ex. 1,-1,2,0,2)", true)
         ).queue();
 
         this.logger.info("Guild {} setup completed.", guild.getName());
