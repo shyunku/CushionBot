@@ -155,22 +155,21 @@ public class RecruitManager extends ListenerAdapter {
         if (user == null || user.isBot()) return;
         Guild guild = event.getGuild();
         if (guild != this.guild) return;
+        if (!event.getEmoji().equals(Emoji.fromUnicode("✅"))) return;
 
         // loop through all recruits
         for (Map<String, Recruit> recruitMap : recruits.values()) {
             for (Recruit recruit : recruitMap.values()) {
                 if (recruit.getMessageId().equals(event.getMessageId())) {
-                    if (event.getEmoji().equals(Emoji.fromUnicode("✅"))) {
-                        boolean accepted = recruit.addParticipant(event.getMember());
-                        if (!accepted) {
-                            // remove reaction
-                            event.getReaction().removeReaction(user).queue();
-                            logger.info("Reaction add blocked for {} by {}", recruit.getKey(), user.getEffectiveName());
-                        } else {
-                            logger.info("Reaction added to {} by {}", recruit.getKey(), user.getEffectiveName());
-                        }
-                        return;
+                    boolean accepted = recruit.addParticipant(event.getMember());
+                    if (!accepted) {
+                        // remove reaction
+                        event.getReaction().removeReaction(user).queue();
+                        logger.info("Reaction add blocked for {} by {}", recruit.getKey(), user.getEffectiveName());
+                    } else {
+                        logger.info("Reaction added to {} by {}", recruit.getKey(), user.getEffectiveName());
                     }
+                    return;
                 }
             }
         }
@@ -182,16 +181,15 @@ public class RecruitManager extends ListenerAdapter {
         if (user == null || user.isBot()) return;
         Guild guild = event.getGuild();
         if (guild != this.guild) return;
+        if (!event.getEmoji().equals(Emoji.fromUnicode("✅"))) return;
 
         // loop through all recruits
         for (Map<String, Recruit> recruitMap : recruits.values()) {
             for (Recruit recruit : recruitMap.values()) {
                 if (recruit.getMessageId().equals(event.getMessageId())) {
-                    if (event.getEmoji().equals(Emoji.fromUnicode("✅"))) {
-                        recruit.removeParticipant(event.getMember());
-                        logger.info("Reaction removed from {} by {}", recruit.getKey(), user.getEffectiveName());
-                        return;
-                    }
+                    recruit.removeParticipant(event.getMember());
+                    logger.info("Reaction removed from {} by {}", recruit.getKey(), user.getEffectiveName());
+                    return;
                 }
             }
         }

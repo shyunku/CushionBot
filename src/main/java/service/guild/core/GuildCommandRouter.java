@@ -12,6 +12,7 @@ import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.AudioChannel;
+import net.dv8tion.jda.api.entities.channel.unions.MessageChannelUnion;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,7 +33,13 @@ public class GuildCommandRouter {
 
     public void route(MessageReceivedEvent e, GuildManager guildManager) {
         User user = e.getAuthor();
-        TextChannel textChannel = e.getChannel().asTextChannel();
+        MessageChannelUnion messageChannel = e.getChannel();
+        TextChannel textChannel = null;
+        try {
+            textChannel = messageChannel.asTextChannel();
+        } catch (IllegalStateException exception) {
+            return;
+        }
         Message message = e.getMessage();
 
         String userId = user.getId();

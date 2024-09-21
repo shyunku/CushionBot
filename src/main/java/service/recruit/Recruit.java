@@ -154,12 +154,15 @@ public class Recruit {
         if (recruitAt == 0) return "지금 바로";
         Calendar calendar = TimeUtil.getKstCalendar();
         calendar.setTimeInMillis(recruitAt);
-        boolean isToday = calendar.get(Calendar.DAY_OF_MONTH) == Calendar.getInstance().get(Calendar.DAY_OF_MONTH);
+        boolean isToday = calendar.get(Calendar.DAY_OF_MONTH) == TimeUtil.getKstCalendar().get(Calendar.DAY_OF_MONTH);
+        int HH = calendar.get(Calendar.HOUR_OF_DAY);
+        int hh = (HH + 11) % 12 + 1;
+        String ampm = HH < 12 ? "오전" : "오후";
 
-        return String.format("%d일(%s) %d시 %02d분",
+        return String.format("%d일(%s) %s %d시 %02d분",
                 calendar.get(Calendar.DAY_OF_MONTH),
                 isToday ? "오늘" : "내일",
-                calendar.get(Calendar.HOUR_OF_DAY),
+                ampm, hh,
                 calendar.get(Calendar.MINUTE));
     }
 

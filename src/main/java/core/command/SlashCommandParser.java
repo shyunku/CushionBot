@@ -728,12 +728,11 @@ public class SlashCommandParser {
                 return;
             }
 
-            TextChannel currentChannel = e.getChannel().asTextChannel();
             EmbedBuilder eb = new EmbedBuilder();
             eb.setTitle("구인 광고");
             eb.setDescription(String.format("현재 %s를(을) 같이하실 분을 구하고 있습니다.", recruit.getGameName()));
             eb.setColor(0x3D99FF);
-            eb.addField("구인코드", TextStyler.Block(recruitKey), false);
+            eb.addField("구인코드", TextStyler.Block(recruitKey), true);
             eb.addField("참여하기", String.format("%s 채널에서 확인하세요.", recruitManager.recruitChannel.getAsMention()), false);
             e.reply("@everyone").setEmbeds(eb.build()).queue();
         } catch (Exception err) {
