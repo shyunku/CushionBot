@@ -68,7 +68,7 @@ public class ModalInteractionListener extends ListenerAdapter {
 
                     long registeredAt = System.currentTimeMillis();
                     long duration = (long) (
-                            (durationInput == null || durationInput.getAsString().isEmpty() ? 1
+                            (durationInput == null || durationInput.getAsString().isEmpty() ? 3
                                     : Util.parseDouble(durationInput.getAsString())) * 60 * 60 * 1000);
 
                     Calendar current = TimeUtil.getKstCalendar();
@@ -86,9 +86,7 @@ public class ModalInteractionListener extends ListenerAdapter {
                     String recruitKey = Util.generateRandomNumber(4);
                     Recruit recruit = new Recruit(guild, recruitKey, member, gameName, recruitingNum, registeredAt, isTimeSpecified ? recruitAt.getTimeInMillis() : 0, duration);
                     recruitManager.registerRecruit(member, recruit);
-                    event.reply(String.format("구인이 등록되었습니다. 코드: %s", recruitKey)).queue(m -> {
-                        m.deleteOriginal().queueAfter(10, java.util.concurrent.TimeUnit.SECONDS);
-                    });
+                    event.reply(String.format("구인이 등록되었습니다. 코드: %s", recruitKey)).queue();
                 } catch (Exception e) {
                     e.printStackTrace();
                     event.getHook().sendMessage("구인 등록 중 오류가 발생했습니다: " + e.getMessage()).queue(m -> {
