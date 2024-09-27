@@ -6,8 +6,8 @@ server: # REST and WS server
 plugins:
   youtube:
     pot:
-      token: "MnSN3xA5jkeZlY3n5-_VsQgZiQAqTHaAtcLF4nXH85YAi1jOOOnoEbTsjInn1QMaJ3r29iglyTz7rViyHugHKF8UG0fifJKeekwoJywgq3Z2VLe42rV9kD0CYpotcSya9vRl4TR3Xf3JUoDMAnc0h8hr24cavQ=="
-      visitorData: "CgtYd1VyQlp6WExZNCicwoe2BjIKCgJLUhIEGgAgWQ%3D%3D"
+      token: "MnTGWYm8TolcPcZh9z7bGwxoPqbhBkRB5cy7qZDzdinOMl03jWWE5zPNxQOiPtqcOlGwZCWW48BnTWCaoh4QyEKDJi6eXfMQeVExeQ419ySn4DQgLBZlF0aHTptWMaTPfXXMOvW2zbM1eaxPgPUq8c34Gu8wwA=="
+      visitorData: "Cgs5amYySW1WZzNFNCif_Nu3BjIKCgJLUhIEGgAgMQ%3D%3D"
     enabled: true # Whether this source can be used.
     allowSearch: true # Whether "ytsearch:" and "ytmsearch:" can be used.
     allowDirectVideoIds: true # Whether just video IDs can match. If false, only complete URLs will be loaded.
@@ -72,8 +72,8 @@ lavalink:
       #searchTriggersFail: true # Whether a search 429 should trigger marking the ip as failing
       #retryLimit: 3 # -1 = use default lavaplayer value | 0 = infinity | >0 = retry will happen this numbers times
       #youtubeConfig: # Required for avoiding all age restrictions by YouTube, some restricted videos still can be played without.
-      #email: "" # Email of Google account
-      #password: "" # Password of Google account
+    #email: "" # Email of Google account
+    #password: "" # Password of Google account
     #httpConfig: # Useful for blocking bad-actors from ip-grabbing your music node and attacking it, this way only the http proxy will be attacked
     #proxyHost: "20.210.113.32" # Hostname of the proxy, (ip or domain)
     #proxyPort: 8123 # Proxy port, 3128 is the default for squidProxy
