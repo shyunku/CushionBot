@@ -6,8 +6,8 @@ server: # REST and WS server
 plugins:
   youtube:
     pot:
-      token: "MnTGWYm8TolcPcZh9z7bGwxoPqbhBkRB5cy7qZDzdinOMl03jWWE5zPNxQOiPtqcOlGwZCWW48BnTWCaoh4QyEKDJi6eXfMQeVExeQ419ySn4DQgLBZlF0aHTptWMaTPfXXMOvW2zbM1eaxPgPUq8c34Gu8wwA=="
-      visitorData: "Cgs5amYySW1WZzNFNCif_Nu3BjIKCgJLUhIEGgAgMQ%3D%3D"
+      token: "MnSeKUbMi6JE9p4RFJmd7Iz13SHp0FdC634y5NMjvBklMc9X1BFhtfT8JgtHmHtRjEwTEqJk_meLjaXLma0ASUtY9nAVQ0Ev-ZL9up-58-qVbLGiXe51RJzYCAi-N2lPWBg94IgRV1Jbrz6fIgGhM6S1Olh-Rw=="
+      visitorData: "CgtEOVNWT2pBYTZLcyjvkdy3BjIKCgJLUhIEGgAgZA%3D%3D"
     enabled: true # Whether this source can be used.
     allowSearch: true # Whether "ytsearch:" and "ytmsearch:" can be used.
     allowDirectVideoIds: true # Whether just video IDs can match. If false, only complete URLs will be loaded.
@@ -70,8 +70,8 @@ lavalink:
       #excludedIps: ["...", "..."] # ips which should be explicit excluded from usage by lavalink
       #strategy: "RotateOnBan" # RotateOnBan | LoadBalance | NanoSwitch | RotatingNanoSwitch
       #searchTriggersFail: true # Whether a search 429 should trigger marking the ip as failing
-      #retryLimit: 3 # -1 = use default lavaplayer value | 0 = infinity | >0 = retry will happen this numbers times
-      #youtubeConfig: # Required for avoiding all age restrictions by YouTube, some restricted videos still can be played without.
+    #retryLimit: 3 # -1 = use default lavaplayer value | 0 = infinity | >0 = retry will happen this numbers times
+    #youtubeConfig: # Required for avoiding all age restrictions by YouTube, some restricted videos still can be played without.
     #email: "" # Email of Google account
     #password: "" # Password of Google account
     #httpConfig: # Useful for blocking bad-actors from ip-grabbing your music node and attacking it, this way only the http proxy will be attacked

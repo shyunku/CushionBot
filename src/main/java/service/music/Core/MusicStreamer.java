@@ -70,7 +70,7 @@ public class MusicStreamer {
 
     public void addTrackByQuery(Member requester, String query) {
         LavaAudioLoader loader = new LavaAudioLoader(requester, musicChannel, scheduler);
-        this.link.loadItem("ytsearch:" + query).subscribe(loader);
+        this.link.loadItem("ytmsearch:" + query).subscribe(loader);
     }
 
     public void shuffleTracksOnQueue() {
