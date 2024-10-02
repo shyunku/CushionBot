@@ -72,7 +72,7 @@ public class SlashCommandInteractionListener extends ListenerAdapter {
             case "팀지지등록":
                 slashCommandParser.teamggRegister(e);
                 break;
-            case "팀지지라인":
+            case "팀지지라인선호도":
                 slashCommandParser.teamggLineFavor(e);
                 break;
         }
