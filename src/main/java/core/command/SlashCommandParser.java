@@ -809,10 +809,16 @@ public class SlashCommandParser {
                 return;
             }
 
-            String puuid = RedisClient.get(GuildUtil.teamggSummonerKey(guildId, member.getId()));
-            if (puuid == null || puuid.isEmpty()) {
-                this.sendVolatileEphemeralReply(e, "라이엇 계정이 연동되지 않았습니다. 먼저 /팀지지등록 명령어로 등록해주세요.", 5);
-                return;
+            // Check if the user has linked their Riot account
+            try {
+                ArrayList<Object> results = Request.get(String.format("https://teamgg.kr:7713/v1/api/discordIntegrations?token=%s", user.getId()), ArrayList.class);
+                if (results.isEmpty()) {
+                    this.sendVolatileEphemeralReply(e, "라이엇 계정이 연동되지 않았습니다. 먼저 /팀지지등록 명령어로 등록해주세요.", 5);
+                    return;
+                }
+            } catch (Exception err) {
+                err.printStackTrace();
+                e.reply("등록 실패: 서버 오류가 발생했습니다.").queue();
             }
 
             OptionMapping topFavorInput = e.getOption("탑");
