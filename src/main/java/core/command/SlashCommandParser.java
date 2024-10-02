@@ -812,7 +812,7 @@ public class SlashCommandParser {
             // Check if the user has linked their Riot account
             try {
                 ArrayList<Object> results = Request.get(String.format("https://teamgg.kr/v1/api/discordIntegrations?token=%s", user.getId()), ArrayList.class);
-                if (results.isEmpty()) {
+                if (results == null || results.isEmpty()) {
                     this.sendVolatileEphemeralReply(e, "라이엇 계정이 연동되지 않았습니다. 먼저 /팀지지등록 명령어로 등록해주세요.", 5);
                     return;
                 }
