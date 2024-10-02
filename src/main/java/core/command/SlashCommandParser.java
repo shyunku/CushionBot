@@ -781,7 +781,7 @@ public class SlashCommandParser {
 //            }
 //
 //            try {
-//                String puuid = Request.get(String.format("https://teamgg.kr:7713/v1/api/summonerPuuid?gameName=%s&tagLine=%s", summonerName, tag), String.class);
+//                String puuid = Request.get(String.format("https://teamgg.kr/v1/api/summonerPuuid?gameName=%s&tagLine=%s", summonerName, tag), String.class);
 //                RedisClient.set(GuildUtil.teamggSummonerKey(guildId, member.getId()), puuid);
 //                e.reply(String.format("%s님의 소환사가 \"%s#%s\"로 등록되었습니다.", member.getAsMention(), summonerName, tag)).queue();
 //            } catch (Exception err) {
@@ -811,7 +811,7 @@ public class SlashCommandParser {
 
             // Check if the user has linked their Riot account
             try {
-                ArrayList<Object> results = Request.get(String.format("https://teamgg.kr:7713/v1/api/discordIntegrations?token=%s", user.getId()), ArrayList.class);
+                ArrayList<Object> results = Request.get(String.format("https://teamgg.kr/v1/api/discordIntegrations?token=%s", user.getId()), ArrayList.class);
                 if (results.isEmpty()) {
                     this.sendVolatileEphemeralReply(e, "라이엇 계정이 연동되지 않았습니다. 먼저 /팀지지등록 명령어로 등록해주세요.", 5);
                     return;
@@ -863,7 +863,7 @@ public class SlashCommandParser {
 
             try {
                 SetSummonerLineFavorRequestDto requestDto = new SetSummonerLineFavorRequestDto(user.getId(), favorArray);
-                String response = Request.post("https://teamgg.kr:7713/v1/api/summonerLineFavor", requestDto, String.class);
+                String response = Request.post("https://teamgg.kr/v1/api/summonerLineFavor", requestDto, String.class);
                 e.reply(String.format("%s님의 라인 선호도가 탑(%d) 정글(%d) 미드(%d) 원딜(%d) 서폿(%d)로 설정되었습니다.",
                         member.getAsMention(), favorArray[0], favorArray[1], favorArray[2], favorArray[3], favorArray[4]
                 )).queue();
