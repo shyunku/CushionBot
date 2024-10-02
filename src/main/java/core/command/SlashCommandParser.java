@@ -1,9 +1,6 @@
 package core.command;
 
-import Utilities.Request;
-import Utilities.TextStyler;
-import Utilities.TimeUtil;
-import Utilities.Util;
+import Utilities.*;
 import core.Service;
 import core.Version;
 import dtos.teamgg.SetSummonerLineFavorRequestDto;
@@ -40,8 +37,10 @@ import java.awt.*;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
-import java.util.*;
+import java.util.Map;
 
 public class SlashCommandParser {
     private final Logger logger = LoggerFactory.getLogger(SlashCommandParser.class);
@@ -754,32 +753,41 @@ public class SlashCommandParser {
                 return;
             }
 
-            String summonerName = "";
-            String tag = "";
+            User user = e.getUser();
+            String userId = user.getId();
 
-            OptionMapping summonerNameInput = e.getOption("소환사명");
-            if (summonerNameInput == null || summonerNameInput.getAsString().isEmpty()) {
-                this.sendVolatileReply(e, "소환사명을 입력해주세요.", 5);
-                return;
-            } else {
-                summonerName = summonerNameInput.getAsString().trim();
-            }
+            String oauthUrl = String.format(
+                    "https://auth.riotgames.com/authorize?client_id=%s&redirect_uri=%s&response_type=code&scope=openid+offline_access&state=discord|%s",
+                    TokenManager.RSO_CLIENT_ID, TokenManager.RSO_REDIRECT_URI, userId);
 
-            OptionMapping tagInput = e.getOption("태그");
-            if (tagInput == null || tagInput.getAsString().isEmpty()) {
-                tag = "KR1";
-            } else {
-                tag = tagInput.getAsString().trim();
-            }
+            e.reply(String.format("아래 URL을 통해 라이엇 계정을 인증하고 디스코드와 연동하세요.\n%s", oauthUrl)).setEphemeral(true).queue();
 
-            try {
-                String puuid = Request.get(String.format("https://teamgg.kr:7713/v1/api/summonerPuuid?gameName=%s&tagLine=%s", summonerName, tag), String.class);
-                RedisClient.set(GuildUtil.teamggSummonerKey(guildId, member.getId()), puuid);
-                e.reply(String.format("%s님의 소환사가 \"%s#%s\"로 등록되었습니다.", member.getAsMention(), summonerName, tag)).queue();
-            } catch (Exception err) {
-                err.printStackTrace();
-                e.reply("등록 실패: 서버 오류가 발생했습니다.").queue();
-            }
+//            String summonerName = "";
+//            String tag = "";
+//
+//            OptionMapping summonerNameInput = e.getOption("소환사명");
+//            if (summonerNameInput == null || summonerNameInput.getAsString().isEmpty()) {
+//                this.sendVolatileReply(e, "소환사명을 입력해주세요.", 5);
+//                return;
+//            } else {
+//                summonerName = summonerNameInput.getAsString().trim();
+//            }
+//
+//            OptionMapping tagInput = e.getOption("태그");
+//            if (tagInput == null || tagInput.getAsString().isEmpty()) {
+//                tag = "KR1";
+//            } else {
+//                tag = tagInput.getAsString().trim();
+//            }
+//
+//            try {
+//                String puuid = Request.get(String.format("https://teamgg.kr:7713/v1/api/summonerPuuid?gameName=%s&tagLine=%s", summonerName, tag), String.class);
+//                RedisClient.set(GuildUtil.teamggSummonerKey(guildId, member.getId()), puuid);
+//                e.reply(String.format("%s님의 소환사가 \"%s#%s\"로 등록되었습니다.", member.getAsMention(), summonerName, tag)).queue();
+//            } catch (Exception err) {
+//                err.printStackTrace();
+//                e.reply("등록 실패: 서버 오류가 발생했습니다.").queue();
+//            }
         } catch (Exception err) {
             err.printStackTrace();
             e.reply("등록 실패: 오류가 발생했습니다.").queue();
@@ -794,6 +802,7 @@ public class SlashCommandParser {
                 return;
             }
             String guildId = guild.getId();
+            User user = e.getUser();
             Member member = e.getMember();
             if (member == null) {
                 this.sendVolatileReply(e, "멤버를 식별할 수 없습니다.", 5);
@@ -802,29 +811,42 @@ public class SlashCommandParser {
 
             String puuid = RedisClient.get(GuildUtil.teamggSummonerKey(guildId, member.getId()));
             if (puuid == null || puuid.isEmpty()) {
-                this.sendVolatileReply(e, "소환사 정보가 등록되지 않았습니다. /팀지지등록으로 등록해주세요.", 5);
+                this.sendVolatileEphemeralReply(e, "라이엇 계정이 연동되지 않았습니다. 먼저 /팀지지등록 명령어로 등록해주세요.", 5);
                 return;
             }
 
-            OptionMapping favorsInput = e.getOption("선호도");
-            if (favorsInput == null || favorsInput.getAsString().isEmpty()) {
-                this.sendVolatileReply(e, "선호도를 입력해주세요.", 5);
+            OptionMapping topFavorInput = e.getOption("탑");
+            OptionMapping jungleFavorInput = e.getOption("정글");
+            OptionMapping midFavorInput = e.getOption("미드");
+            OptionMapping adcFavorInput = e.getOption("원딜");
+            OptionMapping supportFavorInput = e.getOption("서폿");
+
+            if (topFavorInput == null || jungleFavorInput == null || midFavorInput == null || adcFavorInput == null || supportFavorInput == null) {
+                this.sendVolatileEphemeralReply(e, "누락된 선호도가 있습니다.", 5);
                 return;
             }
 
-            String favors = favorsInput.getAsString();
-            ArrayList<String> favorList = new ArrayList<>(Arrays.asList(favors.split(",")));
+            int topFavor = topFavorInput.getAsInt();
+            int jungleFavor = jungleFavorInput.getAsInt();
+            int midFavor = midFavorInput.getAsInt();
+            int adcFavor = adcFavorInput.getAsInt();
+            int supportFavor = supportFavorInput.getAsInt();
+
             ArrayList<Integer> favorIntList = new ArrayList<>();
-            for (String favor : favorList) {
-                try {
-                    favorIntList.add(Integer.parseInt(favor.trim()));
-                } catch (NumberFormatException err) {
-                    this.sendVolatileReply(e, "선호도는 숫자로 입력해주세요. (-1,0,1,2)", 5);
+            favorIntList.add(topFavor);
+            favorIntList.add(jungleFavor);
+            favorIntList.add(midFavor);
+            favorIntList.add(adcFavor);
+            favorIntList.add(supportFavor);
+
+            for (int favor : favorIntList) {
+                if (favor < -1 || favor > 2) {
+                    this.sendVolatileEphemeralReply(e, "선호도는 -1, 0, 1, 2 중 하나로 입력해주세요.", 5);
                     return;
                 }
             }
             if (favorIntList.size() != 5) {
-                this.sendVolatileReply(e, "선호도는 5개의 숫자로 쉼표(,)로 구분하여 입력해주세요. (탑, 정글, 미드, 원딜, 서폿 순)", 5);
+                this.sendVolatileEphemeralReply(e, "선호도가 올바른 배열의 형태가 아닙니다. (탑, 정글, 미드, 원딜, 서폿 순)", 5);
                 return;
             }
 
@@ -834,15 +856,14 @@ public class SlashCommandParser {
             }
 
             try {
-                String customGameConfigId = "345c559e-a037-45b3-bac1-e7e272bc29e1";
-                SetSummonerLineFavorRequestDto requestDto = new SetSummonerLineFavorRequestDto(customGameConfigId, puuid, favorArray);
+                SetSummonerLineFavorRequestDto requestDto = new SetSummonerLineFavorRequestDto(user.getId(), favorArray);
                 String response = Request.post("https://teamgg.kr:7713/v1/api/summonerLineFavor", requestDto, String.class);
                 e.reply(String.format("%s님의 라인 선호도가 탑(%d) 정글(%d) 미드(%d) 원딜(%d) 서폿(%d)로 설정되었습니다.",
                         member.getAsMention(), favorArray[0], favorArray[1], favorArray[2], favorArray[3], favorArray[4]
                 )).queue();
             } catch (Exception err) {
                 err.printStackTrace();
-                e.reply("선호도 등록 실패: 서버 오류가 발생했습니다.").queue();
+                e.reply("선호도 등록 실패: 서버 오류가 발생했습니다.").setEphemeral(true).queue();
             }
         } catch (Exception err) {
             err.printStackTrace();
@@ -879,6 +900,14 @@ public class SlashCommandParser {
 
     private void sendVolatileReply(SlashCommandInteractionEvent e, String message, int delay) {
         e.reply(message).queue(interactionHook -> {
+            interactionHook.retrieveOriginal().queue(message1 -> {
+                message1.delete().queueAfter(delay, java.util.concurrent.TimeUnit.SECONDS);
+            });
+        });
+    }
+
+    private void sendVolatileEphemeralReply(SlashCommandInteractionEvent e, String message, int delay) {
+        e.reply(message).setEphemeral(true).queue(interactionHook -> {
             interactionHook.retrieveOriginal().queue(message1 -> {
                 message1.delete().queueAfter(delay, java.util.concurrent.TimeUnit.SECONDS);
             });

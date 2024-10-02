@@ -1,37 +1,27 @@
 package dtos.teamgg;
 
 public class SetSummonerLineFavorRequestDto {
-    private String customGameConfigId;
-    private String puuid;
-    private int[] strength;
+    private String userId;
+    private int[] strengths;
 
-    public SetSummonerLineFavorRequestDto(String customGameConfigId, String puuid, int[] strength) {
-        this.customGameConfigId = customGameConfigId;
-        this.puuid = puuid;
-        this.strength = strength;
+    public SetSummonerLineFavorRequestDto(String userId, int[] strengths) {
+        this.userId = userId;
+        this.strengths = strengths;
     }
 
-    public String getCustomGameConfigId() {
-        return customGameConfigId;
+    public String getUserId() {
+        return userId;
     }
 
-    public void setCustomGameConfigId(String customGameConfigId) {
-        this.customGameConfigId = customGameConfigId;
+    public void setUserId(String userId) {
+        this.userId = userId;
     }
 
-    public String getPuuid() {
-        return puuid;
+    public int[] getStrengths() {
+        return strengths;
     }
 
-    public void setPuuid(String puuid) {
-        this.puuid = puuid;
-    }
-
-    public int[] getStrength() {
-        return strength;
-    }
-
-    public void setStrength(int[] strength) {
-        this.strength = strength;
+    public void setStrengths(int[] strengths) {
+        this.strengths = strengths;
     }
 }
