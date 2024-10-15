@@ -89,7 +89,7 @@ public class SlashCommandParser {
                 guildRanking.add(Pair.of(userId, totalDuration));
             }
 
-            guildRanking.sort((a, b) -> (int) (b.getRight() - a.getRight()));
+            guildRanking.sort((a, b) -> Long.compare(b.getRight(), a.getRight()));
             guildRanking = guildRanking.subList(0, Math.min(5, guildRanking.size()));
 
             EmbedBuilder embedBuilder = new EmbedBuilder();
