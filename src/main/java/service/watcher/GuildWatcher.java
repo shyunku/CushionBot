@@ -161,6 +161,16 @@ public class GuildWatcher {
             ObjectMapper mapper = new ObjectMapper();
             ObjectWriter writer = mapper.writerWithDefaultPrettyPrinter();
             String json = writer.writeValueAsString(accessSessions);
+
+            // check if guild exists
+            for (Map.Entry<String, Map<String, List<AccessSession>>> guildEntry : accessSessions.entrySet()) {
+                Guild guild = CushionBot.jda.getGuildById(guildEntry.getKey());
+                if (guild == null) {
+                    accessSessions.remove(guildEntry.getKey());
+
+                }
+            }
+
             String dirpath = System.getProperty("user.dir") + "/datafiles";
             String filepath = dirpath + "/access_logs.json";
 
