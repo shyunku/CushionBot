@@ -7,5 +7,6 @@
 /datafiles/access_logs.json
 /src/main/resources/credentials.yaml
 .idea
+/.vscode
 
 Lavalink.jar

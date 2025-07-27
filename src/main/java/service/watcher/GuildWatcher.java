@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import core.CushionBot;
+import core.InternalEventListener;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import service.watcher.handlers.SseResponse;
@@ -16,8 +17,12 @@ import java.io.FileWriter;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class GuildWatcher {
     private static long initializeTime;
+    private static final Logger logger = LoggerFactory.getLogger(GuildWatcher.class);
     public static Map<String, Map<String, List<AccessSession>>> accessSessions = new ConcurrentHashMap<>();
 
     public static void addAccessLog(AccessType accessType, String guildId, String userId, String channelId) {
@@ -127,6 +132,7 @@ public class GuildWatcher {
                         List<AccessSession> userSessions = accessSessions.get(guildId).computeIfAbsent(member.getId(), k -> new ArrayList<>());
                         AccessSession lastSession = getLastSession(userSessions);
                         if (lastSession == null || lastSession.isComplete()) {
+                            logger.info("Member {} already joined voice channel {} in guild {}", member.getUser().getName(), voiceChannel.getName(), guild.getName());
                             addAccessLog(AccessType.JOIN, guildId, member.getId(), voiceChannel.getId());
                         }
                     });
@@ -138,14 +144,17 @@ public class GuildWatcher {
                     if (!joiners.containsKey(userId)) {
                         // disconnected
                         if (lastSession != null && !lastSession.isComplete()) {
+                            logger.info("Member {} left voice channel {} in guild {}", userId, lastSession.getChannelId(), guild.getName());
                             addAccessLog(AccessType.LEAVE, guildId, userId, lastSession.getChannelId());
                         }
                     } else {
                         // connecting
                         String voiceChannelId = joiners.get(userId);
                         if (lastSession == null || lastSession.isComplete()) {
+                            logger.info("Member {} joined voice channel {} in guild {}", userId, voiceChannelId, guild.getName());
                             addAccessLog(AccessType.JOIN, guildId, userId, voiceChannelId);
                         } else if (!lastSession.isComplete() && !lastSession.getChannelId().equals(voiceChannelId)) {
+                            logger.info("Member {} moved from voice channel {} to {} in guild {}", userId, lastSession.getChannelId(), voiceChannelId, guild.getName());
                             addAccessLog(AccessType.MOVED, guildId, userId, voiceChannelId);
                         }
                     }

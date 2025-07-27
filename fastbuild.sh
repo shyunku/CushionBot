@@ -1,7 +1,7 @@
 #!/bin/sh
 echo "============ BUILD START ============"
-sudo sh stop.sh
+sh stop.sh
 rm -rf build/libs
 ./gradlew clean build
-sudo sh run.sh
+sh run.sh
 echo "============ BUILD END ============"
