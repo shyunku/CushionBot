@@ -2,7 +2,11 @@ import Camera from "./Camera.js";
 import Callable from "./Callable.js";
 import Point2D from "../physics/Point2D.js";
 import Bounds from "../physics/Bounds.js";
-import { currentMicroProcessTime, fastInterval, getPixelRate } from "./Utils.js";
+import {
+  currentMicroProcessTime,
+  fastInterval,
+  getPixelRate,
+} from "./Utils.js";
 
 class CanvasEngine extends Callable {
   constructor(canvasId, fps) {
@@ -118,12 +122,16 @@ class CanvasEngine extends Callable {
         }
       }
     });
-    this.node.addEventListener("mousewheel", (e) => {
+    this.node.addEventListener("wheel", (e) => {
       this.updateMousePosition(e);
       if (this.zoomable) {
         let realZoomLevel = this.camera.getZoomLevel().real();
         if (this.zoomWithPos) {
-          this.zoom(this.canvasMousePos.x, this.canvasMousePos.y, realZoomLevel - e.deltaY / 2000);
+          this.zoom(
+            this.canvasMousePos.x,
+            this.canvasMousePos.y,
+            realZoomLevel - e.deltaY / 2000
+          );
         } else {
           this.justZoom(realZoomLevel - e.deltaY / 2000);
         }
@@ -161,7 +169,8 @@ class CanvasEngine extends Callable {
         if (color) c.fillStyle = color;
 
         let metrics = c.measureText(text);
-        let textHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+        let textHeight =
+          metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
 
         // horizontal align (xo = -1, 0, 1)
         let _x = x + ((xo - 1) * metrics.width) / 2;
@@ -177,24 +186,36 @@ class CanvasEngine extends Callable {
       },
       drawMidHeightText: function (text, x, y) {
         let metrics = c.measureText(text);
-        let textHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+        let textHeight =
+          metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
         c.fillText(text, x, y + textHeight / 2);
       },
       drawCenteredText: function (text, x, y, fillStyle) {
         if (fillStyle) c.fillStyle = fillStyle;
         let metrics = c.measureText(text);
-        let textHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+        let textHeight =
+          metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
         c.fillText(text, x - metrics.width / 2, y + textHeight / 2);
       },
       drawRightAlignedMidHeightText: function (text, x, y) {
         let metrics = c.measureText(text);
-        let textHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+        let textHeight =
+          metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
         c.fillText(text, x - metrics.width, y + textHeight / 2);
       },
-      drawColorPaddedMidHeightText: function (text, x, y, padX, padY, fillColor, textColor) {
+      drawColorPaddedMidHeightText: function (
+        text,
+        x,
+        y,
+        padX,
+        padY,
+        fillColor,
+        textColor
+      ) {
         let metrics = c.measureText(text);
         let textPadWidth = metrics.width + padX * 2;
-        let textHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+        let textHeight =
+          metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
         let textPadHeight = textHeight + padY * 2;
 
         c.fillStyle = fillColor;
@@ -202,14 +223,28 @@ class CanvasEngine extends Callable {
         c.fillStyle = textColor;
         c.fillText(text, x + padX, y + textHeight / 2);
       },
-      drawColorPaddedCenteredText: function (text, x, y, padX, padY, fillColor, textColor) {
+      drawColorPaddedCenteredText: function (
+        text,
+        x,
+        y,
+        padX,
+        padY,
+        fillColor,
+        textColor
+      ) {
         let metrics = c.measureText(text);
         let textPadWidth = metrics.width + padX * 2;
-        let textHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+        let textHeight =
+          metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
         let textPadHeight = textHeight + padY * 2;
 
         c.fillStyle = fillColor;
-        c.fillRect(x - metrics.width / 2 - padX, y - textHeight / 2 - padY, textPadWidth, textPadHeight);
+        c.fillRect(
+          x - metrics.width / 2 - padX,
+          y - textHeight / 2 - padY,
+          textPadWidth,
+          textPadHeight
+        );
         c.fillStyle = textColor;
         c.fillText(text, x - metrics.width / 2, y + textHeight / 2);
       },
@@ -260,7 +295,14 @@ class CanvasEngine extends Callable {
         c.arc(x, y, r, 0, 2 * Math.PI);
         c.fill();
       },
-      drawAndFillCircle: function (x, y, r, fillColor, strokeColor, strokeWidth) {
+      drawAndFillCircle: function (
+        x,
+        y,
+        r,
+        fillColor,
+        strokeColor,
+        strokeWidth
+      ) {
         if (fillColor) c.fillStyle = fillColor;
         if (strokeColor) c.strokeStyle = strokeColor;
         if (strokeWidth) c.lineWidth = strokeWidth;
@@ -272,7 +314,16 @@ class CanvasEngine extends Callable {
         c.arc(x, y, r, 0, 2 * Math.PI);
         c.stroke();
       },
-      drawAndFillCircleWithBlur: function (x, y, r, fillColor, strokeColor, strokeWidth, blur, color) {
+      drawAndFillCircleWithBlur: function (
+        x,
+        y,
+        r,
+        fillColor,
+        strokeColor,
+        strokeWidth,
+        blur,
+        color
+      ) {
         if (fillColor) c.fillStyle = fillColor;
         if (strokeColor) c.strokeStyle = strokeColor;
         if (strokeWidth) c.lineWidth = strokeWidth;
@@ -294,7 +345,15 @@ class CanvasEngine extends Callable {
         c.arc(x, y, r, 0, 2 * Math.PI);
         c.fill();
       },
-      drawAndFillRect: function (x, y, w, h, fillColor, strokeColor, strokeWidth) {
+      drawAndFillRect: function (
+        x,
+        y,
+        w,
+        h,
+        fillColor,
+        strokeColor,
+        strokeWidth
+      ) {
         if (fillColor) c.fillStyle = fillColor;
         if (strokeColor) c.strokeStyle = strokeColor;
         if (strokeWidth) c.lineWidth = strokeWidth;
@@ -302,7 +361,15 @@ class CanvasEngine extends Callable {
         c.fillRect(x, y, w, h);
         c.strokeRect(x, y, w, h);
       },
-      drawAndFillCenteredRect: function (x, y, w, h, fillColor, strokeColor, strokeWidth) {
+      drawAndFillCenteredRect: function (
+        x,
+        y,
+        w,
+        h,
+        fillColor,
+        strokeColor,
+        strokeWidth
+      ) {
         if (fillColor) c.fillStyle = fillColor;
         if (strokeColor) c.strokeStyle = strokeColor;
         if (strokeWidth) c.lineWidth = strokeWidth;
@@ -310,13 +377,32 @@ class CanvasEngine extends Callable {
         c.fillRect(x - w / 2, y, w, h);
         c.strokeRect(x - w / 2, y, w, h);
       },
-      drawAndFillCenteredRectWithPadding: function (x, y, w, h, padding, fillColor, strokeColor, strokeWidth) {
+      drawAndFillCenteredRectWithPadding: function (
+        x,
+        y,
+        w,
+        h,
+        padding,
+        fillColor,
+        strokeColor,
+        strokeWidth
+      ) {
         if (fillColor) c.fillStyle = fillColor;
         if (strokeColor) c.strokeStyle = strokeColor;
         if (strokeWidth) c.lineWidth = strokeWidth;
 
-        c.fillRect(x - w / 2 - padding, y - padding, w + padding * 2, h + padding * 2);
-        c.strokeRect(x - w / 2 - padding, y - padding, w + padding * 2, h + padding * 2);
+        c.fillRect(
+          x - w / 2 - padding,
+          y - padding,
+          w + padding * 2,
+          h + padding * 2
+        );
+        c.strokeRect(
+          x - w / 2 - padding,
+          y - padding,
+          w + padding * 2,
+          h + padding * 2
+        );
       },
       drawImage(image, x, y, w, h) {
         c.drawImage(image, x, y, w, h);
@@ -355,7 +441,9 @@ class CanvasEngine extends Callable {
       },
       getTextHeight: function (text) {
         let metrics = c.measureText(text);
-        return metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+        return (
+          metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent
+        );
       },
       setOpacity: function (opacity) {
         c.globalAlpha = opacity;
@@ -438,7 +526,8 @@ class CanvasEngine extends Callable {
     tempContext.drawImage(this.context.canvas, 0, 0);
     this.sizeSync();
 
-    if (tempContext.canvas.width === 0 || tempContext.canvas.height === 0) return;
+    if (tempContext.canvas.width === 0 || tempContext.canvas.height === 0)
+      return;
     this.context.drawImage(tempContext.canvas, 0, 0);
 
     if (this.lookAtWhat && this.lookAtWhat.x && this.lookAtWhat.y) {
@@ -555,7 +644,8 @@ class CanvasEngine extends Callable {
     this.init();
 
     for (let layer of this.drawableLayers) {
-      if (layer.shouldRerender) layer.draw(this.context, this, this.tool, this.width, this.height);
+      if (layer.shouldRerender)
+        layer.draw(this.context, this, this.tool, this.width, this.height);
       layer.renderCompleted();
       this.initOptions();
     }
@@ -564,7 +654,8 @@ class CanvasEngine extends Callable {
     this.context.setTransform(1, 0, 0, 1, 0.5, 0.5);
 
     for (let layer of this.staticDrawableLayers) {
-      if (layer.shouldRerender) layer.draw(this.context, this, this.tool, this.width, this.height);
+      if (layer.shouldRerender)
+        layer.draw(this.context, this, this.tool, this.width, this.height);
       layer.renderCompleted();
       this.initOptions();
     }

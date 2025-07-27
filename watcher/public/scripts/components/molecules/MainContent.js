@@ -18,8 +18,14 @@ class MainContent extends UI {
       ...props,
       initialState: {
         mode: Modes.INTERVAL,
-        intervalStart: new FlexibleValue(Date.now() - 18 * TimeUnit.HOUR, { factor: 0.999, useInt: true }),
-        intervalEnd: new FlexibleValue(Date.now() + 6 * TimeUnit.HOUR - 1, { factor: 0.999, useInt: true }),
+        intervalStart: new FlexibleValue(Date.now() - 18 * TimeUnit.HOUR, {
+          factor: 0.999,
+          useInt: true,
+        }),
+        intervalEnd: new FlexibleValue(Date.now() + 6 * TimeUnit.HOUR - 1, {
+          factor: 0.999,
+          useInt: true,
+        }),
         guild: null,
       },
     });
@@ -50,9 +56,12 @@ class MainContent extends UI {
         sessionBoxMargin: 14,
       };
 
-      const boxHeightFactor = engine.constants.sessionBoxHeight + engine.constants.sessionBoxMargin;
+      const boxHeightFactor =
+        engine.constants.sessionBoxHeight + engine.constants.sessionBoxMargin;
       const maxYOffset = Math.max(
-        engine.constants.sessionBoxTopPad + boxHeightFactor * (userCount + 1) - engine.parentNode.clientHeight,
+        engine.constants.sessionBoxTopPad +
+          boxHeightFactor * (userCount + 1) -
+          engine.parentNode.clientHeight,
         0
       );
 
@@ -62,7 +71,10 @@ class MainContent extends UI {
       });
       engine.addMouseMoveEventHandler((e) => {
         if (engine.mouseAnchorX == null || engine.mouseAnchorY == null) return;
-        const { intervalStart: intervalStartFlex, intervalEnd: intervalEndFlex } = engine.variables;
+        const {
+          intervalStart: intervalStartFlex,
+          intervalEnd: intervalEndFlex,
+        } = engine.variables;
         const realStart = intervalStartFlex.real();
         const realEnd = intervalEndFlex.real();
         const realDiff = realEnd - realStart;
@@ -80,14 +92,20 @@ class MainContent extends UI {
         engine.mouseAnchorY = engine.mousePos.y;
       });
       engine.addMouseUpEventHandler((e) => {
-        const { intervalStart: intervalStartFlex, intervalEnd: intervalEndFlex } = engine.variables;
+        const {
+          intervalStart: intervalStartFlex,
+          intervalEnd: intervalEndFlex,
+        } = engine.variables;
         this.setState("intervalStart", intervalStartFlex);
         this.setState("intervalEnd", intervalEndFlex);
         engine.mouseAnchorX = null;
         engine.mouseAnchorY = null;
       });
       engine.addMouseWheelEventHandler((e) => {
-        const { intervalStart: intervalStartFlex, intervalEnd: intervalEndFlex } = engine.variables;
+        const {
+          intervalStart: intervalStartFlex,
+          intervalEnd: intervalEndFlex,
+        } = engine.variables;
         const { leftPad, rightPad } = engine.constants;
         const realStart = intervalStartFlex.real();
         const realEnd = intervalEndFlex.real();
@@ -188,10 +206,17 @@ class MainContent extends UI {
     const intervalStart = flexStart.real();
     const intervalEnd = flexEnd.real();
     const timeUnit = this.calculateIntervalUnit(intervalStart, intervalEnd);
-    const units = ["MM.DD HH:mm:ss", "MM.DD HH:mm:ss", "MM.DD HH:mm", "MM.DD HH시", "YY.MM.DD", "YY.MM"];
-    const intervalText = `${dayjs(intervalStart).format(units[timeUnit])} ~ ${dayjs(intervalEnd).format(
+    const units = [
+      "MM.DD HH:mm:ss",
+      "MM.DD HH:mm:ss",
+      "MM.DD HH:mm",
+      "MM.DD HH시",
+      "YY.MM.DD",
+      "YY.MM",
+    ];
+    const intervalText = `${dayjs(intervalStart).format(
       units[timeUnit]
-    )}`;
+    )} ~ ${dayjs(intervalEnd).format(units[timeUnit])}`;
 
     return `
       <div id="main_content">
