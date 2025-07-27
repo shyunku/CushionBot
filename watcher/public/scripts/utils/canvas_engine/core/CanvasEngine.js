@@ -27,14 +27,12 @@ class CanvasEngine extends Callable {
     this.testPos = { x: -9999, y: -9999 };
 
     // Pixel Adjust (for resolution)
-    this.pixelRate = getPixelRate();
+    this.pixelRate = 1 || getPixelRate();
     this.node.width = this.parentNode.clientWidth;
     this.node.height = this.parentNode.clientHeight;
 
-    this.context = this.getHighDpiCanvasContext(this.node);
-
-    this.width = this.node.width;
-    this.height = this.node.height;
+    this.context = this.node.getContext("2d");
+    this.resize(true);
 
     // Camera
     this.camera = new Camera(this.width / 2, this.height / 2, 1);
@@ -99,6 +97,7 @@ class CanvasEngine extends Callable {
       }
     });
     this.node.addEventListener("mousedown", (e) => {
+      console.log("mousedown", e);
       this.dragging = true;
       for (let handler of this.mouseDownHandlers) {
         handler(e);
@@ -116,6 +115,30 @@ class CanvasEngine extends Callable {
         handler(e);
       }
 
+      if (this.dragging) {
+        for (let handler of this.mouseDragHandlers) {
+          handler(e);
+        }
+      }
+    });
+    this.node.addEventListener("touchstart", (e) => {
+      this.updateMousePosition(e.touches[0]);
+      this.dragging = true;
+      for (let handler of this.mouseDownHandlers) {
+        handler(e);
+      }
+    });
+    this.node.addEventListener("touchend", (e) => {
+      this.dragging = false;
+      for (let handler of this.mouseUpHandlers) {
+        handler(e);
+      }
+    });
+    this.node.addEventListener("touchmove", (e) => {
+      this.updateMousePosition(e.touches[0]);
+      for (let handler of this.mouseMoveHandlers) {
+        handler(e);
+      }
       if (this.dragging) {
         for (let handler of this.mouseDragHandlers) {
           handler(e);
@@ -487,65 +510,43 @@ class CanvasEngine extends Callable {
     this.keyDownHandlers.push(handler);
   }
 
-  getHighDpiCanvasContext = (canvasObject) => {
-    let w = canvasObject.width;
-    let h = canvasObject.height;
-
-    canvasObject.width = w * this.pixelRate;
-    canvasObject.height = h * this.pixelRate;
-    canvasObject.style.width = w + "px";
-    canvasObject.style.height = h + "px";
-
-    let context = canvasObject.getContext("2d");
-    if (this.camera) {
-      let zoomLevel = this.camera.getZoomLevel().get();
-      context.scale(zoomLevel, zoomLevel);
-    }
-    context.setTransform(1, 0, 0, 1, 0.5, 0.5);
-    context.imageSmoothingEnabled = true;
-
-    return context;
-  };
-
   getContext() {
     return this.context;
   }
 
-  resize = () => {
-    let tempCanvas = document.createElement("canvas");
-    tempCanvas.width = this.width;
-    tempCanvas.height = this.height;
+  resize(initial = false) {
+    const ratio = this.pixelRate;
 
-    let tempContext = this.getHighDpiCanvasContext(tempCanvas);
+    const cssWidth = this.parentNode.clientWidth;
+    const cssHeight = this.parentNode.clientHeight;
 
-    if (this.context.canvas.width === 0 || this.context.canvas.height === 0) {
-      this.sizeSync();
-      return;
-    }
+    // 실제 렌더링 해상도 조절
+    this.node.width = cssWidth * ratio;
+    this.node.height = cssHeight * ratio;
 
-    tempContext.drawImage(this.context.canvas, 0, 0);
-    this.sizeSync();
+    // CSS 사이즈는 그대로 유지
+    this.node.style.width = cssWidth + "px";
+    this.node.style.height = cssHeight + "px";
 
-    if (tempContext.canvas.width === 0 || tempContext.canvas.height === 0)
-      return;
-    this.context.drawImage(tempContext.canvas, 0, 0);
+    // this.context.setTransform(ratio, 0, 0, ratio, 0, 0); // 스케일 보정
 
-    if (this.lookAtWhat && this.lookAtWhat.x && this.lookAtWhat.y) {
-      this.lookAt(this.lookAtWhat.x, this.lookAtWhat.y);
-    } else {
-      this.lookAt(this.node.width / 2, this.node.height / 2);
-    }
-  };
-
-  sizeSync = () => {
-    this.node.width = this.parentNode.clientWidth;
-    this.node.height = this.parentNode.clientHeight;
-
-    this.context = this.getHighDpiCanvasContext(this.node);
+    this.widthRatio = this.node.width / (this.width ?? this.node.width);
+    this.heightRatio = this.node.height / (this.height ?? this.node.height);
 
     this.width = this.node.width;
     this.height = this.node.height;
-  };
+
+    if (initial) return;
+
+    if (this.lookAtWhat?.x && this.lookAtWhat?.y) {
+      this.lookAt(
+        this.lookAtWhat.x * this.widthRatio,
+        this.lookAtWhat.y * this.heightRatio
+      );
+    } else {
+      this.lookAt(this.node.width / 2, this.node.height / 2);
+    }
+  }
 
   init() {
     let zoomLevel = this.camera.getZoomLevel().get();

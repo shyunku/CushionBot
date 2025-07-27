@@ -229,3 +229,67 @@ body,
   background-color: #5bffce46;
   border-radius: 5px;
 }
+
+body.mobile {
+  #home {
+    flex-direction: column;
+  }
+
+  #sidebar {
+    width: 100%;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid #484848;
+    padding: 10px;
+
+    #today {
+      flex-direction: row;
+      overflow-x: auto;
+      padding: 0;
+
+      .today-item {
+        flex: 0 0 auto;
+        margin-right: 10px;
+        width: 100%;
+        max-width: 180px;
+
+        .header {
+          .name {
+            font-size: 12px;
+          }
+        }
+
+        .content {
+          height: auto;
+          max-height: 60px;
+        }
+      }
+    }
+  }
+
+  #main_content {
+    padding: 10px;
+    width: 100%;
+    height: auto;
+
+    .title {
+      font-size: 20px;
+      margin-bottom: 10px;
+    }
+
+    .options,
+    .modes {
+    }
+
+    #main_area {
+      height: auto;
+      overflow-y: overlay;
+    }
+
+    #time_display {
+      top: -5px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+  }
+}

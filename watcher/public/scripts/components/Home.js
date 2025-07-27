@@ -13,11 +13,23 @@ class Home extends UI {
         loadingCurrent: 0,
       },
     });
+
+    this.isMobile = false;
+  }
+
+  updateDeviceType() {
+    this.isMobile = window.innerWidth <= 768; // 보통 768px 이하면 모바일로 간주
+    // set render direction as vertical (rotate)
+    document.body.classList.toggle("mobile", this.isMobile);
   }
 
   async afterMount() {
     await this.loadData();
     this.startSSE();
+
+    this.updateDeviceType();
+    console.log("mount");
+    window.addEventListener("resize", this.updateDeviceType);
   }
 
   onGuildIdSelect = (guildId) => {
@@ -48,13 +60,17 @@ class Home extends UI {
       const rawData = await Http.get("/data");
       if (
         this.states.selectedGuildId == null ||
-        (this.states.selectedGuildId != null && rawData[this.states.selectedGuildId] == null)
+        (this.states.selectedGuildId != null &&
+          rawData[this.states.selectedGuildId] == null)
       ) {
         this.setState("selectedGuildId", Object.keys(rawData)?.[0] ?? null);
         localStorage.setItem("selected_guild_id", this.states.selectedGuildId);
       }
 
-      total = Object.values(rawData).reduce((acc, guild) => acc + Object.keys(guild).length, 0);
+      total = Object.values(rawData).reduce(
+        (acc, guild) => acc + Object.keys(guild).length,
+        0
+      );
       this.setState("loadingTotal", total);
 
       for (let guildId in rawData) {
