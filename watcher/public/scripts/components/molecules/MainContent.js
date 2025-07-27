@@ -201,6 +201,76 @@ class MainContent extends UI {
     this.setState("intervalEnd", intervalEnd);
   }
 
+  moveLeft() {
+    const { intervalStart, intervalEnd } = this.states;
+    const realStart = intervalStart.real();
+    const realEnd = intervalEnd.real();
+    const realDiff = realEnd - realStart;
+    const diffTime = 0.3 * realDiff;
+
+    intervalStart.set(realStart - diffTime);
+    intervalEnd.set(realEnd - diffTime);
+    this.setState("intervalStart", intervalStart);
+    this.setState("intervalEnd", intervalEnd);
+  }
+
+  moveRight() {
+    const { intervalStart, intervalEnd } = this.states;
+    const realStart = intervalStart.real();
+    const realEnd = intervalEnd.real();
+    const realDiff = realEnd - realStart;
+    const diffTime = 0.3 * realDiff;
+
+    intervalStart.set(realStart + diffTime);
+    intervalEnd.set(realEnd + diffTime);
+    this.setState("intervalStart", intervalStart);
+    this.setState("intervalEnd", intervalEnd);
+  }
+
+  zoomIn() {
+    const { intervalStart, intervalEnd } = this.states;
+    const realStart = intervalStart.real();
+    const realEnd = intervalEnd.real();
+    const realDiff = realEnd - realStart;
+
+    const zoomFactor = 0.5;
+    const zoomRate = 1 - zoomFactor;
+
+    const newIntervalStart = realStart + (realDiff * (1 - zoomRate)) / 2;
+    const newIntervalEnd = realEnd - (realDiff * (1 - zoomRate)) / 2;
+
+    if (newIntervalEnd - newIntervalStart < 10 * TimeUnit.SECOND) {
+      return;
+    }
+
+    intervalStart.set(newIntervalStart);
+    intervalEnd.set(newIntervalEnd);
+    this.setState("intervalStart", intervalStart);
+    this.setState("intervalEnd", intervalEnd);
+  }
+
+  zoomOut() {
+    const { intervalStart, intervalEnd } = this.states;
+    const realStart = intervalStart.real();
+    const realEnd = intervalEnd.real();
+    const realDiff = realEnd - realStart;
+
+    const zoomFactor = 0.5;
+    const zoomRate = 1 + zoomFactor;
+
+    const newIntervalStart = realStart + (realDiff * (1 - zoomRate)) / 2;
+    const newIntervalEnd = realEnd - (realDiff * (1 - zoomRate)) / 2;
+
+    if (newIntervalEnd - newIntervalStart > 5 * 365 * TimeUnit.DAY) {
+      return;
+    }
+
+    intervalStart.set(newIntervalStart);
+    intervalEnd.set(newIntervalEnd);
+    this.setState("intervalStart", intervalStart);
+    this.setState("intervalEnd", intervalEnd);
+  }
+
   define() {
     const { intervalStart: flexStart, intervalEnd: flexEnd } = this.states;
     const intervalStart = flexStart.real();
@@ -232,6 +302,12 @@ class MainContent extends UI {
           <div class="left">
             <button class="btn" onclick={this.moveToCurrentDay}>오늘</button>
             <button class="btn" onclick={this.moveToCurrent}>현재</button>
+          </div>
+          <div class="right">
+            <button class="btn" onclick={this.moveLeft}>과거로 이동</button>
+            <button class="btn" onclick={this.moveRight}>미래로 이동</button>
+            <button class="btn" onclick={this.zoomIn}>확대</button>
+            <button class="btn" onclick={this.zoomOut}>축소</button>
           </div>
         </div>
         <div id="main_area">
