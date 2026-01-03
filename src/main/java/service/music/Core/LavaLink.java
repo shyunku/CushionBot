@@ -29,7 +29,7 @@ public class LavaLink {
     public static void startServer() {
         // execute lavalink.jar
         try {
-            ProcessBuilder pb = new ProcessBuilder("java", "-jar", "Lavalink.jar");
+            ProcessBuilder pb = new ProcessBuilder("java", "-Xmx256M", "-jar", "Lavalink.jar");
             pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
             pb.redirectError(ProcessBuilder.Redirect.INHERIT);
             Process process = pb.start();

@@ -53,7 +53,7 @@ public class MusicActionEmbedBuilder {
             String requester = musicTrack.requester.getEffectiveName();
 
             String label = String.format("%d. %s", i, musicTrack.getTitle());
-            String optionId = String.format("track-%s", musicTrack.getIdentifier());
+            String optionId = String.format("track-%d-%s", i, musicTrack.getIdentifier());
             String description = String.format("[%s] %s (%s)", requester, musicTrack.getChannelTitle(), duration);
 
             trackMenuBuilder.addOption(label, optionId, description);

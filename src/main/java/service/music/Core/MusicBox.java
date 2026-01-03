@@ -23,8 +23,11 @@ import service.guild.core.GuildUtil;
 import service.inmemory.RedisClient;
 import service.music.object.MusicTrack;
 
+
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 public class MusicBox implements ControlBox {
     private final Logger logger = LoggerFactory.getLogger(MusicBox.class);
@@ -185,12 +188,15 @@ public class MusicBox implements ControlBox {
         this.streamer.clearTracksOfQueue();
 
         // initial update embed
-        this.updateEmbed();
+        // logger.info("updating embed after setting music channel");
+        // this.updateEmbed();
         RedisClient.set(GuildUtil.musicChannelKey(guild.getId()), musicChannel.getId());
     }
 
     public void setMusicBoxMessage(Message musicBoxMessage) {
         if (musicBoxMessage == null) return;
+        // print stack trace
+        logger.info("Setting music box message with ID: {}", musicBoxMessage.getId());
         this.musicBoxMessage = musicBoxMessage;
         RedisClient.set(GuildUtil.musicBoxMessageKey(guild.getId()), musicBoxMessage.getId());
     }

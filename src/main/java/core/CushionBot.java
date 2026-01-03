@@ -18,7 +18,6 @@ public class CushionBot {
     public static void main(String[] args) {
         try {
             RedisClient redisClient = new RedisClient();
-            redisClient.connect();
             Watcher.start();
             LavaLink.startServer();
             lavalinkClient = LavaLink.init();
