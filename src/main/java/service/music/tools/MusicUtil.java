@@ -1,6 +1,6 @@
 package service.music.tools;
 
-import net.dv8tion.jda.api.interactions.components.buttons.Button;
+import net.dv8tion.jda.api.components.buttons.Button;
 import service.music.object.MusicBoxComponents;
 import service.music.object.MusicPlayMode;
 

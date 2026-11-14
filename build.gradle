@@ -38,14 +38,14 @@ repositories {
 
 dependencies {
     testImplementation group: 'junit', name: 'junit', version: '4.12'
-    implementation 'net.dv8tion:JDA:5.1.1'
+    implementation 'net.dv8tion:JDA:6.3.1'
     implementation 'redis.clients:jedis:4.1.1'
     implementation 'com.google.apis:google-api-services-youtube:v3-rev20200213-1.30.9'
     implementation 'com.google.api-client:google-api-client:1.30.8'
     implementation 'org.yaml:snakeyaml:1.30'
     implementation 'net.ricecode:string-similarity:1.0.0'
     implementation 'org.apache.commons:commons-pool2:2.11.1'
-    implementation "dev.arbjerg:lavalink-client:3.3.0"
+    implementation "dev.arbjerg:lavalink-client:3.4.0"
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.4.1'
     implementation 'ch.qos.logback:logback-classic:1.4.12'
 

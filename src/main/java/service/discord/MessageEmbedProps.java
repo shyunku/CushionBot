@@ -3,8 +3,8 @@ package service.discord;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
-import net.dv8tion.jda.api.interactions.components.ActionRow;
-import net.dv8tion.jda.api.interactions.components.ItemComponent;
+import net.dv8tion.jda.api.components.actionrow.ActionRow;
+import net.dv8tion.jda.api.components.actionrow.ActionRowChildComponent;
 
 import java.util.ArrayList;
 import java.util.function.Consumer;
@@ -34,8 +34,8 @@ public class MessageEmbedProps {
         textChannel.sendMessageEmbeds(this.messageEmbed).setComponents(actionRows).queue(success);
     }
 
-    private ArrayList<ItemComponent> getActionRowComponents() {
-        ArrayList<ItemComponent> itemComponents = new ArrayList<>();
+    private ArrayList<ActionRowChildComponent> getActionRowComponents() {
+        ArrayList<ActionRowChildComponent> itemComponents = new ArrayList<>();
         for (ActionRow actionRow : actionRows) {
             itemComponents.addAll(actionRow.getComponents());
         }

@@ -12,11 +12,12 @@ import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
-import net.dv8tion.jda.api.interactions.components.ActionRow;
-import net.dv8tion.jda.api.interactions.components.ItemComponent;
-import net.dv8tion.jda.api.interactions.components.text.TextInput;
-import net.dv8tion.jda.api.interactions.components.text.TextInputStyle;
-import net.dv8tion.jda.api.interactions.modals.Modal;
+import net.dv8tion.jda.api.components.actionrow.ActionRow;
+import net.dv8tion.jda.api.components.actionrow.ActionRowChildComponent;
+import net.dv8tion.jda.api.components.textinput.TextInput;
+import net.dv8tion.jda.api.components.textinput.TextInputStyle;
+import net.dv8tion.jda.api.components.label.Label;
+import net.dv8tion.jda.api.modals.Modal;
 import net.dv8tion.jda.api.managers.channel.concrete.TextChannelManager;
 import net.dv8tion.jda.api.requests.restaction.interactions.ReplyCallbackAction;
 import net.dv8tion.jda.internal.utils.tuple.Pair;
@@ -293,7 +294,7 @@ public class SlashCommandParser {
             MessageEmbedProps embedPair = lolBox.getEmbed();
             ReplyCallbackAction action = e.replyEmbeds(embedPair.messageEmbed);
             for (ActionRow actionRow : embedPair.actionRows) {
-                action = action.addActionRow((ItemComponent) actionRow);
+                action = action.addComponents(actionRow);
             }
             action.queue(interactionHook -> {
                 interactionHook.retrieveOriginal().queue(lolBox::setLolBoxMessage);
@@ -547,28 +548,28 @@ public class SlashCommandParser {
                 return;
             }
 
-            TextInput gameNameInput = TextInput.create("gameName", "게임 이름/이벤트 이름을 입력해주세요.", TextInputStyle.SHORT)
+            TextInput gameNameInput = TextInput.create("gameName", TextInputStyle.SHORT)
                     .setPlaceholder("게임 이름/이벤트 이름 (ex. 자랭)")
                     .setRequired(true)
                     .build();
-            TextInput recruitingNumInput = TextInput.create("recruitNum", "모집 인원을 숫자로 입력해주세요. (옵션)", TextInputStyle.SHORT)
+            TextInput recruitingNumInput = TextInput.create("recruitNum", TextInputStyle.SHORT)
                     .setPlaceholder("모집 인원 (ex. 5)")
                     .setRequired(false)
                     .build();
-            TextInput timeInput = TextInput.create("time", "모집 시간을 입력해주세요. 현재 시각보다 전일 경우 내일로 설정됩니다. (옵션)", TextInputStyle.SHORT)
+            TextInput timeInput = TextInput.create("time", TextInputStyle.SHORT)
                     .setPlaceholder("모집 시간 (ex. 21:30)")
                     .setRequired(false)
                     .build();
-            TextInput durationInput = TextInput.create("duration", "예상 소요 시간을 입력해주세요. (옵션, 1시간 단위)", TextInputStyle.SHORT)
+            TextInput durationInput = TextInput.create("duration", TextInputStyle.SHORT)
                     .setPlaceholder("소요 시간 (ex. 1시간 반 -> 1.5)")
                     .setRequired(false)
                     .build();
 
             Modal modal = Modal.create("recruitModal", "구인 등록")
-                    .addActionRow(gameNameInput)
-                    .addActionRow(recruitingNumInput)
-                    .addActionRow(timeInput)
-                    .addActionRow(durationInput)
+                    .addComponents(Label.of("게임 이름/이벤트 이름을 입력해주세요.", gameNameInput))
+                    .addComponents(Label.of("모집 인원을 숫자로 입력해주세요. (옵션)", recruitingNumInput))
+                    .addComponents(Label.of("모집 시간을 입력해주세요. 현재 시각보다 전일 경우 내일로 설정됩니다. (옵션)", timeInput))
+                    .addComponents(Label.of("예상 소요 시간을 입력해주세요. (옵션, 1시간 단위)", durationInput))
                     .build();
 
             e.replyModal(modal).queue();
