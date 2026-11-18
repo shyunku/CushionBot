@@ -25,3 +25,7 @@ nohup.out
 
 # Local scratch files
 /.local/
+
+# Watcher web dashboard
+/watcher/node_modules/
+/watcher/.env
