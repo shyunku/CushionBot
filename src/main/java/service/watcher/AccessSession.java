@@ -1,9 +1,6 @@
 package service.watcher;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import net.dv8tion.jda.api.JDA;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.channel.concrete.VoiceChannel;
 
 public class AccessSession {
     private String userId;
@@ -69,12 +66,5 @@ public class AccessSession {
     @JsonIgnore
     public boolean isComplete() {
         return joinTime != 0 && leaveTime != 0;
-    }
-
-    public DisplayableAccessSession toDisplayable(JDA jda, String guildId) {
-        Guild guild = jda.getGuildById(guildId);
-        VoiceChannel channel = guild.getVoiceChannelById(channelId);
-        String channelName = channel == null ? "Unknown" : channel.getName();
-        return new DisplayableAccessSession(channelName, joinTime, leaveTime);
     }
 }

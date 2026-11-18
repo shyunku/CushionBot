@@ -1,6 +1,5 @@
 package service.watcher;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
@@ -8,6 +7,7 @@ import core.CushionBot;
 import core.InternalEventListener;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import service.watcher.handlers.SseResponse;
 
 import java.io.BufferedReader;
@@ -25,7 +25,7 @@ public class GuildWatcher {
     private static final Logger logger = LoggerFactory.getLogger(GuildWatcher.class);
     public static Map<String, Map<String, List<AccessSession>>> accessSessions = new ConcurrentHashMap<>();
 
-    public static void addAccessLog(AccessType accessType, String guildId, String userId, String channelId) {
+    public static synchronized void addAccessLog(AccessType accessType, String guildId, String userId, String channelId) {
         long eventTime = System.currentTimeMillis();
 
         Map<String, List<AccessSession>> guildSessions = accessSessions.computeIfAbsent(guildId, k -> new HashMap<>());
@@ -59,7 +59,7 @@ public class GuildWatcher {
         }
 
         saveAll();
-        Watcher.sendData(new SseResponse(Watcher.WATCH_TYPE_CHANGE, null));
+        Watcher.sendData(new SseResponse(Watcher.WATCH_TYPE_CHANGE, guildId));
     }
 
     private static void removeUnlastUncompleteSession(List<AccessSession> sessions) {
@@ -79,7 +79,7 @@ public class GuildWatcher {
         return sessions.get(sessions.size() - 1);
     }
 
-    public static void initialize() {
+    public static synchronized void initialize() {
         initializeTime = System.currentTimeMillis();
 
         // load access logs from file
@@ -163,6 +163,12 @@ public class GuildWatcher {
         } catch (Exception e) {
             e.printStackTrace();
         }
+
+        // warm the dashboard member cache in the background
+        for (Guild guild : CushionBot.jda.getGuilds()) {
+            Map<String, List<AccessSession>> guildSessions = accessSessions.get(guild.getId());
+            if (guildSessions != null) MemberDirectory.resolve(guild, guildSessions.keySet());
+        }
     }
 
     public static void saveAll() {
@@ -192,26 +198,67 @@ public class GuildWatcher {
         }
     }
 
-    public static String getAccessLogs() throws JsonProcessingException {
-        JDA jda = CushionBot.jda;
-        ObjectMapper mapper = new ObjectMapper();
-        Map<String, Map<String, List<DisplayableAccessSession>>> displayableSessions = new HashMap<>();
-        for (Map.Entry<String, Map<String, List<AccessSession>>> guildEntry : accessSessions.entrySet()) {
-            Map<String, List<DisplayableAccessSession>> guildDisplayableSessions = new HashMap<>();
-            for (Map.Entry<String, List<AccessSession>> userEntry : guildEntry.getValue().entrySet()) {
-                List<DisplayableAccessSession> displayableUserSessions = new ArrayList<>();
-                for (AccessSession session : userEntry.getValue()) {
-                    try {
-                        DisplayableAccessSession displayableSession = session.toDisplayable(jda, guildEntry.getKey());
-                        displayableUserSessions.add(displayableSession);
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
-                guildDisplayableSessions.put(userEntry.getKey(), displayableUserSessions);
+    /**
+     * Guilds shown in the dashboard, with the number of people connected right now.
+     */
+    public static synchronized List<Map<String, Object>> guildList() {
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Guild guild : CushionBot.jda.getGuilds()) {
+            Map<String, List<AccessSession>> guildSessions = accessSessions.get(guild.getId());
+            if (guildSessions == null) continue;
+            int online = 0;
+            for (List<AccessSession> sessions : guildSessions.values()) {
+                AccessSession last = getLastSession(sessions);
+                if (last != null && !last.isComplete()) online++;
             }
-            displayableSessions.put(guildEntry.getKey(), guildDisplayableSessions);
+            Map<String, Object> info = guildInfo(guild);
+            info.put("online", online);
+            result.add(info);
         }
-        return mapper.writeValueAsString(displayableSessions);
+        return result;
+    }
+
+    /**
+     * Everything the dashboard needs for one guild in a single response:
+     * guild info, member display info and every recorded session (leave 0 = still connected).
+     */
+    public static synchronized Map<String, Object> snapshot(Guild guild) {
+        Map<String, List<AccessSession>> guildSessions = accessSessions.getOrDefault(guild.getId(), Collections.emptyMap());
+        Map<String, String> channelNames = new HashMap<>();
+        Map<String, List<Map<String, Object>>> sessions = new HashMap<>();
+
+        for (Map.Entry<String, List<AccessSession>> userEntry : guildSessions.entrySet()) {
+            List<Map<String, Object>> list = new ArrayList<>();
+            for (AccessSession session : userEntry.getValue()) {
+                if (session.getJoinTime() == 0) continue;
+                String channelName = channelNames.computeIfAbsent(session.getChannelId(), id -> {
+                    GuildChannel channel = id == null ? null : guild.getGuildChannelById(id);
+                    return channel == null ? "알 수 없는 채널" : channel.getName();
+                });
+                Map<String, Object> item = new HashMap<>();
+                item.put("channel", channelName);
+                item.put("join", session.getJoinTime());
+                item.put("leave", session.getLeaveTime());
+                list.add(item);
+            }
+            list.sort(Comparator.comparingLong(item -> (long) item.get("join")));
+            sessions.put(userEntry.getKey(), list);
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("guild", guildInfo(guild));
+        result.put("serverTime", System.currentTimeMillis());
+        result.put("members", MemberDirectory.resolve(guild, sessions.keySet()));
+        result.put("sessions", sessions);
+        return result;
+    }
+
+    private static Map<String, Object> guildInfo(Guild guild) {
+        Map<String, Object> info = new HashMap<>();
+        info.put("id", guild.getId());
+        info.put("name", guild.getName());
+        info.put("iconUrl", guild.getIconUrl());
+        info.put("memberCount", guild.getMemberCount());
+        return info;
     }
 }
