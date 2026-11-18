@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>watcher 막대 모서리 시안 (pc 3.4.0)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: "Pretendard", "Noto Sans KR", "Malgun Gothic", sans-serif;
+    background: #2a2c31; color: #222; display: flex; gap: 16px; padding: 16px; align-items: flex-start;
+    overflow: hidden;
+  }
+
+  /* ---------- app frame (real size) ---------- */
+  #app {
+    width: 1280px; height: calc(100vh - 32px); flex: 0 0 auto; position: relative; overflow: hidden;
+    background: var(--bg); color: var(--text); display: flex; font-size: 13px;
+    box-shadow: 0 10px 40px rgba(0,0,0,.45);
+  }
+  #app[data-theme="old"]     { --bg:#0d0d0d; --panel:#000; --panel2:#303030; --panelSel:#1f4238; --line:#484848; --text:#c2c2c2; --strong:#fff; --muted:#7a7a7a; --accent:#44e7a3; --accent2:#39af8a; --title:#7bcebc; --now:#c93030; --barS:42%; --barL:34%; --grid:rgba(255,255,255,.08); }
+  #app[data-theme="slate"]   { --bg:#0e1116; --panel:#11151c; --panel2:#181e28; --panelSel:#1a2a2a; --line:#232b38; --text:#a9b3c2; --strong:#e9eef5; --muted:#6b7686; --accent:#3ddc97; --accent2:#2bb37a; --title:#e9eef5; --now:#ff5c5c; --barS:48%; --barL:40%; --grid:rgba(255,255,255,.06); }
+  #app[data-theme="discord"] { --bg:#313338; --panel:#2b2d31; --panel2:#232428; --panelSel:#3a3c74; --line:#3f4147; --text:#b5bac1; --strong:#f2f3f5; --muted:#80848e; --accent:#7c86ff; --accent2:#5865f2; --title:#f2f3f5; --now:#f23f43; --barS:45%; --barL:45%; --grid:rgba(255,255,255,.06); }
+  #app[data-theme="light"]   { --bg:#f5f6f8; --panel:#ffffff; --panel2:#eef1f5; --panelSel:#e3f6ee; --line:#dde2e8; --text:#4a5361; --strong:#111827; --muted:#8a93a1; --accent:#0e9f6e; --accent2:#0b8a5f; --title:#111827; --now:#e5484d; --barS:58%; --barL:68%; --grid:rgba(0,0,0,.06); }
+
+  button { font: inherit; color: inherit; }
+  .btn { background: var(--panel2); border: 1px solid var(--line); color: var(--text); border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+  .btn:hover { color: var(--strong); }
+  #app[data-theme="old"] .btn { background:#000; border-color:#7a7a7a; color:#7a7a7a; border-radius:3px; padding:3px 5px; }
+  #app[data-theme="old"] .btn.sel { border-color: var(--accent); color: var(--accent); }
+
+  /* sidebar (old) */
+  .sidebar { width: 280px; flex: 0 0 auto; background: var(--panel); border-right: 1px solid var(--line); padding: 20px; display:flex; flex-direction:column; }
+  .sidebar .logo { color: var(--accent); font-size: 16px; font-weight: 700; margin-bottom: 15px; }
+  .scard { background: var(--panel2); border: 1px solid transparent; border-radius: 6px; padding: 8px; margin-bottom: 10px; cursor: pointer; opacity: .45; }
+  .scard.sel, .scard:hover { background: var(--panelSel); border-color: var(--accent2); opacity: 1; }
+  .scard .h { display:flex; align-items:center; gap:8px; color: var(--strong); font-weight: 700; font-size: 14px; }
+  .scard img, .rail img, .tab img { width: 24px; height: 24px; border-radius: 6px; }
+  .scard svg { display:block; margin-top: 6px; }
+
+  /* rail */
+  .rail { width: 72px; flex: 0 0 auto; background: var(--panel); border-right: 1px solid var(--line); display:flex; flex-direction:column; align-items:center; padding: 14px 0; gap: 10px; }
+  .rail .logo { width: 44px; height: 44px; border-radius: 14px; background: var(--accent2); color: #fff; display:flex; align-items:center; justify-content:center; font-weight: 800; font-size: 18px; margin-bottom: 6px; }
+  .rail .sep { width: 32px; height: 1px; background: var(--line); }
+  .rail .srv { position: relative; cursor: pointer; }
+  .rail .srv img { width: 44px; height: 44px; border-radius: 22px; transition: border-radius .15s; display:block; }
+  .rail .srv.sel img, .rail .srv:hover img { border-radius: 14px; }
+  .rail .srv.sel::before { content:""; position:absolute; left:-14px; top: 8px; width: 4px; height: 28px; border-radius: 0 4px 4px 0; background: var(--strong); }
+  .rail .srv .live { position:absolute; right:-2px; bottom:-2px; min-width: 18px; height: 18px; border-radius: 9px; background: var(--accent2); color:#fff; font-size: 10px; font-weight: 700; display:flex; align-items:center; justify-content:center; border: 3px solid var(--panel); }
+
+  /* tabs */
+  .tabs { display:flex; gap: 6px; padding: 12px 20px 0; border-bottom: 1px solid var(--line); background: var(--panel); }
+  .tabs .logo { font-weight: 800; color: var(--accent); margin-right: 14px; align-self: center; padding-bottom: 10px; }
+  .tab { display:flex; align-items:center; gap: 8px; padding: 8px 14px 10px; cursor:pointer; color: var(--muted); border-bottom: 2px solid transparent; }
+  .tab.sel { color: var(--strong); border-color: var(--accent); }
+  .tab img { width: 20px; height: 20px; }
+
+  .main { flex: 1; display:flex; flex-direction:column; min-width: 0; }
+  .content { flex: 1; display:flex; flex-direction:column; padding: 18px 22px; min-height: 0; gap: 12px; position: relative; }
+
+  /* header */
+  .head { display:flex; align-items:center; gap: 12px; }
+  .head .title { font-size: 22px; font-weight: 800; color: var(--title); display:flex; align-items:center; gap: 10px; }
+  .head .title img { width: 32px; height: 32px; border-radius: 10px; }
+  .head .meta { color: var(--muted); font-size: 12px; }
+  .head .spark { margin-left: auto; display:flex; align-items:center; gap: 8px; color: var(--muted); font-size: 12px; }
+  .oldtitle { font-size: 28px; font-weight: 700; color: var(--title); cursor: pointer; }
+  .oldtitle:hover { opacity: .8; }
+  .sharebtn { display:inline-flex; align-items:center; gap: 6px; }
+
+  /* summary */
+  .summary { display:grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 10px; }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; }
+  .stat .k { color: var(--muted); font-size: 12px; }
+  .stat .v { color: var(--strong); font-size: 20px; font-weight: 800; margin-top: 2px; display:flex; align-items:center; gap: 8px; }
+  .stat .v img { width: 22px; height: 22px; border-radius: 11px; }
+  .dot { width: 8px; height: 8px; border-radius: 4px; background: var(--accent); box-shadow: 0 0 8px var(--accent); display:inline-block; }
+
+  /* now online chips */
+  .nowstrip { display:flex; align-items:center; gap: 8px; flex-wrap: wrap; }
+  .nowstrip .lbl { color: var(--muted); font-size: 12px; margin-right: 2px; display:flex; align-items:center; gap: 6px; }
+  .chip { display:flex; align-items:center; gap: 6px; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px 3px 4px; }
+  .chip .cdot { width: 18px; height: 18px; border-radius: 9px; }
+  .chip .avs { display:flex; }
+  .chip .avs img { width: 18px; height: 18px; border-radius: 9px; border: 2px solid var(--panel); margin-left: -5px; }
+  .chip b { color: var(--strong); font-weight: 600; }
+
+  /* controls */
+  .ctrl { display:flex; align-items:center; gap: 8px; }
+  .seg { display:flex; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 2px; }
+  .seg button { background: transparent; border: 0; padding: 5px 12px; border-radius: 6px; cursor: pointer; color: var(--muted); }
+  .seg button.sel { background: var(--panel2); color: var(--strong); box-shadow: inset 0 0 0 1px var(--line); }
+  .range { color: var(--muted); font-size: 12px; margin-left: 4px; }
+  .grow { flex: 1; }
+  .legend { display:flex; gap: 6px; flex-wrap: wrap; }
+  .lg { display:flex; align-items:center; gap: 6px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); cursor: pointer; font-size: 12px; background: var(--panel); }
+  .lg i { width: 10px; height: 10px; border-radius: 3px; display:inline-block; }
+  .lg.off { opacity: .35; text-decoration: line-through; }
+
+  /* timeline */
+  .tlwrap { flex: 1; display:flex; min-height: 0; gap: 12px; }
+  .tl { flex: 1; position: relative; overflow: hidden; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+  #app[data-theme="old"] .tl { background: transparent; border: 0; border-radius: 0; }
+  .axis { position:absolute; left:0; right:0; top:0; height: 30px; border-bottom: 1px solid var(--line); }
+  #app[data-theme="old"] .axis { border-bottom: 0; }
+  .axis span { position:absolute; top: 8px; transform: translateX(-50%); font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .axis span.major { color: var(--accent); font-weight: 700; }
+  .gridline { position:absolute; top: 30px; bottom: 0; width: 1px; background: var(--grid); }
+  .nowline { position:absolute; top: 22px; bottom: 0; width: 2px; background: var(--now); z-index: 3; }
+  .nowtag { position:absolute; top: 4px; transform: translateX(-50%); background: var(--now); color: #fff; font-size: 11px; padding: 1px 6px; border-radius: 4px; z-index: 4; }
+  .rows { position:absolute; left:0; right:0; top: 30px; bottom: 0; overflow: hidden; }
+  .row { position:absolute; left:0; right:0; }
+  .row.alt { background: rgba(127,127,127,.04); }
+  .namecol { position:absolute; left:0; top:0; bottom:0; display:flex; align-items:center; gap: 8px; padding-left: 12px; border-right: 1px solid var(--line); background: var(--panel); z-index: 2; }
+  .namecol img { width: 22px; height: 22px; border-radius: 11px; }
+  .namecol .nm { color: var(--strong); font-weight: 600; }
+  .namecol .sub { color: var(--muted); font-size: 11px; margin-left: auto; padding-right: 10px; }
+  .namecol .on { width: 7px; height: 7px; border-radius: 4px; background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+  .bar { position:absolute; border-radius: 4px; cursor: default; }
+  #app[data-theme="old"] .bar { border-radius: 0; opacity: .6; }
+  .bar.online { box-shadow: 0 0 10px var(--accent), inset 0 0 0 1px var(--accent); opacity: 1 !important; }
+  .bar:hover { filter: brightness(1.35); }
+  .flabel { position:absolute; display:flex; align-items:center; gap: 6px; white-space: nowrap; font-size: 12px; color: #c8c8c8; pointer-events: none; }
+  .flabel img { width: 20px; height: 20px; border-radius: 10px; }
+  .flabel.on { color: var(--accent); }
+  .flabel.small { font-size: 11px; color: var(--muted); }
+  .flabel.small.on { color: var(--accent); }
+  .dbg { position:absolute; left: 6px; top: 34px; color: #777; font-size: 12px; z-index: 2; }
+
+  /* right panel */
+  .rpanel { width: 240px; flex: 0 0 auto; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; overflow: auto; }
+  .rpanel h4 { margin: 0 0 10px; color: var(--strong); font-size: 13px; display:flex; align-items:center; gap: 6px; }
+  .rpanel .ch { margin-bottom: 12px; }
+  .rpanel .ch .cn { display:flex; align-items:center; gap: 6px; color: var(--muted); font-size: 12px; margin-bottom: 6px; }
+  .rpanel .ch .cn i { width: 10px; height: 10px; border-radius: 3px; }
+  .rpanel .mem { display:flex; align-items:center; gap: 8px; padding: 3px 0; color: var(--strong); }
+  .rpanel .mem img { width: 20px; height: 20px; border-radius: 10px; }
+  .rpanel .mem span { margin-left:auto; color: var(--muted); font-size: 11px; }
+
+  /* session tooltips */
+  .stip { position:absolute; z-index: 30; pointer-events: none; }
+  .stip.old { background: rgba(0,0,0,.85); color: #fff; padding: 10px; width: 240px; font-size: 12px; line-height: 24px; }
+  .stip.old .u { display:flex; align-items:center; gap: 8px; font-size: 13px; }
+  .stip.old .u img { width: 24px; height: 24px; border-radius: 12px; }
+  .stip.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; width: 250px; box-shadow: 0 12px 30px rgba(0,0,0,.35); color: var(--text); }
+  .stip.card .u { display:flex; align-items:center; gap: 10px; color: var(--strong); font-weight: 700; font-size: 14px; }
+  .stip.card .u img { width: 30px; height: 30px; border-radius: 15px; }
+  .stip.card .chn { display:inline-flex; align-items:center; gap: 6px; margin: 10px 0 8px; padding: 2px 8px; border-radius: 6px; font-size: 12px; color: #fff; }
+  .stip.card .ln { display:flex; justify-content: space-between; font-size: 12px; padding: 2px 0; }
+  .stip.card .ln b { color: var(--strong); font-weight: 600; }
+  .stip.card .tot { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 8px; font-size: 12px; color: var(--muted); }
+
+  /* loading */
+  .loadbar { position:absolute; left:0; top:0; height: 5px; background: #5bffce; z-index: 50; transition: width .2s; }
+  .sk { background: linear-gradient(90deg, var(--panel2) 0%, var(--line) 50%, var(--panel2) 100%); background-size: 200% 100%; animation: sk 1.1s infinite linear; border-radius: 6px; }
+  @keyframes sk { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+  .toast { position:absolute; left: 50%; bottom: 28px; transform: translateX(-50%); background: var(--strong); color: var(--bg); padding: 9px 16px; border-radius: 10px; font-weight: 600; z-index: 60; }
+
+  /* person page */
+  .namecol.link { cursor: pointer; } .namecol.link:hover .nm { text-decoration: underline; }
+  .back { color: var(--muted); cursor: pointer; font-size: 12px; display:inline-flex; gap: 6px; align-items:center; align-self: flex-start; }
+  .back:hover { color: var(--strong); }
+  .uhead { display:flex; align-items:center; gap: 14px; }
+  .uhead img { width: 52px; height: 52px; border-radius: 26px; }
+  .uhead .nm { font-size: 24px; font-weight: 800; color: var(--strong); display:flex; align-items:center; gap: 10px; }
+  .uhead .st { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .uhead .nm .btn { font-size: 12px; font-weight: 500; }
+  .pill { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: rgba(61,220,151,.15); color: var(--accent); }
+  .pill.off { background: var(--panel2); color: var(--muted); }
+  .grid2 { display:grid; grid-template-columns: 1.4fr 1fr; gap: 12px; min-height: 0; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; min-width: 0; }
+  .card h5 { margin: 0 0 10px; font-size: 13px; color: var(--strong); display:flex; align-items:center; gap: 8px; }
+  .card h5 span { color: var(--muted); font-weight: 400; font-size: 11px; }
+  .hbars { display:flex; align-items:flex-end; gap: 3px; height: 120px; }
+  .hbars div { flex: 1; background: var(--accent2); border-radius: 3px 3px 0 0; opacity: .85; }
+  .hbars div.cur { background: var(--now); opacity: 1; }
+  .hlabels { display:flex; gap: 3px; margin-top: 4px; } .hlabels span { flex: 1; text-align: center; font-size: 10px; color: var(--muted); }
+  .heat { display:grid; grid-template-columns: 22px repeat(24, 1fr); gap: 2px; font-size: 10px; color: var(--muted); }
+  .heat i { height: 13px; border-radius: 2px; background: var(--accent2); }
+  .dbars { display:flex; align-items:flex-end; gap: 4px; height: 90px; }
+  .dbars div { flex: 1; background: var(--accent2); border-radius: 3px 3px 0 0; opacity: .7; }
+  .chrow { display:flex; align-items:center; gap: 8px; margin: 6px 0; font-size: 12px; }
+  .chrow .bx { flex: 1; height: 8px; background: var(--panel2); border-radius: 4px; overflow: hidden; } .chrow .bx i { display:block; height: 100%; }
+  .chrow b { width: 70px; color: var(--strong); font-weight: 600; } .chrow span { width: 40px; text-align: right; color: var(--muted); }
+  .slist { font-size: 12px; } .slist div { display:flex; gap: 10px; padding: 5px 0; border-bottom: 1px solid var(--line); } .slist div:last-child { border: 0; }
+  .slist i { width: 8px; height: 8px; border-radius: 4px; margin-top: 4px; flex: 0 0 auto; } .slist .t { color: var(--muted); width: 120px; } .slist .d { margin-left: auto; color: var(--strong); }
+  .upanel { position:absolute; right: 0; top: 0; bottom: 0; width: 330px; background: var(--panel); border-left: 1px solid var(--line); z-index: 20; padding: 18px; display:flex; flex-direction:column; gap: 12px; box-shadow: -12px 0 30px rgba(0,0,0,.35); }
+  .upanel .x { position:absolute; right: 14px; top: 12px; cursor: pointer; color: var(--muted); font-size: 18px; }
+
+  /* ranking */
+  .stabs { display:flex; gap: 2px; border-bottom: 1px solid var(--line); }
+  .stabs button { background: none; border: 0; border-bottom: 2px solid transparent; padding: 6px 14px 9px; color: var(--muted); cursor: pointer; font-weight: 600; }
+  .stabs button.sel { color: var(--strong); border-color: var(--accent); }
+  .boards { display:grid; grid-template-columns: repeat(3, 1fr); gap: 12px; flex: 1; min-height: 0; }
+  .lb { display:flex; flex-direction:column; }
+  .lb .r { display:flex; align-items:center; gap: 9px; padding: 6px 4px; border-radius: 6px; cursor: pointer; }
+  .lb .r:hover { background: var(--panel2); }
+  .lb .r .no { width: 20px; text-align:center; font-weight: 800; color: var(--muted); }
+  .lb .r .no.m1 { color: #f5c542; } .lb .r .no.m2 { color: #c9d1db; } .lb .r .no.m3 { color: #d39360; }
+  .lb .r img { width: 24px; height: 24px; border-radius: 12px; }
+  .lb .r .nm { color: var(--strong); font-weight: 600; min-width: 46px; }
+  .lb .r .bar2 { flex: 1; height: 6px; border-radius: 3px; background: var(--panel2); overflow: hidden; } .lb .r .bar2 i { display:block; height: 100%; background: var(--accent2); }
+  .lb .r .val { width: 86px; text-align: right; color: var(--strong); font-variant-numeric: tabular-nums; }
+  .lb .note { color: var(--muted); font-size: 11px; margin-top: auto; padding-top: 6px; }
+  table.rt { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.rt th { text-align: right; color: var(--muted); font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--line); cursor: pointer; white-space: nowrap; }
+  table.rt th:nth-child(-n+2) { text-align: left; }
+  table.rt th.sel { color: var(--accent); }
+  table.rt td { text-align: right; padding: 7px 10px; border-bottom: 1px solid var(--line); color: var(--text); font-variant-numeric: tabular-nums; }
+  table.rt td:nth-child(-n+2) { text-align: left; }
+  table.rt td.sel { color: var(--strong); font-weight: 700; }
+  table.rt tr { cursor: pointer; } table.rt tbody tr:hover { background: var(--panel2); }
+  .rkpanel { width: 280px; flex: 0 0 auto; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; display:flex; flex-direction:column; gap: 8px; overflow: hidden; }
+  .rkpanel h4 { margin: 0; color: var(--strong); font-size: 13px; }
+  .rkchips { display:flex; flex-wrap: wrap; gap: 4px; }
+  .rkchips span { font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); cursor: pointer; color: var(--muted); }
+  .rkchips span.sel { color: var(--strong); border-color: var(--accent); background: var(--panel2); }
+  .rankpill { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: rgba(245,197,66,.15); color: #f5c542; margin-left: 6px; vertical-align: middle; }
+
+  /* ---------- feedback round 1 ---------- */
+  .content { overflow-y: auto; }
+  .back.btn2 { font-size: 13px; font-weight: 600; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px 6px 9px; }
+  .back.btn2 .ar { font-size: 16px; line-height: 1; }
+  .back.btn2:hover { background: var(--panel2); }
+  .back.big { font-size: 14px; font-weight: 600; color: var(--text); }
+  .back.big .ar { font-size: 18px; line-height: 1; }
+  .rail .srv .live.big { right: -6px; bottom: -6px; min-width: 24px; height: 24px; border-radius: 12px; font-size: 13px; font-weight: 800; padding: 0 4px; }
+  .rail .srv .livebelow { display:flex; align-items:center; justify-content:center; gap: 4px; margin-top: 4px; font-size: 12px; font-weight: 800; color: var(--accent); }
+  .fwrap { position: relative; }
+  .fwrap.fill { flex: 1; min-height: 110px; display:flex; flex-direction:column; }
+  .fwrap.fill svg { flex: 1; height: auto !important; min-height: 0; }
+  .fguide { position:absolute; top: 0; width: 1px; background: var(--strong); opacity: .6; pointer-events: none; }
+  .fnow { position:absolute; top: -2px; transform: translateX(-50%); background: var(--now); color: #fff; font-size: 11px; padding: 1px 6px; border-radius: 4px; pointer-events: none; white-space: nowrap; }
+  .ftip { position:absolute; z-index: 30; pointer-events: none; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; font-size: 12px; color: var(--text); white-space: nowrap; box-shadow: 0 8px 24px rgba(0,0,0,.35); }
+  .ftip b { color: var(--strong); font-size: 13px; }
+  .heat.fill { flex: 1; grid-auto-rows: 1fr; min-height: 90px; }
+  .heat.fill i { height: auto; }
+  .heat span { display:flex; align-items:center; }
+  .heat i.hv { outline: 2px solid var(--strong); outline-offset: -1px; }
+  .grass { display:grid; grid-auto-flow: column; grid-template-rows: repeat(7, 1fr); gap: 3px; }
+  .grass i { width: 100%; aspect-ratio: 1; border-radius: 2px; background: var(--accent2); }
+  .grass i.empty { background: var(--panel2); opacity: 1 !important; }
+  .grasswrap { display:grid; grid-template-columns: 22px 1fr; gap: 4px; font-size: 10px; color: var(--muted); }
+  .grasswrap .wd { display:grid; grid-template-rows: repeat(7, 1fr); gap: 3px; }
+  .grasswrap .wd span { display:flex; align-items:center; }
+  .gmonths { position: relative; height: 14px; margin-left: 26px; font-size: 10px; color: var(--muted); }
+  .gmonths span { position:absolute; }
+  .glegend { display:flex; align-items:center; gap: 3px; justify-content:flex-end; font-size: 10px; color: var(--muted); margin-top: 6px; }
+  .glegend i { width: 10px; height: 10px; border-radius: 2px; background: var(--accent2); display:inline-block; }
+
+  /* ---------- bar radius candidates ---------- */
+  #app:not([data-radius="old"]) .dbars div { border-radius: 0 !important; }
+  #app[data-radius="allcharts"] :is(.chrow .bx, .chrow .bx i, .lb .r .bar2, .heat i, .grass i),
+  #app[data-radius="all"] :is(.chrow .bx, .chrow .bx i, .lb .r .bar2, .heat i, .grass i) { border-radius: 0 !important; }
+  #app[data-radius="all"] .bar { border-radius: 0 !important; }
+
+  /* ---------- mock helpers: shift outlines ---------- */
+  body.shift [data-click] { outline: 2px dashed #3fa9ff; outline-offset: -2px; }
+  body.shift [data-cand]:not(.row) { position: relative; }
+  body.shift [data-cand]::after { content:""; position:absolute; inset: 0; border: 2px dashed #ff9f1a; pointer-events: none; z-index: 40; border-radius: 4px; }
+  body.shownew [data-new] { position: relative; }
+  body.shownew [data-new]::before { content:"NEW"; position:absolute; top:-8px; right: 6px; background:#e040fb; color:#fff; font-size:10px; font-weight:800; padding:1px 5px; border-radius: 4px; z-index: 45; }
+  body.shownew [data-new] { box-shadow: 0 0 0 2px #e040fb; border-radius: 8px; }
+
+  #ctip { position: fixed; z-index: 1000; width: 300px; background: #fff; color: #222; border-radius: 10px; box-shadow: 0 14px 40px rgba(0,0,0,.45); padding: 10px; font-size: 12px; display: none; }
+  #ctip .t { font-weight: 800; font-size: 13px; margin: 2px 4px 8px; }
+  #ctip .o { padding: 7px 8px; border-radius: 7px; cursor: pointer; }
+  #ctip .o:hover { background: #f1f3f6; }
+  #ctip .o.cur { background: #e6f0ff; }
+  #ctip .o .n { font-weight: 700; display:flex; align-items:center; gap: 6px; }
+  #ctip .o .d { color: #666; margin-top: 2px; }
+
+  /* ---------- side note ---------- */
+  #note {
+    width: 400px; flex: 0 0 auto; height: calc(100vh - 32px); background: #fff; border-radius: 12px;
+    display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,.35);
+  }
+  #note .top { padding: 14px 16px 10px; border-bottom: 1px solid #eceef1; }
+  #note .top .r { display:flex; align-items:center; gap: 8px; }
+  #note .top h2 { font-size: 15px; margin: 0; flex: 1; }
+  #copy { background: #1f6feb; color: #fff; border: 0; border-radius: 8px; padding: 7px 12px; font-weight: 700; cursor: pointer; }
+  #note .help { color: #666; font-size: 12px; margin-top: 8px; line-height: 1.5; }
+  #note .help .k1 { color: #3fa9ff; font-weight: 700; } #note .help .k2 { color: #e08600; font-weight: 700; }
+  #note .list { flex: 1; overflow: auto; padding: 12px 14px; }
+  .item { border: 1px solid #e3e6ea; border-radius: 10px; padding: 10px; margin-bottom: 12px; }
+  .item .it { font-weight: 800; font-size: 13px; margin: 0 2px 6px; }
+  .opt { border-radius: 8px; padding: 7px 8px; cursor: pointer; }
+  .opt:hover { background: #f5f6f8; }
+  .opt.cur { background: #e6f0ff; box-shadow: inset 0 0 0 1px #9cc2ff; }
+  .opt .n { font-weight: 700; font-size: 13px; display:flex; align-items:center; gap: 6px; }
+  .opt .d { color: #666; font-size: 12px; margin-top: 2px; line-height: 1.4; }
+  .badge { font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 4px; }
+  .badge.old { background: #eceff3; color: #555; }
+  .badge.rec { background: #dff7ea; color: #0b7a4b; }
+  .opt textarea { width: 100%; margin-top: 7px; border: 1px solid #c9d3e0; border-radius: 6px; padding: 6px 8px; font: inherit; font-size: 12px; resize: none; overflow: hidden; min-height: 32px; }
+  #note .bottom { border-top: 1px solid #eceef1; padding: 10px 16px; display:flex; align-items:center; gap: 10px; font-size: 13px; }
+  .switch { width: 38px; height: 22px; border-radius: 11px; background: #cfd5dd; position: relative; cursor: pointer; flex: 0 0 auto; }
+  .switch::after { content:""; position:absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 8px; background: #fff; transition: left .15s; }
+  .switch.on { background: #e040fb; } .switch.on::after { left: 19px; }
+  #copied { color: #0b7a4b; font-size: 12px; display:none; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="note">
+  <div class="top">
+    <div class="r"><h2>watcher 막대 모서리 시안</h2><span id="copied">복사됨</span><button id="copy">결과 복사</button></div>
+    <div class="help">항목에서 옵션을 고르면 시안이 바로 바뀌고 의견을 적을 수 있음. <b>Shift</b>를 누르면 <span class="k1">파란 점선</span>은 누를 수 있는 곳, <span class="k2">주황 점선</span>은 후보가 있는 곳(올리면 후보 툴팁).</div>
+  </div>
+  <div class="list" id="list"></div>
+  <div class="bottom"><div class="switch" id="newsw"></div><span>새로 생기는 부분 표시</span></div>
+</div>
+<div id="ctip"></div>
+
+<script>
+/* ================= synthetic data (no real users) ================= */
+const NOW = Date.now();
+const H = 3600e3, D = 24 * H;
+const sod = (t = NOW) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+let seed = 42;
+const rand = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
+const pick = (a) => a[Math.floor(rand() * a.length)];
+const av = (name, hue) => "data:image/svg+xml;utf8," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="hsl(${hue},55%,45%)"/><text x="32" y="42" font-size="28" text-anchor="middle" fill="white" font-family="sans-serif">${name[0]}</text></svg>`);
+const GDEF = [
+  { id: "g1", name: "쿠션 클랜", channels: ["일반", "롤 내전 1", "롤 내전 2", "발로란트", "잠수방"], n: 14 },
+  { id: "g2", name: "스터디 모임", channels: ["모각코", "회의실", "잡담"], n: 7 },
+  { id: "g3", name: "주말 게임단", channels: ["배그", "오버워치", "로비"], n: 9 },
+];
+const NAMES = ["민준", "서연", "도윤", "하은", "지호", "수아", "예준", "지유", "시우", "채원", "주원", "다은", "건우", "유나", "현우", "소윤", "우진", "가은"];
+const GUILDS = GDEF.map((g, gi) => {
+  const users = [];
+  for (let u = 0; u < g.n; u++) {
+    const name = NAMES[(u + gi * 5) % NAMES.length];
+    const sessions = [];
+    const pref = [21, 22, 20, 23, 14, 19, 1, 16][(u + gi) % 8]; // favourite hour
+    const activity = 0.35 + rand() * 0.5;
+    const bouncy = ((u * 37 + gi * 11) % 10) / 10; // how often this person pops in and out
+    for (let day = 364; day >= 0; day--) {
+      const base = sod(NOW - day * D);
+      const weekend = [0, 6].includes(new Date(base).getDay());
+      const dayS = [];
+      if (rand() <= activity + (weekend ? 0.2 : 0)) {
+        const count = rand() < 0.3 ? 2 : 1;
+        for (let k = 0; k < count; k++) {
+          const st = base + (pref + (rand() - 0.5) * 6 + k * 3) * H;
+          dayS.push({ s: st, e: st + (20 + rand() * 200) * 60e3 });
+        }
+      }
+      if (rand() < bouncy * 0.7) {
+        const n = 1 + Math.floor(rand() * 3);
+        for (let k = 0; k < n; k++) { const st = base + (pref + (rand() - 0.5) * 9) * H; dayS.push({ s: st, e: st + (0.3 + rand() * 4.2) * 60e3 }); }
+      }
+      dayS.sort((x, y) => x.s - y.s);
+      for (const x of dayS) {
+        if (x.s > NOW) continue;
+        if (sessions.length && sessions.at(-1).e > x.s) continue;
+        const online = x.e > NOW;
+        sessions.push({ ch: pick(g.channels), s: Math.round(x.s), e: online ? NOW : Math.round(x.e), online });
+      }
+    }
+    // bouncy people also popped in and out today
+    if (bouncy >= 0.5) {
+      for (let k = 0; k < 2; k++) {
+        const st = NOW - (1 + rand() * 7) * H, en = st + (0.5 + rand() * 3) * 60e3;
+        if (!sessions.some((x) => x.s < en + 60e3 && x.e > st - 60e3)) sessions.push({ ch: pick(g.channels), s: Math.round(st), e: Math.round(en), online: false });
+      }
+      sessions.sort((x, y) => x.s - y.s);
+    }
+    // a few people are online right now
+    const last = sessions.at(-1);
+    if (u % 3 === 0 && (!last || !last.online)) {
+      const st = NOW - (25 + rand() * 140) * 60e3;
+      if (!last || last.e < st) sessions.push({ ch: g.channels[u % 2 === 0 ? 0 : 1], s: Math.round(st), e: NOW, online: true });
+    }
+    users.push({ id: `${g.id}u${u}`, name, avatar: av(name, (u * 47 + gi * 30) % 360), sessions });
+  }
+  return { ...g, icon: av(g.name, gi * 120 + 160), members: 40 + gi * 17, users };
+});
+const HUES = [150, 4, 212, 280, 42, 180];
+const hueOf = (ch) => { for (const g of GDEF) { const i = g.channels.indexOf(ch); if (i >= 0) return HUES[i % HUES.length]; } return 0; };
+const chColor = (ch) => `hsl(${hueOf(ch)}, var(--barS), var(--barL))`;
+const chSolid = (ch) => `hsl(${hueOf(ch)}, 55%, 45%)`;
+const fmtDur = (ms) => { const m = Math.round(ms / 60e3); const h = Math.floor(m / 60); return h ? `${h}시간 ${m % 60}분` : `${m}분`; };
+const p2 = (n) => String(n).padStart(2, "0");
+const fmtHM = (t) => { const d = new Date(t); return `${p2(d.getHours())}:${p2(d.getMinutes())}`; };
+const fmtFull = (t) => { const d = new Date(t); return `${d.getMonth() + 1}월 ${d.getDate()}일 ${p2(d.getHours())}:${p2(d.getMinutes())}`; };
+const isOnline = (u) => u.sessions.some((s) => s.online);
+function todayStats(g) {
+  const s0 = sod();
+  let total = 0, people = 0, best = null;
+  for (const u of g.users) {
+    let ut = 0;
+    for (const s of u.sessions) { const a = Math.max(s.s, s0), b = Math.min(s.e, NOW); if (b > a) ut += b - a; }
+    if (ut > 0) people++;
+    total += ut;
+    if (!best || ut > best.t) best = { u, t: ut };
+  }
+  return { total, people, best, online: g.users.filter(isOnline).length };
+}
+function concurrency(g, from, to, steps = 120) {
+  const pts = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = from + ((to - from) * i) / steps;
+    pts.push(g.users.reduce((a, u) => a + (u.sessions.some((s) => s.s <= t && t <= s.e) ? 1 : 0), 0));
+  }
+  return pts;
+}
+function sparkSvg(g, w, h, color) {
+  const pts = concurrency(g, sod(), NOW, 96);
+  const max = Math.max(1, ...pts);
+  const d = pts.map((v, i) => `${i === 0 ? "M" : "L"}${((i / (pts.length - 1)) * w).toFixed(1)},${(h - (v / max) * (h - 4) - 2).toFixed(1)}`).join(" ");
+  return `<svg width="${w}" height="${h}"><path d="${d} L${w},${h} L0,${h} Z" fill="${color}" opacity=".25"/><path d="${d}" fill="none" stroke="${color}" stroke-width="1.6"/></svg>`;
+}
+
+/* ================= decision items ================= */
+const ITEMS = [
+  { key: "theme", title: "테마", opts: [
+    { id: "old", name: "기존", desc: "거의 검정 배경 + 민트 포인트", old: 1 },
+    { id: "slate", name: "다크 슬레이트", desc: "살짝 푸른 어두운 배경, 패널 구분이 또렷하고 민트 포인트 유지", rec: 1 },
+    { id: "discord", name: "디스코드풍", desc: "디스코드 앱과 비슷한 회색 배경 + 보라 포인트" },
+    { id: "light", name: "라이트", desc: "밝은 배경, 낮에 보기 편함" } ] },
+  { key: "layout", title: "서버 목록 배치", opts: [
+    { id: "old", name: "기존", desc: "왼쪽 280px 사이드바에 서버 카드 + 오늘 접속 그래프", old: 1 },
+    { id: "rail", name: "아이콘 레일", desc: "디스코드처럼 왼쪽 좁은 아이콘 줄. 타임라인이 넓어지고 지금 접속 수 배지 표시", rec: 1 },
+    { id: "tabs", name: "상단 탭", desc: "서버를 위쪽 탭으로 전환. 왼쪽 공간을 전부 타임라인에 씀" } ] },
+  { key: "rows", title: "타임라인 행 표시", opts: [
+    { id: "old", name: "기존", desc: "막대 뒤에 이름이 매번 붙음. 이름 열 없음", old: 1 },
+    { id: "fixed", name: "고정 이름 열", desc: "왼쪽에 아바타·이름·접속 상태·오늘 시간 고정, 오른쪽은 막대만", rec: 1 },
+    { id: "compact", name: "고정 이름 열 (촘촘)", desc: "같은 구조에 행 높이를 줄여 한 화면에 더 많은 사람" } ] },
+  { key: "ctrl", title: "기간·확대 조작", opts: [
+    { id: "old", name: "기존", desc: "일반/일간/주간(동작 안 함) + 오늘·현재·확대·축소 버튼, 기간은 제목 옆에 표시", old: 1 },
+    { id: "seg", name: "기간 프리셋", desc: "[최근 24시간 | 오늘 | 최근 7일] 선택 + 지금으로 + 확대/축소, 기간 글자는 작게", rec: 1 } ] },
+  { key: "summary", title: "오늘 요약", opts: [
+    { id: "none", name: "기능 없음", desc: "지금처럼 요약 없음", old: 1 },
+    { id: "cards", name: "요약 카드 4개", desc: "지금 접속 / 오늘 접속 인원 / 오늘 총 접속 시간 / 오늘 최장 접속자", rec: 1 } ] },
+  { key: "now", title: "지금 접속 중 표시", opts: [
+    { id: "none", name: "기능 없음", desc: "타임라인에서 빛나는 막대로만 알 수 있음", old: 1 },
+    { id: "chips", name: "채널별 칩", desc: "타임라인 위에 채널 이름 + 접속자 아바타 한 줄", rec: 1 },
+    { id: "panel", name: "오른쪽 패널", desc: "타임라인 오른쪽에 채널별 접속자 목록과 접속 시간" } ] },
+  { key: "legend", title: "채널 색 범례", opts: [
+    { id: "none", name: "기능 없음", desc: "막대 색이 채널별로 다르지만 범례 없음", old: 1 },
+    { id: "filter", name: "범례 + 채널 필터", desc: "채널 색 범례를 보여 주고 누르면 그 채널 막대를 숨김", rec: 1 } ] },
+  { key: "tip", title: "막대 위 툴팁", opts: [
+    { id: "old", name: "기존", desc: "검은 상자에 색 글자 줄", old: 1 },
+    { id: "card", name: "카드형", desc: "아바타·채널 색 칩·입장/퇴장/시간·총 접속 시간을 정리한 카드", rec: 1 } ] },
+  { key: "loading", title: "처음 열 때 로딩", opts: [
+    { id: "old", name: "기존", desc: "맨 위 얇은 진행 막대가 차면서 사람이 하나씩 나타남", old: 1 },
+    { id: "skeleton", name: "스켈레톤", desc: "화면 틀을 먼저 보여 주고 데이터가 오면 한 번에 채움", rec: 1 } ] },
+  { key: "after", title: "막대 뒤 표시 내용", opts: [
+    { id: "avatar", name: "아바타 + 이름", desc: "기존 화면처럼 막대 뒤에 아바타와 이름", old: 1 },
+    { id: "name", name: "이름만", desc: "왼쪽 열에 아바타가 있으니 막대 뒤에는 이름만 작게", rec: 1 },
+    { id: "channel", name: "채널 이름", desc: "막대 뒤에 사람 대신 그 막대의 채널 이름" } ] },
+  { key: "click", title: "사람 이름을 누르면", opts: [
+    { id: "none", name: "기능 없음", desc: "지금처럼 아무 일도 없음", old: 1 },
+    { id: "page", name: "사람 페이지로 이동", desc: "그 사람 전용 대시보드 페이지(주소가 따로 있어 공유 가능)로 바로 이동", rec: 1 },
+    { id: "panel", name: "미리보기 패널 → 페이지", desc: "오른쪽에 요약·시간대 그래프 패널을 먼저 띄우고 '자세히 보기'로 페이지 이동" } ] },
+  { key: "freq", title: "시간대별 접속 빈도 그래프", opts: [
+    { id: "none", name: "기능 없음", desc: "그래프 없음", old: 1 },
+    { id: "bars", name: "24시간 막대", desc: "0~23시마다 그 시간에 접속해 있던 날의 비율(최근 30일). 지금 시각 막대는 빨간색", rec: 1 },
+    { id: "heat", name: "요일 × 시간 히트맵", desc: "요일별로 나눠 7×24 칸의 색 진하기로 표시" },
+    { id: "both", name: "둘 다", desc: "24시간 막대 아래에 히트맵도 같이" } ] },
+  { key: "ublocks", title: "사람 페이지 추가 정보", opts: [
+    { id: "none", name: "기능 없음", desc: "요약 카드와 시간대 그래프만", old: 1 },
+    { id: "full", name: "일별·채널·최근 접속", desc: "일별 접속 시간 막대(14일), 자주 간 채널 비율, 최근 접속 목록 추가", rec: 1 } ] },
+  { key: "shape", title: "시간대 그래프 모양 (히트맵 위)", opts: [
+    { id: "bars", name: "24시간 막대", desc: "3차 시안 모습. 1시간 단위 막대 24개", old: 1 },
+    { id: "smooth", name: "부드러운 곡선", desc: "10분 단위로 계산해 이어 그린 곡선 + 면 채우기. 지금 시각은 빨간 세로선", rec: 1 },
+    { id: "fine", name: "촘촘한 막대", desc: "15분 단위 막대 96개" } ] },
+  { key: "bounce", title: "들낙 지표 (5분 미만 접속을 들낙으로 셈)", opts: [
+    { id: "none", name: "기능 없음", desc: "들낙 표시 없음", old: 1 },
+    { id: "ratio", name: "들낙 비율", desc: "전체 접속 중 5분 안에 나간 접속의 비율(%)", rec: 1 },
+    { id: "perday", name: "하루 평균 들낙 횟수", desc: "접속한 날 기준 하루에 5분 안에 나간 횟수" },
+    { id: "both", name: "둘 다", desc: "비율과 하루 평균 횟수를 같이 표시" } ] },
+  { key: "bwhere", title: "들낙 표시 위치", opts: [
+    { id: "user", name: "사람 페이지만", desc: "사람 페이지에 들낙 카드(숫자 + 최근 14일 들낙 횟수 막대)", rec: 1 },
+    { id: "both", name: "사람 페이지 + 서버 요약", desc: "서버 화면 요약 카드에 '오늘 들낙 많은 사람'도 추가" } ] },
+  { key: "bui", title: "들낙 표시 모양", opts: [
+    { id: "card", name: "따로 카드", desc: "4차 시안 모습. 그래프 오른쪽에 별도 카드", old: 1 },
+    { id: "stat", name: "요약 카드 5번째", desc: "위 요약 카드와 같은 모양으로 숫자만. 아래에 '접속 N번 중 M번'" },
+    { id: "statmini", name: "요약 카드 + 미니 막대", desc: "요약 카드와 같은 모양, 카드 오른쪽에 최근 14일 들낙 횟수 미니 막대", rec: 1 },
+    { id: "statdaily", name: "요약 카드 + 일별 그래프에 겹치기", desc: "요약 카드에는 숫자만, 14일 들낙 횟수는 '일별 접속 시간' 그래프에 주황 막대로 같이" } ] },
+  { key: "ntime", title: "타임라인 이름 옆 시간", opts: [
+    { id: "plain", name: "오늘 접속 시간 (설명 없음)", desc: "5차 시안 모습. 오늘 0시부터 지금까지 접속한 시간, 없으면 '-'", old: 1 },
+    { id: "label", name: "오늘 접속 시간 + 머리글 표시", desc: "같은 값인데 열 머리글에 '오늘'을 적어 무슨 시간인지 보이게 함", rec: 1 },
+    { id: "range", name: "보이는 기간 안 접속 시간", desc: "지금 보고 있는 기간(최근 24시간·오늘·7일·확대) 안에서 접속한 시간. 머리글에 '기간 내'" } ] },
+  { key: "rankwhere", title: "서버 랭킹 위치", opts: [
+    { id: "none", name: "기능 없음", desc: "랭킹 없음", old: 1 },
+    { id: "tabs", name: "서버 화면 탭 [타임라인 | 랭킹]", desc: "서버 이름 아래 탭으로 타임라인과 랭킹 화면을 오감. 랭킹도 주소가 따로 있음", rec: 1 },
+    { id: "panel", name: "타임라인 옆 패널", desc: "타임라인 오른쪽에 지표를 골라 보는 랭킹 패널을 늘 띄움" } ] },
+  { key: "ranklayout", title: "랭킹 화면 모양", opts: [
+    { id: "boards", name: "리더보드 카드 6개", desc: "지표마다 카드 하나씩 Top 5 (누적 시간, 접속 횟수, 접속한 날, 평균 접속 길이, 최장 연속 접속, 들낙률)", rec: 1 },
+    { id: "table", name: "큰 표 + 지표 탭", desc: "모든 사람을 한 표에 두고 위 탭으로 정렬 기준(지표)을 바꿈" } ] },
+  { key: "rankperiod", title: "랭킹 집계 기간", opts: [
+    { id: "all", name: "누적만", desc: "기록 전체 기준 하나만" },
+    { id: "switch", name: "누적 · 최근 30일 · 최근 7일 전환", desc: "랭킹 위에서 기간을 바꿔 볼 수 있음", rec: 1 } ] },
+  { key: "myrank", title: "사람 페이지에 순위 표시", opts: [
+    { id: "none", name: "기능 없음", desc: "순위 표시 없음", old: 1 },
+    { id: "badge", name: "요약 카드에 순위", desc: "'누적 총 접속' 카드에 '서버 3위 / 14명', 들낙 카드에 들낙률 순위", rec: 1 } ] },
+  { key: "sharedview", title: "공유 링크로 연 화면", opts: [
+    { id: "all", name: "다른 서버도 보임", desc: "지금처럼 공유 링크로 들어와도 왼쪽에서 모든 서버를 볼 수 있음", old: 1 },
+    { id: "hide", name: "그 서버만, 서버 목록 없음", desc: "왼쪽 아이콘 레일을 없애고 공유된 서버 하나만 보여 줌. 화면이 그만큼 넓어짐", rec: 1 },
+    { id: "single", name: "그 서버만, 레일은 유지", desc: "레일 모양은 그대로 두고 공유된 서버 아이콘 하나만 보여 줌" } ] },
+  { key: "share", title: "링크 공유", opts: [
+    { id: "old", name: "기존", desc: "서버 이름(제목)을 누르면 주소 복사 후 알림창", old: 1 },
+    { id: "btn", name: "공유 버튼 + 토스트", desc: "이름 옆 공유 버튼, 복사되면 화면 아래 짧은 안내", rec: 1 } ] },
+];
+ITEMS.push(
+  { key: "backsize", title: "뒤로가기 크기", opts: [
+    { id: "old", name: "기존", desc: "12px 회색 글자 한 줄", old: 1 },
+    { id: "btn", name: "버튼형", desc: "테두리 있는 버튼(13px, 화살표 크게). 공유 버튼과 같은 계열", rec: 1 },
+    { id: "big", name: "큰 글자", desc: "테두리 없이 14px 진한 글자 + 큰 화살표" } ] },
+  { key: "ufill", title: "사람 페이지 아래 빈 공간", opts: [
+    { id: "old", name: "기존", desc: "그래프 높이 고정, 큰 화면에서는 아래가 비어 있음", old: 1 },
+    { id: "fit", name: "화면 높이에 맞춤", desc: "곡선·히트맵·일별 막대가 화면 높이만큼 늘어나고 최근 접속은 칸이 허락하는 만큼 더 보여 줌. 작은 화면에서는 지금 크기", rec: 1 },
+    { id: "big", name: "그래프 크게 고정", desc: "곡선 2배, 히트맵 칸·일별 막대를 크게 고정. 화면이 작으면 스크롤" } ] },
+  { key: "badge", title: "서버 아이콘의 지금 접속 수", opts: [
+    { id: "old", name: "기존", desc: "아이콘 오른쪽 아래 작은 원(글자 10px)", old: 1 },
+    { id: "big", name: "큰 배지", desc: "원을 24px, 글자 13px 굵게", rec: 1 },
+    { id: "below", name: "아이콘 아래 표시", desc: "아이콘 밑에 '● 3' 형태로 따로 표시" } ] },
+  { key: "zoom", title: "타임라인 최대 확대", opts: [
+    { id: "old", name: "기존", desc: "화면 전체가 10분까지, 눈금은 10분 단위가 가장 촘촘함", old: 1 },
+    { id: "1m", name: "1분까지 (초 눈금)", desc: "화면 전체가 1분까지 확대, 눈금은 10초 단위까지. 확대 중에는 현재 시각선과 툴팁 시각이 초 단위", rec: 1 },
+    { id: "10s", name: "10초까지 (1초 눈금)", desc: "화면 전체가 10초까지 확대, 눈금은 1초 단위까지" } ] },
+  { key: "fcur", title: "시간대 곡선의 시각·빈도 표시", opts: [
+    { id: "old", name: "기존", desc: "지금 시각에 빨간 세로선만", old: 1 },
+    { id: "tip", name: "지금 시각 + 곡선 툴팁", desc: "빨간 선 위에 '지금 14:32' 표시, 곡선 위에 마우스를 올리면 세로 안내선과 '21:30~21:40 · 63% (30일 중 19일)'" },
+    { id: "tipheat", name: "곡선 + 히트맵 툴팁", desc: "곡선 툴팁에 더해 히트맵 칸에 올리면 '화요일 21시 · 4번 중 3번'", rec: 1 } ] },
+  { key: "sstats", title: "서버 전체 통계 (평균 빈도 + 잔디)", opts: [
+    { id: "none", name: "기능 없음", desc: "서버 전체 통계 화면 없음", old: 1 },
+    { id: "tab", name: "통계 탭", desc: "[타임라인 | 랭킹 | 통계] 탭을 새로 두고 주소도 따로 있음(공유 가능)", rec: 1 },
+    { id: "rank", name: "랭킹 탭 위쪽", desc: "랭킹 탭 맨 위에 서버 곡선·잔디를 붙이고 그 아래 리더보드" } ] },
+  { key: "sfreq", title: "서버 곡선이 보여 줄 값", opts: [
+    { id: "avgppl", name: "평균 동시 접속자 수", desc: "최근 30일, 그 시각에 평균 몇 명이 있었는지 (예: 21시 평균 4.2명)", rec: 1 },
+    { id: "dayratio", name: "누군가 있던 날 비율", desc: "최근 30일 중 그 시각에 한 명이라도 있던 날의 비율 (%)" },
+    { id: "avgfreq", name: "사람별 빈도 평균", desc: "최근 30일 접속한 사람들의 개인 빈도(%)를 평균" } ] },
+  { key: "grass", title: "서버 잔디 모양", opts: [
+    { id: "heat", name: "요일 × 시간 히트맵", desc: "사람 페이지와 같은 7×24 칸 (최근 30일)" },
+    { id: "year", name: "날짜 잔디 (1년)", desc: "GitHub처럼 하루 한 칸, 최근 1년. 진하기는 그날 총 접속 시간, 올리면 날짜·시간·인원" },
+    { id: "both", name: "둘 다", desc: "곡선 아래 요일×시간 히트맵, 그 아래 1년 날짜 잔디", rec: 1 } ] },
+  { key: "scards", title: "서버 통계 요약 카드", opts: [
+    { id: "none", name: "기능 없음", desc: "곡선과 잔디만", old: 1 },
+    { id: "cards", name: "요약 카드 4개", desc: "최근 30일 총 접속 시간 / 하루 평균 접속 인원 / 가장 붐비는 시간대 / 가장 붐비는 요일", rec: 1 } ] },
+);
+ITEMS.push(
+  { key: "barradius", title: "막대 모서리를 없앨 범위", opts: [
+    { id: "old", name: "기존", desc: "모든 막대·칸의 모서리가 둥금 (2~4px)", old: 1 },
+    { id: "charts", name: "차트 막대만", desc: "일별 접속 시간 막대, 들낙 미니 막대만 각지게", rec: 1 },
+    { id: "allcharts", name: "차트 전부", desc: "차트 막대 + 자주 간 채널 비율 막대, 랭킹 막대, 히트맵·잔디 칸까지 각지게" },
+    { id: "all", name: "타임라인 막대까지 전부", desc: "위 전부 + 타임라인의 접속 막대도 각지게" } ] },
+);
+const state = {}; ITEMS.forEach((it) => (state[it.key] = it.opts.find((o) => o.rec)?.id ?? it.opts[0].id));
+// round 2: confirmed choices are fixed and hidden from the note
+const CONFIRMED = { theme: "slate", layout: "rail", rows: "fixed", ctrl: "seg", summary: "cards", now: "chips", legend: "filter", tip: "card", loading: "skeleton", share: "btn", after: "avatar", click: "page", freq: "both", ublocks: "full", shape: "smooth", bounce: "both", bwhere: "user", bui: "statmini", ntime: "range", rankwhere: "tabs", ranklayout: "boards", rankperiod: "switch", myrank: "badge", sharedview: "hide", backsize: "btn", ufill: "big", badge: "big", zoom: "10s", fcur: "tipheat", sstats: "tab", sfreq: "avgppl", grass: "both", scards: "cards" };
+Object.assign(state, CONFIRMED);
+const OPEN_ITEMS = ITEMS.filter((it) => !(it.key in CONFIRMED));
+const comments = {}; // key -> optId -> text
+let openComment = null; // `${key}:${optId}`
+let fhover = null; // { id, x, y } hover on frequency charts
+const view = { center: null, rfull: null, shared: false, tab: "timeline", rperiod: "all", rmetric: "total", page: "server", user: null, panel: null, guild: "g1", preset: "24h", zoom: 1, hidden: new Set(), loading: false, loadP: 1, toast: null, hover: null };
+
+/* ================= render app ================= */
+const app = document.getElementById("app");
+const G = () => GUILDS.find((g) => g.id === view.guild);
+function rangeOf() {
+  let a, b;
+  if (view.preset === "today") { a = sod(); b = a + D; }
+  else if (view.preset === "7d") { b = NOW + 6 * H; a = b - 7 * D; }
+  else { a = NOW - 18 * H; b = NOW + 6 * H; }
+  const mid = view.center ?? (a + b) / 2, half = ((b - a) / 2) * view.zoom;
+  return [mid - half, mid + half];
+}
+function serverNav() {
+  const L = state.layout;
+  if (L === "old") return `<div class="sidebar"><div class="logo" data-cand="theme">서버 연결 현황</div>
+      <div data-cand="layout">${GUILDS.map((g) => `<div class="scard ${g.id === view.guild ? "sel" : ""}" data-click data-guild="${g.id}"><div class="h"><img src="${g.icon}">${g.name}</div>${sparkSvg(g, 236, 70, "#39af8a")}</div>`).join("")}</div></div>`;
+  if (L === "rail" && view.shared && state.sharedview === "hide") return "";
+  if (L === "rail") return `<div class="rail" data-cand="${view.shared ? "sharedview" : "layout"}"><div class="logo" data-cand="theme">C</div><div class="sep"></div>
+      ${GUILDS.filter((g) => !(view.shared && state.sharedview === "single") || g.id === view.guild).map((g) => { const on = todayStats(g).online; return `<div class="srv ${g.id === view.guild ? "sel" : ""}" data-click data-guild="${g.id}" title="${g.name}" data-cand="badge"><img src="${g.icon}">${on ? (state.badge === "below" ? `<div class="livebelow"><span class="dot" style="width:7px;height:7px"></span>${on}</div>` : `<span class="live ${state.badge === "big" ? "big" : ""}">${on}</span>`) : ""}</div>`; }).join("")}</div>`;
+  return "";
+}
+function tabsNav() {
+  if (state.layout !== "tabs") return "";
+  return `<div class="tabs" data-cand="layout"><span class="logo" data-cand="theme">Cushion Watch</span>${GUILDS.map((g) => `<div class="tab ${g.id === view.guild ? "sel" : ""}" data-click data-guild="${g.id}"><img src="${g.icon}">${g.name}</div>`).join("")}</div>`;
+}
+function header(g) {
+  const [a, b] = rangeOf();
+  const rtxt = `${fmtFull(a)} ~ ${fmtFull(b)}`;
+  if (state.share === "old" && state.ctrl === "old")
+    return `<div data-cand="share"><div class="oldtitle" data-click data-act="oldshare">${g.name} (${rtxt})</div></div>`;
+  const share = state.share === "btn"
+    ? `<button class="btn sharebtn" data-click data-act="share" data-cand="share" data-new>🔗 공유</button>`
+    : "";
+  const titleClick = state.share === "old" ? `data-click data-act="oldshare" data-cand="share"` : "";
+  const spark = state.layout !== "old" ? `<div class="spark">오늘 접속 추이 ${sparkSvg(g, 160, 32, "var(--accent)")}</div>` : "";
+  return `<div class="head"><div class="title" ${titleClick}>${state.layout !== "old" ? `<img src="${g.icon}">` : ""}${g.name}</div>
+    <span class="meta">멤버 ${g.members}명 · 기록된 사람 ${g.users.length}명</span>${share}${view.shared && state.sharedview !== "all" ? `<span class="pill off" data-cand="sharedview" data-new>공유된 서버만 보기</span>` : ""}${spark}</div>`;
+}
+function summary(g) {
+  if (state.summary !== "cards") return "";
+  const st = todayStats(g);
+  return `<div class="summary" data-cand="summary" data-new>
+    <div class="stat"><div class="k">지금 접속</div><div class="v"><span class="dot"></span>${st.online}명</div></div>
+    <div class="stat"><div class="k">오늘 접속한 사람</div><div class="v">${st.people}명</div></div>
+    <div class="stat"><div class="k">오늘 총 접속 시간</div><div class="v">${fmtDur(st.total)}</div></div>
+    <div class="stat"><div class="k">오늘 최장 접속</div><div class="v"><img src="${st.best.u.avatar}">${st.best.u.name} · ${fmtDur(st.best.t)}</div></div>
+    ${state.bounce !== "none" && state.bwhere === "both" ? (() => { const s0 = sod(); const top = g.users.map((u) => ({ u, n: u.sessions.filter((x) => !x.online && x.s >= s0 && x.e - x.s < 5 * 60e3).length })).sort((a, b) => b.n - a.n)[0];
+      return `<div class="stat" data-cand="bwhere" data-new><div class="k">오늘 들낙 많은 사람</div><div class="v">${top && top.n ? `<img src="${top.u.avatar}">${top.u.name} · ${top.n}번` : "없음"}</div></div>`; })() : ""}</div>`;
+}
+function onlineByChannel(g) {
+  const m = {};
+  for (const u of g.users) for (const s of u.sessions) if (s.online) (m[s.ch] ??= []).push({ u, s });
+  return m;
+}
+function nowStrip(g) {
+  if (state.now !== "chips") return "";
+  const m = onlineByChannel(g);
+  const chips = Object.entries(m).map(([ch, list]) => `<div class="chip"><span class="cdot" style="background:${chSolid(ch)}"></span><b>${ch}</b><span class="avs">${list.map((x) => `<img src="${x.u.avatar}" title="${x.u.name}">`).join("")}</span>${list.length}</div>`).join("");
+  return `<div class="nowstrip" data-cand="now" data-new><span class="lbl"><span class="dot"></span>지금 접속 중</span>${chips || `<span class="lbl">아무도 없음</span>`}</div>`;
+}
+function controls(g) {
+  const [a, b] = rangeOf();
+  const legend = state.legend === "filter"
+    ? `<div class="legend" data-cand="legend" data-new>${g.channels.map((ch) => `<span class="lg ${view.hidden.has(ch) ? "off" : ""}" data-click data-ch="${ch}"><i style="background:${chSolid(ch)}"></i>${ch}</span>`).join("")}</div>`
+    : `<div data-cand="legend" style="min-width:40px;min-height:24px"></div>`;
+  if (state.ctrl === "old") {
+    return `<div data-cand="ctrl"><div class="ctrl" style="margin-bottom:10px">${["일반", "일간", "주간"].map((m, i) => `<button class="btn ${i === 0 ? "sel" : ""}" data-click>${m}</button>`).join("")}</div>
+      <div class="ctrl"><button class="btn" data-click data-preset="today">오늘</button><button class="btn" data-click data-preset="24h">현재</button><span class="grow"></span>${legend}<span class="grow"></span>
+      <button class="btn" data-click data-zoom="0.5">확대</button><button class="btn" data-click data-zoom="1.5">축소</button></div></div>`;
+  }
+  return `<div class="ctrl"><div class="ctrl" data-cand="ctrl"><div class="seg">${[["24h", "최근 24시간"], ["today", "오늘"], ["7d", "최근 7일"]].map(([k, n]) => `<button class="${view.preset === k && view.zoom === 1 ? "sel" : ""}" data-click data-preset="${k}">${n}</button>`).join("")}</div>
+    <button class="btn" data-click data-preset="24h">지금으로</button><button class="btn" data-click data-zoom="0.5">＋</button><button class="btn" data-click data-zoom="1.5">－</button>
+    <span class="range">${fmtFull(a)} ~ ${fmtFull(b)}</span></div><span class="grow"></span>${legend}</div>`;
+}
+const MINSPAN = { old: 10 * 60e3, "1m": 60e3, "10s": 10e3 };
+function minZoom() { const [a, b] = (() => { const z = view.zoom; view.zoom = 1; const r = rangeOf(); view.zoom = z; return r; })(); return MINSPAN[state.zoom] / (b - a); }
+function fmtHMS(t) { const d = new Date(t); return `${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}`; }
+function ticks(a, b, width) {
+  const S = 1e3, M = 60e3;
+  const fine = state.zoom === "10s" ? [S, 2 * S, 5 * S, 10 * S, 15 * S, 30 * S, M] : state.zoom === "1m" ? [10 * S, 15 * S, 30 * S, M] : [];
+  const steps = [...fine, ...(state.zoom === "old" ? [] : [5 * M]), 10 * M, 30 * M, H, 2 * H, 3 * H, 6 * H, 12 * H, D];
+  const step = steps.find((s) => width / ((b - a) / s) >= 64) ?? D;
+  const out = [];
+  const tz = new Date(a).getTimezoneOffset() * 60e3;
+  for (let t = Math.ceil((a - tz) / step) * step + tz; t <= b; t += step) {
+    const d = new Date(t); const day = d.getHours() === 0 && d.getMinutes() === 0 && d.getSeconds() === 0;
+    out.push({ t, label: day ? `${d.getMonth() + 1}/${d.getDate()}` : step < M ? fmtHMS(t) : step < H ? fmtHM(t) : `${d.getHours()}시`, major: day });
+  }
+  return out;
+}
+function ticksOld(a, b, width) {
+  const steps = [H, 2 * H, 3 * H, 6 * H, 12 * H, D];
+  const step = steps.find((s) => (width / ((b - a) / s)) >= 64) ?? D;
+  const out = [];
+  for (let t = Math.ceil(a / step) * step; t <= b; t += step) {
+    const d = new Date(t); const day = d.getHours() === 0;
+    out.push({ t, label: day ? `${d.getMonth() + 1}/${d.getDate()}` : `${d.getHours()}시`, major: day });
+  }
+  // align to local hours
+  return out.map((x) => { const d = new Date(x.t); d.setMinutes(0, 0, 0); const day = d.getHours() === 0; return { t: d.getTime(), label: day ? `${d.getMonth() + 1}/${d.getDate()}` : `${d.getHours()}시`, major: day }; });
+}
+function timeline(g) {
+  const W = 1280 - (state.layout === "old" ? 280 : state.layout === "rail" && !(view.shared && state.sharedview === "hide") ? 72 : 0) - 44 - (state.now === "panel" ? 252 : 0) - (state.rankwhere === "panel" ? 292 : 0) - 2;
+  const fixed = state.rows !== "old";
+  const NC = fixed ? 190 : 0;
+  const bw = W - NC - 24;
+  const [a, b] = rangeOf();
+  const X = (t) => NC + 12 + ((t - a) / (b - a)) * bw;
+  const rowH = state.rows === "compact" ? 26 : state.rows === "fixed" ? 40 : 42;
+  const barH = state.rows === "compact" ? 14 : 24;
+  const users = [...g.users].sort((x, y) => (isOnline(y) - isOnline(x)) || ((y.sessions.at(-1)?.e ?? 0) - (x.sessions.at(-1)?.e ?? 0)));
+  const st0 = sod();
+  let html = `<div class="axis" data-cand="zoom">${ticks(a, b, bw).map((k) => `<span class="${k.major ? "major" : ""}" style="left:${X(k.t)}px">${k.label}</span>`).join("")}</div>`;
+  html += ticks(a, b, bw).map((k) => `<div class="gridline" style="left:${X(k.t)}px"></div>`).join("");
+  if (fixed) html += `<div class="axis" style="width:${NC}px;border-right:1px solid var(--line);background:var(--panel);z-index:2"><span style="left:${state.ntime === "plain" ? NC / 2 : 34}px">사람</span>${state.ntime === "plain" ? "" : `<span data-cand="ntime" style="left:auto;right:10px;transform:none">${state.ntime === "label" ? "오늘 접속" : "기간 내 접속"}</span>`}</div>`;
+  const shown = view.loading && state.loading === "old" ? Math.floor(users.length * view.loadP) : users.length;
+  html += `<div class="rows">`;
+  users.slice(0, shown).forEach((u, i) => {
+    const y = 8 + i * rowH;
+    const on = isOnline(u);
+    let today = 0; const [ra, rb] = state.ntime === "range" ? [a, Math.min(b, NOW)] : [st0, NOW]; for (const s of u.sessions) { const p = Math.max(s.s, ra), q = Math.min(s.e, rb); if (q > p) today += q - p; }
+    html += `<div class="row ${fixed && i % 2 ? "alt" : ""}" data-cand="after" style="top:${y - 4}px;height:${rowH}px">`;
+    if (fixed) html += `<div class="namecol ${state.click !== "none" ? "link" : ""}" ${state.click !== "none" ? `data-click data-user="${u.id}"` : ""} data-cand="click" style="width:${NC}px">${state.rows === "compact" ? "" : `<img src="${u.avatar}">`}<span class="nm">${u.name}</span>${on ? `<span class="on"></span>` : ""}<span class="sub" data-cand="ntime">${today ? fmtDur(today) : "-"}</span></div>`;
+    const vis = u.sessions.filter((s) => s.e > a && s.s < b && !view.hidden.has(s.ch));
+    vis.forEach((s, si) => {
+      const x1 = Math.max(X(s.s), NC), x2 = Math.min(X(s.e), W);
+      if (x2 <= x1) return;
+      html += `<div class="bar ${s.online ? "online" : ""}" data-cand="barradius" data-u="${u.id}" data-s="${u.sessions.indexOf(s)}" style="left:${x1}px;width:${Math.max(2, x2 - x1)}px;top:${(rowH - barH) / 2}px;height:${barH}px;background:${chColor(s.ch)}"></div>`;
+      const next = vis[si + 1];
+      if (!fixed) {
+        if (!next || X(next.s) - x2 > 90) html += `<div class="flabel ${s.online ? "on" : ""}" style="left:${x2 + 10}px;top:${(rowH - 20) / 2}px"><img src="${u.avatar}">${u.name}</div>`;
+      } else {
+        const a2 = state.after;
+        const need = a2 === "avatar" ? 80 : a2 === "channel" ? 20 + s.ch.length * 13 : 50;
+        if (x2 + need < W && (!next || X(next.s) - x2 > need + 10)) {
+          if (a2 === "avatar") html += `<div class="flabel ${s.online ? "on" : ""}" style="left:${x2 + 8}px;top:${(rowH - 20) / 2}px"><img src="${u.avatar}">${u.name}</div>`;
+          else if (a2 === "name") html += `<div class="flabel small ${s.online ? "on" : ""}" style="left:${x2 + 7}px;top:${(rowH - 16) / 2}px">${u.name}</div>`;
+          else html += `<div class="flabel small" style="left:${x2 + 7}px;top:${(rowH - 16) / 2}px;color:${chSolid(s.ch)}">${s.ch}</div>`;
+        }
+      }
+    });
+    html += `</div>`;
+  });
+  html += `</div>`;
+  const nx = X(NOW);
+  if (nx > NC && nx < W) html += `<div class="nowline" style="left:${nx - 1}px"></div><div class="nowtag" style="left:${nx}px">${b - a < 10 * 60e3 ? fmtHMS(NOW) : fmtHM(NOW)}</div>`;
+  if (!fixed) html += `<div class="dbg">${users.reduce((acc, u) => acc + u.sessions.length, 0)} sess, 61 fps</div>`;
+  return html;
+}
+function rpanel(g) {
+  if (state.now !== "panel") return "";
+  const m = onlineByChannel(g);
+  return `<div class="rpanel" data-cand="now" data-new><h4><span class="dot"></span>지금 접속 중</h4>${Object.entries(m).map(([ch, list]) => `<div class="ch"><div class="cn"><i style="background:${chSolid(ch)}"></i>${ch} · ${list.length}명</div>${list.map((x) => `<div class="mem"><img src="${x.u.avatar}">${x.u.name}<span>${fmtDur(NOW - x.s.s)}</span></div>`).join("")}</div>`).join("") || `<div class="cn">아무도 없음</div>`}</div>`;
+}
+function skeleton() {
+  const W = 1280 - (state.layout === "old" ? 280 : state.layout === "rail" && !(view.shared && state.sharedview === "hide") ? 72 : 0) - 44;
+  return `<div class="head"><div class="sk" style="width:220px;height:30px"></div><div class="sk" style="width:160px;height:16px"></div></div>
+    ${state.summary === "cards" ? `<div class="summary">${"<div class='sk' style='height:62px'></div>".repeat(4)}</div>` : ""}
+    <div class="ctrl"><div class="sk" style="width:300px;height:30px"></div></div>
+    <div class="tl" style="padding:44px 16px">${Array.from({ length: 10 }, (_, i) => `<div style="display:flex;gap:16px;margin-bottom:16px"><div class="sk" style="width:150px;height:22px"></div><div class="sk" style="margin-left:${(i * 97) % 400}px;width:${120 + (i * 53) % 260}px;height:22px"></div></div>`).join("")}</div>`;
+}
+function userStats(u, days = 30) {
+  const from = sod(NOW - (days - 1) * D);
+  const ss = u.sessions.filter((s) => s.e > from);
+  const total = ss.reduce((a, s) => a + (s.e - Math.max(s.s, from)), 0);
+  const dayset = new Set(ss.map((s) => sod(s.s)));
+  const hours = Array(24).fill(0), heat = Array.from({ length: 7 }, () => Array(24).fill(0));
+  for (let d = 0; d < days; d++) {
+    const base = sod(NOW - d * D);
+    for (let h = 0; h < 24; h++) {
+      const a = base + h * H, b = a + H;
+      if (a > NOW) continue;
+      if (ss.some((s) => s.s < b && s.e > a)) { hours[h]++; heat[new Date(base).getDay()][h]++; }
+    }
+  }
+  const daily = Array.from({ length: 14 }, (_, i) => { const a = sod(NOW - (13 - i) * D), b = a + D; return ss.reduce((acc, s) => acc + Math.max(0, Math.min(s.e, b) - Math.max(s.s, a)), 0); });
+  const ch = {}; for (const s of ss) ch[s.ch] = (ch[s.ch] ?? 0) + (s.e - s.s);
+  const slot = (n) => {
+    const out = Array(n).fill(0), len = D / n;
+    for (let d = 0; d < days; d++) {
+      const base = sod(NOW - d * D);
+      for (let i = 0; i < n; i++) { const a = base + i * len, b = a + len; if (a > NOW) continue; if (ss.some((s) => s.s < b && s.e > a)) out[i]++; }
+    }
+    return out.map((v) => v / days);
+  };
+  const SHORT = 5 * 60e3;
+  const shorts = ss.filter((s) => !s.online && s.e - s.s < SHORT);
+  const bDaily = Array.from({ length: 14 }, (_, i) => { const a = sod(NOW - (13 - i) * D); return shorts.filter((s) => s.s >= a && s.s < a + D).length; });
+  return { ss, total, days: dayset.size, avg: ss.length ? total / ss.length : 0, hours: hours.map((v) => v / days), heat, daily, ch, slot,
+    bounce: { count: shorts.length, all: ss.length, ratio: ss.length ? shorts.length / ss.length : 0, perDay: dayset.size ? shorts.length / dayset.size : 0, daily: bDaily } };
+}
+const FREQ = {}; // id -> { raw(144), days, unit, heat, heatN, label }
+function smoothPath(raw, W, Hh) {
+  const n = raw.length;
+  const sm = raw.map((_, i) => { let a = 0; for (let k = -2; k <= 2; k++) a += raw[(i + k + n) % n]; return a / 5; });
+  const m = Math.max(0.01, ...sm);
+  const pts = sm.map((v, i) => [(i / (n - 1)) * W, Hh - (v / m) * (Hh - 6) - 2]);
+  let d = `M${pts[0][0]},${pts[0][1]}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] ?? pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] ?? p2;
+    d += ` C${p1[0] + (p2[0] - p0[0]) / 6},${p1[1] + (p2[1] - p0[1]) / 6} ${p2[0] - (p3[0] - p1[0]) / 6},${p2[1] - (p3[1] - p1[1]) / 6} ${p2[0]},${p2[1]}`;
+  }
+  return { d, sm, m };
+}
+const DN = ["일", "월", "화", "수", "목", "금", "토"];
+function curveBlock(id, raw, hgt, fill) {
+  const W = 1000, Hh = 100;
+  const { d } = smoothPath(raw, W, Hh);
+  const nowFrac = (NOW - sod()) / D;
+  const showNow = state.fcur !== "old";
+  return `<div class="fwrap ${fill ? "fill" : ""}" data-f="${id}" data-cand="fcur">
+      <svg viewBox="0 0 ${W} ${Hh}" preserveAspectRatio="none" style="width:100%;height:${hgt}px;display:block">
+        <defs><linearGradient id="fg${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".45"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>
+        ${[0.25, 0.5, 0.75].map((y) => `<line x1="0" x2="${W}" y1="${Hh * y}" y2="${Hh * y}" stroke="var(--grid)" vector-effect="non-scaling-stroke"/>`).join("")}
+        <path d="${d} L${W},${Hh} L0,${Hh} Z" fill="url(#fg${id})"/><path d="${d}" fill="none" stroke="var(--accent)" stroke-width="2" vector-effect="non-scaling-stroke"/>
+        <line x1="${nowFrac * W}" x2="${nowFrac * W}" y1="0" y2="${Hh}" stroke="var(--now)" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>
+      ${showNow ? `<span class="fnow" data-new style="left:${nowFrac * 100}%">지금 ${fmtHM(NOW)}</span>` : ""}
+      <div class="fhov"></div></div>
+    <div class="hlabels">${Array.from({ length: 24 }, (_, h) => `<span>${h % 3 === 0 ? h + "시" : ""}</span>`).join("")}</div>`;
+}
+function heatBlock(id, heat, fill, cellH = 13) {
+  const hmax = Math.max(0.0001, ...heat.flat());
+  return `<div class="heat ${fill ? "fill" : ""}" data-h="${id}" data-cand="barradius" style="margin-top:12px">${[1, 2, 3, 4, 5, 6, 0].map((d) => `<span>${DN[d]}</span>${heat[d].map((v, h) => `<i data-d="${d}" data-hh="${h}" style="opacity:${0.08 + (v / hmax) * 0.92}${fill ? "" : `;height:${cellH}px`}"></i>`).join("")}`).join("")}</div>`;
+}
+function freqTipHtml(id, x, w) {
+  const f = FREQ[id]; if (!f) return "";
+  const i = Math.max(0, Math.min(143, Math.floor((x / w) * 144)));
+  const t0 = sod() + i * 600e3;
+  return `<div class="fguide" style="left:${x}px;height:100%"></div><div class="ftip" data-new style="left:${x > w - 220 ? x - 214 : x + 12}px;top:6px"><b>${fmtHM(t0)}~${fmtHM(t0 + 600e3)}</b><br>${f.fmtSlot(f.raw[i])}</div>`;
+}
+function freqChart(st, mini = false) {
+  const curH = new Date(NOW).getHours();
+  const max = Math.max(0.01, ...st.hours);
+  const bars = `<div class="hbars" style="height:${mini ? 80 : 120}px">${st.hours.map((v, h) => `<div class="${h === curH ? "cur" : ""}" style="height:${Math.max(2, (v / max) * 100)}%" title="${h}시 · ${Math.round(v * 100)}%"></div>`).join("")}</div>
+    <div class="hlabels">${st.hours.map((_, h) => `<span>${mini ? (h % 6 === 0 ? h : "") : h % 3 === 0 ? h + "시" : ""}</span>`).join("")}</div>`;
+  const hmax = Math.max(1, ...st.heat.flat());
+  const dn = ["일", "월", "화", "수", "목", "금", "토"];
+  const heat = `<div class="heat" style="margin-top:${mini ? 6 : 12}px">${[1, 2, 3, 4, 5, 6, 0].map((d) => `<span>${dn[d]}</span>${st.heat[d].map((v) => `<i style="opacity:${0.08 + (v / hmax) * 0.92}"></i>`).join("")}`).join("")}</div>`;
+  let top = bars;
+  const hgt = mini ? 80 : 120;
+  if (state.shape === "fine") {
+    const v = st.slot(96), m = Math.max(0.01, ...v), cur = Math.floor((NOW - sod()) / (D / 96));
+    top = `<div class="hbars" style="height:${hgt}px;gap:1px">${v.map((x, i) => `<div class="${i === cur ? "cur" : ""}" style="height:${Math.max(2, (x / m) * 100)}%;border-radius:1px"></div>`).join("")}</div>
+      <div class="hlabels">${st.hours.map((_, h) => `<span>${mini ? (h % 6 === 0 ? h : "") : h % 3 === 0 ? h + "시" : ""}</span>`).join("")}</div>`;
+  } else if (state.shape === "smooth") {
+    const raw = st.slot(144);
+    const fill = state.ufill === "fit";
+    FREQ.user = { raw, fmtSlot: (v) => `${Math.round(v * 100)}% (30일 중 ${Math.round(v * 30)}일)` };
+    FREQ.userHeat = { heat: st.heat, fmtCell: (d, h, v) => `${DN[d]}요일 ${h}시 · ${weekdayCount(d)}번 중 ${v}번` };
+    top = curveBlock("user", raw, state.ufill === "big" ? 240 : hgt, fill);
+    return top + heatBlock("userHeat", st.heat, fill, state.ufill === "big" ? 22 : 13);
+  }
+  return top + heat;
+}
+function weekdayCount(d) { let n = 0; for (let i = 0; i < 30; i++) if (new Date(sod(NOW - i * D)).getDay() === d) n++; return n; }
+const METRICS = [
+  { key: "total", name: "누적 접속 시간", fmt: (v) => fmtDur(v) },
+  { key: "count", name: "접속 횟수", fmt: (v) => `${v}회` },
+  { key: "days", name: "접속한 날", fmt: (v) => `${v}일` },
+  { key: "avg", name: "평균 접속 길이", fmt: (v) => fmtDur(v) },
+  { key: "longest", name: "최장 연속 접속", fmt: (v) => fmtDur(v) },
+  { key: "bounce", name: "들낙률", fmt: (v) => `${Math.round(v * 100)}%`, note: "접속 5회 이상인 사람만" },
+];
+function metricsOf(u, period = "all") {
+  const from = period === "30d" ? NOW - 30 * D : period === "7d" ? NOW - 7 * D : 0;
+  const ss = u.sessions.filter((s) => s.e > from);
+  const total = ss.reduce((a, s) => a + (s.e - Math.max(s.s, from)), 0);
+  const shorts = ss.filter((s) => !s.online && s.e - s.s < 5 * 60e3).length;
+  return { total, count: ss.length, days: new Set(ss.map((s) => sod(s.s))).size, avg: ss.length ? total / ss.length : 0,
+    longest: ss.reduce((a, s) => Math.max(a, s.e - s.s), 0), bounce: ss.length >= 5 ? shorts / ss.length : null };
+}
+function ranked(g, key, period) {
+  return g.users.map((u) => ({ u, v: metricsOf(u, period)[key] })).filter((x) => x.v != null && x.v > 0).sort((a, b) => b.v - a.v);
+}
+function rankOf(g, u, key, period = "all") { const r = ranked(g, key, period); const i = r.findIndex((x) => x.u.id === u.id); return i < 0 ? null : { no: i + 1, of: r.length }; }
+const SERVER_CACHE = {};
+function serverStats(g) {
+  if (SERVER_CACHE[g.id]) return SERVER_CACHE[g.id];
+  const days = 30, from = sod(NOW - (days - 1) * D);
+  const recent = g.users.map((u) => u.sessions.filter((s) => s.e > from)).filter((x) => x.length);
+  const slots = Array(144).fill(0), any = Array(144).fill(0);
+  const heat = Array.from({ length: 7 }, () => Array(24).fill(0)), heatAny = Array.from({ length: 7 }, () => Array(24).fill(0));
+  for (let d = 0; d < days; d++) {
+    const base = sod(NOW - d * D), wd = new Date(base).getDay();
+    for (let i = 0; i < 144; i++) {
+      const a = base + i * 600e3, b = a + 600e3; if (a > NOW) continue;
+      const n = recent.reduce((acc, ss) => acc + (ss.some((s) => s.s < b && s.e > a) ? 1 : 0), 0);
+      slots[i] += n; if (n) any[i]++;
+      if (i % 6 === 0) { heat[wd][i / 6] += n; if (n) heatAny[wd][i / 6]++; }
+    }
+  }
+  const people = Array.from({ length: days }, (_, d) => { const a = sod(NOW - d * D), b = a + D; return recent.filter((ss) => ss.some((s) => s.s < b && s.e > a)).length; });
+  const total = recent.flat().reduce((acc, s) => acc + (s.e - Math.max(s.s, from)), 0);
+  // year grass: per-day total connected time and people
+  const year = [];
+  for (let d = 364; d >= 0; d--) {
+    const a = sod(NOW - d * D), b = a + D; let t = 0, p = 0;
+    for (const u of g.users) { let ut = 0; for (const s of u.sessions) { if (s.e <= a || s.s >= b) continue; ut += Math.min(s.e, b) - Math.max(s.s, a); } if (ut) { p++; t += ut; } }
+    year.push({ day: a, t, p });
+  }
+  return (SERVER_CACHE[g.id] = { days, slots, any, heat, heatAny, people, total, active: recent.length, year });
+}
+function statsBody(g) {
+  const st = serverStats(g);
+  const n = st.days, act = Math.max(1, st.active);
+  const mode = state.sfreq;
+  const raw = st.slots.map((v, i) => mode === "avgppl" ? v / n : mode === "dayratio" ? st.any[i] / n : v / n / act);
+  const fmtSlot = (v) => mode === "avgppl" ? `평균 ${v.toFixed(1)}명` : `${Math.round(v * 100)}%${mode === "dayratio" ? ` (30일 중 ${Math.round(v * n)}일)` : " (사람별 평균)"}`;
+  FREQ.server = { raw, fmtSlot };
+  const wc = [0, 1, 2, 3, 4, 5, 6].map(weekdayCount);
+  const heat = st.heat.map((row, d) => row.map((v, h) => mode === "dayratio" ? st.heatAny[d][h] / wc[d] : mode === "avgppl" ? v / wc[d] : v / wc[d] / act));
+  FREQ.serverHeat = { heat, fmtCell: (d, h, v) => mode === "dayratio" ? `${DN[d]}요일 ${h}시 · ${wc[d]}번 중 ${st.heatAny[d][h]}번 누군가 있음` : `${DN[d]}요일 ${h}시 · 평균 ${(st.heat[d][h] / wc[d]).toFixed(1)}명` };
+  const sub = mode === "avgppl" ? "최근 30일 · 그 시각 평균 동시 접속자 수" : mode === "dayratio" ? "최근 30일 · 한 명이라도 있던 날의 비율" : "최근 30일 · 사람별 접속 빈도의 평균";
+  const peakSlot = raw.indexOf(Math.max(...raw));
+  const dayTotals = [0, 1, 2, 3, 4, 5, 6].map((d) => heat[d].reduce((a, v) => a + v, 0));
+  const peakDay = dayTotals.indexOf(Math.max(...dayTotals));
+  const cards = state.scards === "cards" ? `<div class="summary" data-cand="scards" data-new>
+      <div class="stat"><div class="k">최근 30일 총 접속</div><div class="v">${fmtDur(st.total)}</div></div>
+      <div class="stat"><div class="k">하루 평균 접속 인원</div><div class="v">${(st.people.reduce((a, v) => a + v, 0) / n).toFixed(1)}명</div></div>
+      <div class="stat"><div class="k">가장 붐비는 시간대</div><div class="v">${fmtHM(sod() + peakSlot * 600e3)} 전후</div></div>
+      <div class="stat"><div class="k">가장 붐비는 요일</div><div class="v">${DN[peakDay]}요일</div></div></div>` : `<div data-cand="scards"></div>`;
+  const showHeat = state.grass !== "year", showYear = state.grass !== "heat";
+  const curve = `<div class="card" data-cand="sfreq" data-new style="display:flex;flex-direction:column;flex:1;min-height:250px"><h5>시간대별 접속 빈도 · 서버 전체 <span>${sub}</span></h5>
+      ${curveBlock("server", raw, 120, true)}${showHeat ? `<div data-cand="grass">${heatBlock("serverHeat", heat, false, 15)}</div>` : ""}</div>`;
+  let yearHtml = "";
+  if (showYear) {
+    const ymax = Math.max(1, ...st.year.map((x) => x.t));
+    const lead = new Date(st.year[0].day).getDay();
+    const cells = Array(lead).fill(`<i class="empty" style="visibility:hidden"></i>`).concat(st.year.map((x, i) => `<i data-y="${i}" class="${x.t ? "" : "empty"}" style="opacity:${x.t ? 0.2 + (x.t / ymax) * 0.8 : 1}"></i>`));
+    const weeks = Math.ceil(cells.length / 7);
+    let months = "", lastM = -1;
+    for (let w = 0; w < weeks; w++) { const idx = Math.max(0, w * 7 - lead); const d = new Date(st.year[Math.min(idx, 364)].day); if (d.getMonth() !== lastM) { lastM = d.getMonth(); months += `<span style="left:${(w / weeks) * 100}%">${d.getMonth() + 1}월</span>`; } }
+    FREQ.year = st.year;
+    yearHtml = `<div class="card" data-cand="grass" data-new style="flex:0 0 auto"><h5>날짜별 잔디 <span>최근 1년 · 진할수록 그날 총 접속 시간이 김</span></h5>
+      <div class="gmonths">${months}</div><div class="grasswrap"><div class="wd">${DN.map((x, i) => `<span>${i % 2 ? x : ""}</span>`).join("")}</div><div class="grass" data-g="1" data-cand="barradius" style="grid-template-columns:repeat(${weeks}, 1fr)">${cells.join("")}</div></div>
+      <div class="glegend">적음 ${[0.2, 0.4, 0.6, 0.8, 1].map((o) => `<i style="opacity:${o}"></i>`).join("")} 많음</div></div>`;
+  }
+  return `${cards}${curve}${yearHtml}`;
+}
+function stabs() {
+  if (state.rankwhere !== "tabs") return "";
+  return `<div class="stabs" data-cand="sstats"><button class="${view.tab === "timeline" ? "sel" : ""}" data-click data-tab="timeline">타임라인</button><button class="${view.tab === "rank" ? "sel" : ""}" data-click data-tab="rank">랭킹</button>${state.sstats === "tab" ? `<button class="${view.tab === "stats" ? "sel" : ""}" data-click data-tab="stats" data-cand="sstats" data-new>통계</button>` : ""}</div>`;
+}
+function periodSeg() {
+  if (state.rankperiod !== "switch") return `<span class="range" data-cand="rankperiod">누적 기준</span>`;
+  return `<div class="seg" data-cand="rankperiod">${[["all", "누적"], ["30d", "최근 30일"], ["7d", "최근 7일"]].map(([k, n]) => `<button class="${view.rperiod === k ? "sel" : ""}" data-click data-rp="${k}">${n}</button>`).join("")}</div>`;
+}
+function rankPage(g) {
+  const period = state.rankperiod === "switch" ? view.rperiod : "all";
+  const top = `<div class="ctrl">${periodSeg()}<span class="range">${g.name} · 기록된 ${g.users.length}명</span></div>`;
+  if (state.ranklayout === "table") {
+    const m = METRICS.find((x) => x.key === view.rmetric);
+    const rows = g.users.map((u) => ({ u, m: metricsOf(u, period) })).sort((a, b) => (b.m[m.key] ?? -1) - (a.m[m.key] ?? -1));
+    return `${top}<div class="card" data-cand="ranklayout" style="flex:1;overflow:auto;padding:4px 6px"><table class="rt"><thead><tr><th>#</th><th>사람</th>${METRICS.map((x) => `<th class="${x.key === m.key ? "sel" : ""}" data-click data-rm="${x.key}">${x.name}${x.key === m.key ? " ▼" : ""}</th>`).join("")}</tr></thead>
+      <tbody>${rows.map((r, i) => `<tr data-user="${r.u.id}"><td>${i + 1}</td><td><span style="display:inline-flex;align-items:center;gap:8px"><img src="${r.u.avatar}" style="width:20px;height:20px;border-radius:10px">${r.u.name}</span></td>${METRICS.map((x) => `<td class="${x.key === m.key ? "sel" : ""}">${r.m[x.key] == null ? "-" : x.fmt(r.m[x.key])}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+  }
+  if (view.rfull) {
+    const m = METRICS.find((x) => x.key === view.rfull);
+    const r = ranked(g, m.key, period); const max = r[0]?.v || 1;
+    return `${top}<div class="card lb" data-new style="flex:1;overflow:auto"><h5>${backLink("리더보드", 'data-rfull=""')}<span style="color:var(--strong);font-size:14px;font-weight:700;margin-left:8px">${m.name} 전체 랭킹</span><span>${r.length}명${m.note ? " · " + m.note : ""}</span></h5>
+      ${r.map((x, i) => `<div class="r" data-click data-user="${x.u.id}"><span class="no ${i < 3 ? "m" + (i + 1) : ""}">${i + 1}</span><img src="${x.u.avatar}"><span class="nm" style="min-width:90px">${x.u.name}</span><span class="bar2" data-cand="barradius"><i style="width:${(x.v / max) * 100}%"></i></span><span class="val" style="width:110px">${m.fmt(x.v)}</span></div>`).join("")}</div>`;
+  }
+  return `${top}<div class="boards" data-cand="ranklayout">${METRICS.map((m) => {
+    const all = ranked(g, m.key, period); const r = all.slice(0, 5); const max = r[0]?.v || 1;
+    return `<div class="card lb"><h5>${m.name}${all.length > 5 ? `<span style="margin-left:auto;color:var(--accent);cursor:pointer;font-size:12px;font-weight:600" data-click data-rfull="${m.key}" data-new>더보기 (${all.length}명) →</span>` : ""}</h5>${r.map((x, i) => `<div class="r" data-click data-user="${x.u.id}"><span class="no ${i < 3 ? "m" + (i + 1) : ""}">${i + 1}</span><img src="${x.u.avatar}"><span class="nm">${x.u.name}</span><span class="bar2" data-cand="barradius"><i style="width:${(x.v / max) * 100}%"></i></span><span class="val">${m.fmt(x.v)}</span></div>`).join("") || `<div class="note">기록 없음</div>`}${m.note ? `<div class="note">${m.note}</div>` : ""}</div>`;
+  }).join("")}</div>`;
+}
+function rankPanel(g) {
+  if (state.rankwhere !== "panel") return "";
+  const period = state.rankperiod === "switch" ? view.rperiod : "all";
+  const m = METRICS.find((x) => x.key === view.rmetric);
+  const r = ranked(g, m.key, period).slice(0, 10); const max = r[0]?.v || 1;
+  return `<div class="rkpanel lb" data-cand="rankwhere" data-new><h4>랭킹</h4>${state.rankperiod === "switch" ? `<div class="rkchips" data-cand="rankperiod">${[["all", "누적"], ["30d", "30일"], ["7d", "7일"]].map(([k, n]) => `<span class="${view.rperiod === k ? "sel" : ""}" data-click data-rp="${k}">${n}</span>`).join("")}</div>` : ""}
+    <div class="rkchips">${METRICS.map((x) => `<span class="${x.key === m.key ? "sel" : ""}" data-click data-rm="${x.key}">${x.name}</span>`).join("")}</div>
+    ${r.map((x, i) => `<div class="r" data-click data-user="${x.u.id}"><span class="no ${i < 3 ? "m" + (i + 1) : ""}">${i + 1}</span><img src="${x.u.avatar}"><span class="nm">${x.u.name}</span><span class="val" style="margin-left:auto">${m.fmt(x.v)}</span></div>`).join("")}</div>`;
+}
+function backLink(text, attrs) {
+  const cls = state.backsize === "btn" ? "back btn2" : state.backsize === "big" ? "back big" : "back";
+  return `<span class="${cls}" data-click ${attrs} data-cand="backsize"><span class="ar">←</span>${text}</span>`;
+}
+function userPage(g, u) {
+  const st = userStats(u);
+  const on = isOnline(u);
+  const last = u.sessions.at(-1);
+  const topCh = Object.entries(st.ch).sort((a, b) => b[1] - a[1]);
+  const totalCh = topCh.reduce((a, x) => a + x[1], 0) || 1;
+  const b = st.bounce;
+  const bmax = Math.max(1, ...b.daily);
+  const bnum = state.bounce === "ratio" ? `<div class="v">${Math.round(b.ratio * 100)}%</div>`
+    : state.bounce === "perday" ? `<div class="v">하루 ${b.perDay.toFixed(1)}번</div>`
+    : `<div class="v">${Math.round(b.ratio * 100)}% <span style="font-size:13px;color:var(--muted);font-weight:500">· 하루 ${b.perDay.toFixed(1)}번</span></div>`;
+  const bcard = state.bounce !== "none"
+    ? `<div class="card" data-cand="bounce" data-new style="width:270px;flex:0 0 auto"><h5>들낙 <span>5분 안에 나간 접속 · 최근 30일</span></h5>
+        <div class="stat" style="border:0;padding:0;background:none">${bnum}<div class="k" style="margin-top:4px">접속 ${b.all}번 중 ${b.count}번</div></div>
+        <div class="k" style="margin:14px 0 6px;color:var(--muted);font-size:11px">최근 14일 들낙 횟수</div>
+        <div class="dbars" data-cand="barradius" style="height:56px">${b.daily.map((v) => `<div style="height:${Math.max(3, (v / bmax) * 100)}%;background:#f5a524" title="${v}번"></div>`).join("")}</div></div>`
+    : `<div data-cand="bounce" style="width:20px"></div>`;
+  const bstat = state.bui === "card" ? "" : `<div class="stat" data-cand="bui" data-new style="display:flex;gap:10px;align-items:center"><div style="flex:1;min-width:0">
+      <div class="k">들낙 · 5분 미만${state.myrank === "badge" ? (() => { const r = rankOf(g, u, "bounce"); return r ? `<span class="rankpill" data-cand="myrank" data-new>${r.no}위</span>` : ""; })() : ""}</div>${state.bui === "statmini"
+        ? `<div class="v">${Math.round(b.ratio * 100)}%</div><div class="k" style="font-size:11px;margin-top:2px">하루 ${b.perDay.toFixed(1)}번 · ${b.count}/${b.all}회</div>`
+        : `<div class="v">${Math.round(b.ratio * 100)}%<span style="font-size:13px;color:var(--muted);font-weight:500">· 하루 ${b.perDay.toFixed(1)}번</span></div><div class="k" style="font-size:11px;margin-top:2px">접속 ${b.all}번 중 ${b.count}번</div>`}</div>
+      ${state.bui === "statmini" ? `<div style="width:84px;flex:0 0 auto"><div class="dbars" data-cand="barradius" style="height:38px;gap:2px">${b.daily.map((v) => `<div style="height:${Math.max(4, (v / bmax) * 100)}%;background:#f5a524;opacity:.85;border-radius:2px 2px 0 0" title="${v}번"></div>`).join("")}</div><div class="k" style="font-size:10px;text-align:right;margin-top:3px">최근 14일</div></div>` : ""}</div>`;
+  const fillCard = state.ufill === "fit" ? "display:flex;flex-direction:column;min-height:0;" : "";
+  const freq = `<div style="display:flex;gap:12px;${state.ufill === "fit" ? "flex:1.3;min-height:260px" : "flex:0 0 auto"}" data-cand="ufill"><div class="card" data-cand="shape" data-new style="flex:1;${fillCard}"><h5>시간대별 접속 빈도 <span>최근 30일 · 그 시간에 접속해 있던 날의 비율</span></h5>${freqChart(st)}</div>${state.bui === "card" ? bcard.replace('data-cand="bounce"', 'data-cand="bui"') : ""}</div>`;
+  const blocks = state.ublocks === "full"
+    ? `<div class="grid2" data-cand="ufill" style="${state.ufill === "fit" ? "flex:1;min-height:220px" : "flex:0 0 auto"}">
+      <div class="card" style="${state.ufill === "fit" ? "display:flex;flex-direction:column;min-height:0" : ""}"><h5>일별 접속 시간 <span>최근 14일</span>${state.bui === "statdaily" ? `<span style="margin-left:auto;display:flex;gap:10px"><span><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--accent2)"></i> 접속 시간</span><span><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#f5a524"></i> 들낙 횟수</span></span>` : ""}</h5>
+        <div class="dbars" data-cand="barradius" style="${state.ufill === "fit" ? "flex:1;height:auto;min-height:90px" : state.ufill === "big" ? "height:180px" : ""}">${st.daily.map((v, i) => state.bui === "statdaily"
+          ? `<div style="background:none;display:flex;align-items:flex-end;gap:2px;height:100%;opacity:1"><div style="flex:2;height:${Math.max(2, (v / Math.max(...st.daily, 1)) * 100)}%;background:var(--accent2);opacity:.7;border-radius:3px 3px 0 0"></div><div style="flex:1;height:${Math.max(2, (b.daily[i] / bmax) * 100)}%;background:#f5a524;border-radius:3px 3px 0 0"></div></div>`
+          : `<div style="height:${Math.max(2, (v / Math.max(...st.daily, 1)) * 100)}%" title="${fmtDur(v)}"></div>`).join("")}</div>
+        <h5 style="margin-top:14px">자주 간 채널</h5>${topCh.slice(0, 4).map(([c, v]) => `<div class="chrow" data-cand="barradius"><b>${c}</b><div class="bx"><i style="width:${(v / totalCh) * 100}%;background:${chSolid(c)}"></i></div><span>${Math.round((v / totalCh) * 100)}%</span></div>`).join("")}</div>
+      <div class="card" style="overflow:hidden"><h5>최근 접속</h5><div class="slist">${[...u.sessions].reverse().slice(0, state.ufill === "fit" ? 40 : state.ufill === "big" ? 14 : 8).map((s) => `<div><i style="background:${chSolid(s.ch)}"></i><span class="t">${fmtFull(s.s)}</span>${s.ch}<span class="d">${s.online ? "접속 중" : fmtDur(s.e - s.s)}</span></div>`).join("")}</div></div></div>`
+    : `<div data-cand="ublocks" style="min-height:20px"></div>`;
+  return `${backLink(`${g.name} 타임라인`, "data-back")}
+    <div class="uhead" data-new><img src="${u.avatar}"><div><div class="nm">${u.name}<span class="pill ${on ? "" : "off"}">${on ? "접속 중 · " + last.ch : "오프라인"}</span>
+      <button class="btn sharebtn" data-click data-act="share">🔗 공유</button></div><div class="st">${g.name} · 마지막 접속 ${on ? "지금" : last ? fmtFull(last.e) : "-"}</div></div></div>
+    <div class="summary">
+      <div class="stat"><div class="k">누적 총 접속${state.myrank === "badge" ? (() => { const r = rankOf(g, u, "total"); return r ? `<span class="rankpill" data-cand="myrank" data-new>서버 ${r.no}위 / ${r.of}명</span>` : ""; })() : `<span data-cand="myrank"></span>`}</div><div class="v">${fmtDur(u.sessions.reduce((acc, x) => acc + (x.e - x.s), 0))}</div><div class="k" style="font-size:11px;margin-top:2px">${(() => { const d = new Date(u.sessions[0]?.s ?? NOW); return `${d.getFullYear()}.${p2(d.getMonth() + 1)}.${p2(d.getDate())}부터 기록`; })()}</div></div>
+      <div class="stat"><div class="k">접속한 날</div><div class="v">${st.days}일 / 30일</div></div>
+      <div class="stat"><div class="k">평균 접속 길이</div><div class="v">${fmtDur(st.avg)}</div></div>
+      <div class="stat"><div class="k">가장 많이 간 채널</div><div class="v"><span style="width:14px;height:14px;border-radius:7px;display:inline-block;background:${chSolid(topCh[0]?.[0] ?? "")}"></span>${topCh[0]?.[0] ?? "-"}</div></div>${bstat}</div>
+    ${freq}${blocks}`;
+}
+function userPanel(g, u) {
+  const st = userStats(u);
+  return `<div class="upanel" data-new><span class="x" data-click data-closepanel>✕</span>
+    <div class="uhead"><img src="${u.avatar}" style="width:40px;height:40px"><div><div class="nm" style="font-size:18px">${u.name}</div><div class="st">최근 30일 ${fmtDur(st.total)} · ${st.days}일 접속</div></div></div>
+    ${state.freq !== "none" ? `<div class="card"><h5>시간대별 접속 빈도</h5>${freqChart(st, true)}</div>` : ""}
+    <button class="btn" data-click data-user="${u.id}" data-force="page">자세히 보기 →</button></div>`;
+}
+function tipTime(t) { const [a, b] = rangeOf(); return state.zoom !== "old" && b - a < 10 * 60e3 ? `${fmtFull(t)}:${p2(new Date(t).getSeconds())}` : fmtFull(t); }
+function sessionTip() {
+  if (!view.hover) return "";
+  const g = G(); const u = g.users.find((x) => x.id === view.hover.u); const s = u.sessions[view.hover.s];
+  let total = 0; for (const x of u.sessions) total += x.e - x.s;
+  const { x, y } = view.hover;
+  const flipX = x > 900, flipY = y > 520;
+  const pos = `left:${flipX ? x - 262 : x + 12}px;top:${flipY ? y - 190 : y + 12}px`;
+  if (state.tip === "old")
+    return `<div class="stip old" style="${pos}"><div class="u"><img src="${u.avatar}">${u.name}</div>
+      <div style="color:${chSolid(s.ch)}">"${s.ch}" 채널</div><div style="color:#44e7a3">${fmtFull(s.s)} 입장</div>${s.online ? "" : `<div style="color:#e74444">${fmtFull(s.e)} 퇴장</div>`}
+      <div>${fmtDur(s.e - s.s)} 동안 연결</div><div style="color:#777">총 연결: ${fmtDur(total)}</div></div>`;
+  return `<div class="stip card" style="${pos}"><div class="u"><img src="${u.avatar}">${u.name}${s.online ? `<span class="dot" style="margin-left:auto"></span>` : ""}</div>
+    <span class="chn" style="background:${chSolid(s.ch)}">🔊 ${s.ch}</span>
+    <div class="ln"><span>입장</span><b>${tipTime(s.s)}</b></div><div class="ln"><span>퇴장</span><b>${s.online ? "접속 중" : tipTime(s.e)}</b></div>
+    <div class="ln"><span>이번 접속</span><b>${fmtDur(s.e - s.s)}</b></div><div class="tot">총 접속 ${fmtDur(total)}</div></div>`;
+}
+function render() {
+  app.dataset.theme = state.theme;
+  app.dataset.radius = state.barradius;
+  const g = G();
+  let body;
+  if (view.loading && state.loading === "skeleton") body = skeleton();
+  else if (view.page === "user") body = userPage(g, g.users.find((x) => x.id === view.user));
+  else if (view.tab === "stats" && state.sstats === "tab") body = `${header(g)}${stabs()}<div style="display:flex;flex-direction:column;gap:12px;flex:1;min-height:0;overflow:auto">${statsBody(g)}</div>`;
+  else if (state.rankwhere === "tabs" && view.tab === "rank") body = `${header(g)}${stabs()}${state.sstats === "rank" ? `<div data-cand="sstats" data-new style="display:flex;flex-direction:column;gap:12px;flex:0 0 auto">${statsBody(g)}</div>` : ""}${rankPage(g)}`;
+  else body = `${header(g)}${stabs()}${summary(g)}${nowStrip(g)}${controls(g)}
+      <div class="tlwrap"><div class="tl" data-cand="rows" id="tl">${timeline(g)}</div>${rpanel(g)}${rankPanel(g)}</div>
+      ${view.panel ? userPanel(g, g.users.find((x) => x.id === view.panel)) : ""}`;
+  app.innerHTML = `${view.loading && state.loading === "old" ? `<div class="loadbar" style="width:${view.loadP * 100}%"></div>` : ""}
+    ${serverNav()}<div class="main">${tabsNav()}<div class="content" data-cand="loading">${body}</div></div>
+    <div id="tipwrap">${sessionTip()}</div>${view.toast ? `<div class="toast">${view.toast}</div>` : ""}`;
+  app.querySelectorAll("[data-cand]").forEach((el) => { if (el.dataset.cand in CONFIRMED) el.removeAttribute("data-cand"); });
+}
+
+/* ================= app interactions ================= */
+app.addEventListener("click", (e) => {
+  if (document.body.classList.contains("shift")) return;
+  const el = e.target.closest("[data-guild],[data-preset],[data-zoom],[data-ch],[data-act],[data-user],[data-back],[data-closepanel],[data-tab],[data-rp],[data-rm],[data-rfull]");
+  if (!el) return;
+  if (el.dataset.guild) { view.guild = el.dataset.guild; view.hidden.clear(); view.page = "server"; view.panel = null; }
+  if (el.dataset.user) { if (state.click === "panel" && !el.dataset.force) view.panel = el.dataset.user; else { view.page = "user"; view.user = el.dataset.user; view.panel = null; } view.hover = null; }
+  if (el.dataset.back !== undefined) { view.page = "server"; view.tab = "timeline"; }
+  if (el.dataset.closepanel !== undefined) view.panel = null;
+  if (el.dataset.tab) view.tab = el.dataset.tab === "stats" && state.sstats !== "tab" ? "timeline" : el.dataset.tab;
+  if (el.dataset.rp) view.rperiod = el.dataset.rp;
+  if (el.dataset.rm) view.rmetric = el.dataset.rm;
+  if (el.dataset.rfull !== undefined) view.rfull = el.dataset.rfull || null;
+  if (el.dataset.tab || el.dataset.guild) view.rfull = null;
+  if (el.dataset.preset) { view.preset = el.dataset.preset; view.zoom = 1; view.center = null; }
+  if (el.dataset.zoom) view.zoom = Math.min(8, Math.max(minZoom(), view.zoom * +el.dataset.zoom));
+  if (el.dataset.ch) { const c = el.dataset.ch; view.hidden.has(c) ? view.hidden.delete(c) : view.hidden.add(c); }
+  if (el.dataset.act === "oldshare") { alert("복사되었습니다!"); return; }
+  if (el.dataset.act === "share") { view.toast = "링크를 복사했어요"; setTimeout(() => { view.toast = null; render(); }, 1600); }
+  render();
+});
+app.addEventListener("mousemove", (e) => {
+  if (e.shiftKey) return;
+  app.querySelectorAll(".fhov").forEach((h) => { if (!h.parentElement.contains(e.target)) h.innerHTML = ""; });
+  app.querySelectorAll(".heat i.hv").forEach((c) => c.classList.remove("hv"));
+  app.querySelectorAll(".ftip.cell").forEach((t) => t.remove());
+  if (state.fcur === "old") return;
+  const fw = e.target.closest(".fwrap");
+  if (fw) {
+    const r = fw.getBoundingClientRect();
+    fw.querySelector(".fhov").innerHTML = freqTipHtml(fw.dataset.f, e.clientX - r.left, r.width);
+    return;
+  }
+  const cell = e.target.closest(".heat i, .grass i[data-y]");
+  if (cell && (cell.dataset.y !== undefined || state.fcur === "tipheat")) {
+    let text;
+    if (cell.dataset.y !== undefined) { const y = FREQ.year[+cell.dataset.y]; const d = new Date(y.day); text = `<b>${d.getMonth() + 1}월 ${d.getDate()}일 (${DN[d.getDay()]})</b><br>${y.t ? `총 ${fmtDur(y.t)} · ${y.p}명` : "접속 없음"}`; }
+    else { const f = FREQ[cell.parentElement.dataset.h]; const d = +cell.dataset.d, h = +cell.dataset.hh; text = f.fmtCell(d, h, f.heat[d][h]).replace(/^(.*?) · /, "<b>$1</b><br>"); }
+    cell.classList.add("hv");
+    const ar = app.getBoundingClientRect(), cr = cell.getBoundingClientRect();
+    const t = document.createElement("div"); t.className = "ftip cell"; t.innerHTML = text;
+    t.style.left = `${Math.min(cr.right - ar.left + 8, ar.width - 230)}px`; t.style.top = `${cr.top - ar.top - 44}px`;
+    app.appendChild(t);
+  }
+});
+app.addEventListener("mousemove", (e) => {
+  const bar = e.target.closest(".bar");
+  const r = app.getBoundingClientRect();
+  if (bar) { view.hover = { u: bar.dataset.u, s: +bar.dataset.s, x: e.clientX - r.left, y: e.clientY - r.top }; }
+  else if (!view.hover) return; else view.hover = null;
+  document.getElementById("tipwrap").innerHTML = sessionTip();
+});
+function playLoading() {
+  view.loading = true; view.loadP = 0; render();
+  const t0 = performance.now(), dur = state.loading === "old" ? 2600 : 900;
+  const step = () => {
+    view.loadP = Math.min(1, (performance.now() - t0) / dur);
+    if (view.loadP < 1) { if (state.loading === "old") render(); requestAnimationFrame(step); }
+    else { view.loading = false; render(); }
+  };
+  requestAnimationFrame(step);
+}
+
+/* ================= note ================= */
+const list = document.getElementById("list");
+function renderNote() {
+  if (!OPEN_ITEMS.length) { list.innerHTML = `<div class="item"><div class="it">남은 후보 없음</div><div class="opt"><div class="d">지금까지 고른 내용이 모두 반영된 최종 모습임. 랭킹 탭의 '더보기'도 7차 의견대로 넣었음. 서버 아이콘, 랭킹 탭, 사람 이름을 눌러 둘러보고 확정 여부를 알려 주면 됨.</div></div></div>`; return; }
+  list.innerHTML = OPEN_ITEMS.map((it) => `<div class="item"><div class="it">${it.title}</div>${it.opts.map((o) => {
+    const k = `${it.key}:${o.id}`; const cur = state[it.key] === o.id;
+    return `<div class="opt ${cur ? "cur" : ""}" data-k="${it.key}" data-o="${o.id}"><div class="n">${o.name}${o.old && o.name !== "기존" ? `<span class="badge old">기존</span>` : ""}${o.rec ? `<span class="badge rec">추천</span>` : ""}</div><div class="d">${o.desc}</div>
+      ${cur && openComment === k ? `<textarea rows="1" data-k="${it.key}" data-o="${o.id}" placeholder="추가 의견 (선택)">${(comments[it.key]?.[o.id] ?? "").replace(/</g, "&lt;")}</textarea>` : ""}</div>`;
+  }).join("")}</div>`).join("");
+  const ta = list.querySelector("textarea");
+  if (ta) { autosize(ta); }
+}
+function autosize(ta) { ta.style.height = "auto"; ta.style.height = ta.scrollHeight + "px"; }
+function choose(key, opt, focus = true) {
+  const changed = state[key] !== opt;
+  state[key] = opt; openComment = `${key}:${opt}`;
+  renderNote();
+  if (["shape", "bounce", "bui"].includes(key) || (key === "bwhere" && opt === "user")) { if (view.page !== "user") { view.page = "user"; view.user = [...G().users].sort((x, y) => userStats(y).bounce.ratio - userStats(x).bounce.ratio)[0].id; } }
+  view.shared = key === "sharedview";
+  if (view.shared) { view.page = "server"; view.tab = "timeline"; }
+  if ((key === "bwhere" && opt === "both") || key === "ntime") view.page = "server";
+  if (["rankwhere", "ranklayout", "rankperiod"].includes(key)) { view.page = "server"; view.tab = state.rankwhere === "tabs" ? "rank" : "timeline"; }
+  if (key === "myrank" && view.page !== "user") { view.page = "user"; view.user = ranked(G(), "total", "all")[2]?.u.id ?? G().users[0].id; }
+  if (key === "barradius" && opt !== "all") { view.page = "user"; view.user = ranked(G(), "total", "all")[0].u.id; }
+  if (key === "barradius" && opt === "all") { view.page = "server"; view.tab = "timeline"; view.preset = "24h"; view.zoom = 1; view.center = null; }
+  if (["backsize", "ufill", "fcur"].includes(key)) { if (view.page !== "user") { view.page = "user"; view.user = ranked(G(), "total", "all")[0].u.id; } }
+  if (key === "badge") { view.page = "server"; view.tab = "timeline"; }
+  if (key === "zoom") {
+    view.page = "server"; view.tab = "timeline"; view.preset = "24h";
+    const u = G().users.find((x) => x.sessions.some((s) => s.online)); const s0 = u.sessions.find((s) => s.online).s;
+    view.center = s0 + MINSPAN[state.zoom] * 0.3; view.zoom = 1; view.zoom = minZoom();
+  }
+  if (["sstats", "sfreq", "grass", "scards"].includes(key)) { view.page = "server"; view.tab = state.sstats === "tab" ? "stats" : state.sstats === "rank" ? "rank" : "timeline"; view.rfull = null; }
+  if (key === "loading" && changed) playLoading(); else render();
+  const ta = list.querySelector("textarea");
+  if (ta && focus) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); ta.closest(".opt").scrollIntoView({ block: "nearest" }); }
+}
+list.addEventListener("click", (e) => {
+  if (e.target.tagName === "TEXTAREA") return;
+  const o = e.target.closest(".opt"); if (!o) return;
+  choose(o.dataset.k, o.dataset.o);
+});
+list.addEventListener("input", (e) => {
+  if (e.target.tagName !== "TEXTAREA") return;
+  (comments[e.target.dataset.k] ??= {})[e.target.dataset.o] = e.target.value; autosize(e.target);
+});
+document.getElementById("copy").onclick = async () => {
+  const lines = ["[watcher 막대 모서리 시안 결과]"];
+  for (const it of OPEN_ITEMS) {
+    const o = it.opts.find((x) => x.id === state[it.key]);
+    const c = comments[it.key]?.[o.id]?.trim();
+    lines.push(`- ${it.title}: ${o.name}${c ? ` — 의견: ${c.replace(/\n/g, " / ")}` : ""}`);
+  }
+  const text = lines.join("\n");
+  try { await navigator.clipboard.writeText(text); } catch { const t = document.createElement("textarea"); t.value = text; document.body.appendChild(t); t.select(); document.execCommand("copy"); t.remove(); }
+  const c = document.getElementById("copied"); c.style.display = "inline"; setTimeout(() => (c.style.display = "none"), 1500);
+};
+const sw = document.getElementById("newsw");
+sw.onclick = () => { sw.classList.toggle("on"); document.body.classList.toggle("shownew", sw.classList.contains("on")); };
+
+/* ================= shift + candidate tooltip ================= */
+const ctip = document.getElementById("ctip");
+let ctipKey = null;
+document.addEventListener("keydown", (e) => { if (e.key === "Shift") document.body.classList.add("shift"); if (e.key === "Escape") closeTip(); });
+document.addEventListener("keyup", (e) => { if (e.key === "Shift") document.body.classList.remove("shift"); });
+window.addEventListener("blur", () => document.body.classList.remove("shift"));
+function closeTip() { ctip.style.display = "none"; ctipKey = null; }
+function openTip(key, x, y) {
+  const it = ITEMS.find((i) => i.key === key);
+  ctipKey = key;
+  ctip.innerHTML = `<div class="t">${it.title}</div>${it.opts.map((o) => `<div class="o ${state[key] === o.id ? "cur" : ""}" data-o="${o.id}"><div class="n">${o.name}${o.old && o.name !== "기존" ? `<span class="badge old">기존</span>` : ""}${o.rec ? `<span class="badge rec">추천</span>` : ""}</div><div class="d">${o.desc}</div></div>`).join("")}`;
+  ctip.style.display = "block";
+  const w = 300, h = ctip.offsetHeight;
+  ctip.style.left = Math.min(x + 6, innerWidth - w - 8) + "px";
+  ctip.style.top = Math.min(y + 6, innerHeight - h - 8) + "px";
+}
+document.addEventListener("mousemove", (e) => {
+  if (!e.shiftKey) return;
+  if (ctip.contains(e.target)) return;
+  const c = e.target.closest("[data-cand]");
+  if (!c) return;
+  const key = c.dataset.cand;
+  if (key !== ctipKey) openTip(key, e.clientX, e.clientY);
+});
+ctip.addEventListener("click", (e) => {
+  const o = e.target.closest(".o"); if (!o) return;
+  choose(ctipKey, o.dataset.o, false);
+  openTip(ctipKey, parseFloat(ctip.style.left) - 6, parseFloat(ctip.style.top) - 6);
+});
+document.addEventListener("mousedown", (e) => { if (ctip.style.display === "block" && !ctip.contains(e.target) && !e.shiftKey) closeTip(); });
+
+renderNote();
+playLoading();
+setInterval(() => { if (!view.loading && !view.hover) render(); }, 30000);
+</script>
+</body>
+</html>
