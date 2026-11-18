@@ -239,7 +239,7 @@
 <div id="app"></div>
 <div id="note">
   <div class="top">
-    <div class="r"><h2>watcher 리디자인 시안 (5차)</h2><span id="copied">복사됨</span><button id="copy">결과 복사</button></div>
+    <div class="r"><h2>watcher 리디자인 시안 (6차)</h2><span id="copied">복사됨</span><button id="copy">결과 복사</button></div>
     <div class="help">항목에서 옵션을 고르면 시안이 바로 바뀌고 의견을 적을 수 있음. <b>Shift</b>를 누르면 <span class="k1">파란 점선</span>은 누를 수 있는 곳, <span class="k2">주황 점선</span>은 후보가 있는 곳(올리면 후보 툴팁).</div>
   </div>
   <div class="list" id="list"></div>
@@ -414,13 +414,17 @@ const ITEMS = [
     { id: "stat", name: "요약 카드 5번째", desc: "위 요약 카드와 같은 모양으로 숫자만. 아래에 '접속 N번 중 M번'" },
     { id: "statmini", name: "요약 카드 + 미니 막대", desc: "요약 카드와 같은 모양, 카드 오른쪽에 최근 14일 들낙 횟수 미니 막대", rec: 1 },
     { id: "statdaily", name: "요약 카드 + 일별 그래프에 겹치기", desc: "요약 카드에는 숫자만, 14일 들낙 횟수는 '일별 접속 시간' 그래프에 주황 막대로 같이" } ] },
+  { key: "ntime", title: "타임라인 이름 옆 시간", opts: [
+    { id: "plain", name: "오늘 접속 시간 (설명 없음)", desc: "5차 시안 모습. 오늘 0시부터 지금까지 접속한 시간, 없으면 '-'", old: 1 },
+    { id: "label", name: "오늘 접속 시간 + 머리글 표시", desc: "같은 값인데 열 머리글에 '오늘'을 적어 무슨 시간인지 보이게 함", rec: 1 },
+    { id: "range", name: "보이는 기간 안 접속 시간", desc: "지금 보고 있는 기간(최근 24시간·오늘·7일·확대) 안에서 접속한 시간. 머리글에 '기간 내'" } ] },
   { key: "share", title: "링크 공유", opts: [
     { id: "old", name: "기존", desc: "서버 이름(제목)을 누르면 주소 복사 후 알림창", old: 1 },
     { id: "btn", name: "공유 버튼 + 토스트", desc: "이름 옆 공유 버튼, 복사되면 화면 아래 짧은 안내", rec: 1 } ] },
 ];
 const state = {}; ITEMS.forEach((it) => (state[it.key] = it.opts.find((o) => o.rec)?.id ?? it.opts[0].id));
 // round 2: confirmed choices are fixed and hidden from the note
-const CONFIRMED = { theme: "slate", layout: "rail", rows: "fixed", ctrl: "seg", summary: "cards", now: "chips", legend: "filter", tip: "card", loading: "skeleton", share: "btn", after: "avatar", click: "page", freq: "both", ublocks: "full", shape: "smooth", bounce: "both", bwhere: "user" };
+const CONFIRMED = { theme: "slate", layout: "rail", rows: "fixed", ctrl: "seg", summary: "cards", now: "chips", legend: "filter", tip: "card", loading: "skeleton", share: "btn", after: "avatar", click: "page", freq: "both", ublocks: "full", shape: "smooth", bounce: "both", bwhere: "user", bui: "statmini" };
 Object.assign(state, CONFIRMED);
 const OPEN_ITEMS = ITEMS.filter((it) => !(it.key in CONFIRMED));
 const comments = {}; // key -> optId -> text
@@ -523,15 +527,15 @@ function timeline(g) {
   const st0 = sod();
   let html = `<div class="axis">${ticks(a, b, bw).map((k) => `<span class="${k.major ? "major" : ""}" style="left:${X(k.t)}px">${k.label}</span>`).join("")}</div>`;
   html += ticks(a, b, bw).map((k) => `<div class="gridline" style="left:${X(k.t)}px"></div>`).join("");
-  if (fixed) html += `<div class="axis" style="width:${NC}px;border-right:1px solid var(--line);background:var(--panel);z-index:2"><span style="left:${NC / 2}px">사람</span></div>`;
+  if (fixed) html += `<div class="axis" style="width:${NC}px;border-right:1px solid var(--line);background:var(--panel);z-index:2"><span style="left:${state.ntime === "plain" ? NC / 2 : 34}px">사람</span>${state.ntime === "plain" ? "" : `<span data-cand="ntime" style="left:auto;right:10px;transform:none">${state.ntime === "label" ? "오늘 접속" : "기간 내 접속"}</span>`}</div>`;
   const shown = view.loading && state.loading === "old" ? Math.floor(users.length * view.loadP) : users.length;
   html += `<div class="rows">`;
   users.slice(0, shown).forEach((u, i) => {
     const y = 8 + i * rowH;
     const on = isOnline(u);
-    let today = 0; for (const s of u.sessions) { const p = Math.max(s.s, st0), q = Math.min(s.e, NOW); if (q > p) today += q - p; }
+    let today = 0; const [ra, rb] = state.ntime === "range" ? [a, Math.min(b, NOW)] : [st0, NOW]; for (const s of u.sessions) { const p = Math.max(s.s, ra), q = Math.min(s.e, rb); if (q > p) today += q - p; }
     html += `<div class="row ${fixed && i % 2 ? "alt" : ""}" data-cand="after" style="top:${y - 4}px;height:${rowH}px">`;
-    if (fixed) html += `<div class="namecol ${state.click !== "none" ? "link" : ""}" ${state.click !== "none" ? `data-click data-user="${u.id}"` : ""} data-cand="click" style="width:${NC}px">${state.rows === "compact" ? "" : `<img src="${u.avatar}">`}<span class="nm">${u.name}</span>${on ? `<span class="on"></span>` : ""}<span class="sub">${today ? fmtDur(today) : "-"}</span></div>`;
+    if (fixed) html += `<div class="namecol ${state.click !== "none" ? "link" : ""}" ${state.click !== "none" ? `data-click data-user="${u.id}"` : ""} data-cand="click" style="width:${NC}px">${state.rows === "compact" ? "" : `<img src="${u.avatar}">`}<span class="nm">${u.name}</span>${on ? `<span class="on"></span>` : ""}<span class="sub" data-cand="ntime">${today ? fmtDur(today) : "-"}</span></div>`;
     const vis = u.sessions.filter((s) => s.e > a && s.s < b && !view.hidden.has(s.ch));
     vis.forEach((s, si) => {
       const x1 = Math.max(X(s.s), NC), x2 = Math.min(X(s.e), W);
@@ -670,7 +674,7 @@ function userPage(g, u) {
     <div class="uhead" data-new><img src="${u.avatar}"><div><div class="nm">${u.name}<span class="pill ${on ? "" : "off"}">${on ? "접속 중 · " + last.ch : "오프라인"}</span>
       <button class="btn sharebtn" data-click data-act="share">🔗 공유</button></div><div class="st">${g.name} · 마지막 접속 ${on ? "지금" : last ? fmtFull(last.e) : "-"}</div></div></div>
     <div class="summary">
-      <div class="stat"><div class="k">최근 30일 총 접속</div><div class="v">${fmtDur(st.total)}</div></div>
+      <div class="stat"><div class="k">누적 총 접속</div><div class="v">${fmtDur(u.sessions.reduce((acc, x) => acc + (x.e - x.s), 0))}</div><div class="k" style="font-size:11px;margin-top:2px">${(() => { const d = new Date(u.sessions[0]?.s ?? NOW); return `${d.getFullYear()}.${p2(d.getMonth() + 1)}.${p2(d.getDate())}부터 기록`; })()}</div></div>
       <div class="stat"><div class="k">접속한 날</div><div class="v">${st.days}일 / 30일</div></div>
       <div class="stat"><div class="k">평균 접속 길이</div><div class="v">${fmtDur(st.avg)}</div></div>
       <div class="stat"><div class="k">가장 많이 간 채널</div><div class="v"><span style="width:14px;height:14px;border-radius:7px;display:inline-block;background:${chSolid(topCh[0]?.[0] ?? "")}"></span>${topCh[0]?.[0] ?? "-"}</div></div>${bstat}</div>
@@ -765,7 +769,7 @@ function choose(key, opt, focus = true) {
   state[key] = opt; openComment = `${key}:${opt}`;
   renderNote();
   if (["shape", "bounce", "bui"].includes(key) || (key === "bwhere" && opt === "user")) { if (view.page !== "user") { view.page = "user"; view.user = [...G().users].sort((x, y) => userStats(y).bounce.ratio - userStats(x).bounce.ratio)[0].id; } }
-  if (key === "bwhere" && opt === "both") view.page = "server";
+  if ((key === "bwhere" && opt === "both") || key === "ntime") view.page = "server";
   if (key === "loading" && changed) playLoading(); else render();
   const ta = list.querySelector("textarea");
   if (ta && focus) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); ta.closest(".opt").scrollIntoView({ block: "nearest" }); }
@@ -780,7 +784,7 @@ list.addEventListener("input", (e) => {
   (comments[e.target.dataset.k] ??= {})[e.target.dataset.o] = e.target.value; autosize(e.target);
 });
 document.getElementById("copy").onclick = async () => {
-  const lines = ["[watcher 리디자인 시안 5차 선택 결과]"];
+  const lines = ["[watcher 리디자인 시안 6차 선택 결과]"];
   for (const it of OPEN_ITEMS) {
     const o = it.opts.find((x) => x.id === state[it.key]);
     const c = comments[it.key]?.[o.id]?.trim();
