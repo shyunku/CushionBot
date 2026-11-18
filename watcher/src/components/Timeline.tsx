@@ -48,6 +48,8 @@ function tickStep(a: number, b: number, width: number) {
 }
 /** From this grid step down, the timeline redraws every frame so the now line moves smoothly. */
 const LIVE_STEP = 10 * MIN;
+/** Duration of the eased wheel zoom. */
+const WHEEL_EASE_MS = 300;
 
 /** Current time redrawn on every animation frame while `on`; otherwise the shared 5-second clock. */
 function useLiveNow(base: number, offset: number, on: boolean) {
@@ -123,27 +125,56 @@ export default function Timeline({ people, hidden, range, now: baseNow, clockOff
     return () => ro.disconnect();
   }, []);
 
-  // wheel zoom around the mouse position (needs a non-passive listener)
+  // wheel zoom around the mouse position (needs a non-passive listener), eased toward the target range
   const rangeRef = useRef(range);
   rangeRef.current = range;
+  const anim = useRef<{ from: [number, number]; to: [number, number]; t0: number; raf: number; last: [number, number] } | null>(null);
+  const stopAnim = () => {
+    if (anim.current) cancelAnimationFrame(anim.current.raf);
+    anim.current = null;
+  };
+  useEffect(() => stopAnim, []);
   useEffect(() => {
     const el = box.current;
     if (!el) return;
+    const step = (ts: number) => {
+      const a = anim.current;
+      if (!a) return;
+      // someone else (preset, buttons) moved the range: let them win
+      const cur = rangeRef.current;
+      if (cur[0] !== a.last[0] || cur[1] !== a.last[1]) {
+        anim.current = null;
+        return;
+      }
+      const p = Math.min(1, (ts - a.t0) / WHEEL_EASE_MS);
+      const k = 1 - Math.pow(1 - p, 3);
+      const next: [number, number] = [a.from[0] + (a.to[0] - a.from[0]) * k, a.from[1] + (a.to[1] - a.from[1]) * k];
+      a.last = next;
+      rangeRef.current = next;
+      onRangeChange(next);
+      if (p < 1) a.raf = requestAnimationFrame(step);
+      else anim.current = null;
+    };
     const onWheel = (e: WheelEvent) => {
       const rect = el.getBoundingClientRect();
       const x = e.clientX - rect.left;
       if (x < NC) return;
       e.preventDefault();
-      const [ra, rb] = rangeRef.current;
+      // keep zooming from where the running animation is heading
+      const [ra, rb] = anim.current ? anim.current.to : rangeRef.current;
       const span = rb - ra;
       const factor = e.deltaY < 0 ? 0.8 : 1.25;
       const nextSpan = Math.min(MAX_SPAN, Math.max(MIN_SPAN, span * factor));
       const w = el.clientWidth - NC - 24;
       const at = ra + ((x - NC - 12) / w) * span;
       const r = (at - ra) / span;
-      const next: [number, number] = [at - r * nextSpan, at + (1 - r) * nextSpan];
-      rangeRef.current = next;
-      onRangeChange(next);
+      const to: [number, number] = [at - r * nextSpan, at + (1 - r) * nextSpan];
+      const from: [number, number] = [...rangeRef.current];
+      if (anim.current) {
+        Object.assign(anim.current, { from, to, t0: performance.now() });
+      } else {
+        anim.current = { from, to, t0: performance.now(), raf: requestAnimationFrame(step), last: from };
+      }
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
@@ -154,18 +185,23 @@ export default function Timeline({ people, hidden, range, now: baseNow, clockOff
     if (!el || e.button !== 0) return;
     const rect = el.getBoundingClientRect();
     if (e.clientX - rect.left < NC) return;
+    stopAnim();
     const startX = e.clientX;
     const [ra, rb] = rangeRef.current;
     const w = el.clientWidth - NC - 24;
     let moved = false;
     const move = (ev: MouseEvent) => {
       const dx = ev.clientX - startX;
-      if (Math.abs(dx) > 2) moved = true;
+      if (!moved && Math.abs(dx) > 2) {
+        moved = true;
+        el.classList.add("dragging");
+      }
       if (!moved) return;
       const dt = -(dx / w) * (rb - ra);
       onRangeChange([ra + dt, rb + dt]);
     };
     const up = () => {
+      el.classList.remove("dragging");
       window.removeEventListener("mousemove", move);
       window.removeEventListener("mouseup", up);
     };
