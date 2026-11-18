@@ -35,13 +35,38 @@ type Props = {
   hidden: Set<string>;
   range: [number, number];
   now: number;
+  /** bot clock minus browser clock */
+  clockOffset: number;
   onRangeChange: (r: [number, number]) => void;
   onOpenPerson: (id: string) => void;
 };
 
+const STEPS = [SEC, 2 * SEC, 5 * SEC, 10 * SEC, 15 * SEC, 30 * SEC, MIN, 5 * MIN, 10 * MIN, 30 * MIN, H, 2 * H, 3 * H, 6 * H, 12 * H, D, 2 * D, 7 * D, 14 * D, 30 * D];
+/** Grid step that keeps ticks at least 64px apart. */
+function tickStep(a: number, b: number, width: number) {
+  return STEPS.find((s) => width / ((b - a) / s) >= 64) ?? 30 * D;
+}
+/** From this grid step down, the timeline redraws every frame so the now line moves smoothly. */
+const LIVE_STEP = 10 * MIN;
+
+/** Current time redrawn on every animation frame while `on`; otherwise the shared 5-second clock. */
+function useLiveNow(base: number, offset: number, on: boolean) {
+  const [t, setT] = useState(base);
+  useEffect(() => {
+    if (!on) return;
+    let raf = 0;
+    const loop = () => {
+      setT(Date.now() + offset);
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [on, offset]);
+  return on ? Math.max(base, t) : base;
+}
+
 function ticks(a: number, b: number, width: number) {
-  const steps = [SEC, 2 * SEC, 5 * SEC, 10 * SEC, 15 * SEC, 30 * SEC, MIN, 5 * MIN, 10 * MIN, 30 * MIN, H, 2 * H, 3 * H, 6 * H, 12 * H, D, 2 * D, 7 * D, 14 * D, 30 * D];
-  const step = steps.find((s) => width / ((b - a) / s) >= 64) ?? 30 * D;
+  const step = tickStep(a, b, width);
   const out: { t: number; label: string; major: boolean }[] = [];
   const start = new Date(a);
   start.setHours(0, 0, 0, 0);
@@ -72,7 +97,7 @@ function ticks(a: number, b: number, width: number) {
   return out;
 }
 
-export default function Timeline({ people, hidden, range, now, onRangeChange, onOpenPerson }: Props) {
+export default function Timeline({ people, hidden, range, now: baseNow, clockOffset, onRangeChange, onOpenPerson }: Props) {
   const box = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(1000);
   const [hover, setHover] = useState<{ p: Person; s: Session; x: number; y: number } | null>(null);
@@ -87,6 +112,7 @@ export default function Timeline({ people, hidden, range, now, onRangeChange, on
   const [a, b] = range;
   const bw = Math.max(50, width - NC - 24);
   const X = (t: number) => NC + 12 + ((t - a) / (b - a)) * bw;
+  const now = useLiveNow(baseNow, clockOffset, tickStep(a, b, bw) <= LIVE_STEP);
 
   useLayoutEffect(() => {
     const el = box.current;

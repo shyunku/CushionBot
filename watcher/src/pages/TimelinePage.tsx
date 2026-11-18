@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useGuild, useNow } from "../context";
+import { useGuild } from "../context";
 import Header from "../components/Header";
 import Timeline, { MAX_SPAN, MIN_SPAN, SECONDS_SPAN } from "../components/Timeline";
 import { solidColor } from "../colors";
@@ -30,8 +30,6 @@ export default function TimelinePage() {
   const hidden = useMemo(() => new Set(hiddenByGuild[guildId] ?? []), [hiddenByGuild, guildId]);
   const range = preset ? presetRange(preset, now) : custom;
   const seconds = range[1] - range[0] < SECONDS_SPAN;
-  // tick the timeline every second while it is zoomed in to seconds
-  const tlNow = Math.max(now, useNow(data.clockOffset, seconds ? 1000 : 5000));
   const fmtRange = (t: number) => (seconds ? `${fmtFull(t)}:${p2(new Date(t).getSeconds())}` : fmtFull(t));
 
   const onRangeChange = useCallback((r: [number, number]) => {
@@ -145,7 +143,8 @@ export default function TimelinePage() {
           people={data.people}
           hidden={hidden}
           range={range}
-          now={tlNow}
+          now={now}
+          clockOffset={data.clockOffset}
           onRangeChange={onRangeChange}
           onOpenPerson={(id) => navigate(`${base}/users/${id}`)}
         />
