@@ -11,3 +11,12 @@
 
 Lavalink.jar
 application.yml
+
+# Local backups, logs and runtime data
+application.yml.bak-*
+*.jar.bak
+nohup.out
+/datafiles/
+
+# Lavalink downloads plugins on startup
+/plugins/
