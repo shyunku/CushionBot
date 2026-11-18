@@ -107,12 +107,25 @@ public class GuildWatcher {
             };
             accessSessions = mapper.readValue(json.toString(), typeRef);
 
+            // Sessions still open in the file were cut off when the bot stopped. The file is saved on every
+            // voice event, so its last-modified time is the latest moment the bot is known to have been
+            // recording; close them there. Members still in voice get a new session from now (below).
+            long lastSaved = file.lastModified();
+            int closed = 0;
             for (Map.Entry<String, Map<String, List<AccessSession>>> guildEntry : accessSessions.entrySet()) {
                 for (Map.Entry<String, List<AccessSession>> userEntry : guildEntry.getValue().entrySet()) {
                     List<AccessSession> sessions = userEntry.getValue();
                     removeOldSessions(sessions);
                     removeUnlastUncompleteSession(sessions);
+                    AccessSession lastSession = getLastSession(sessions);
+                    if (lastSession != null && !lastSession.isComplete()) {
+                        lastSession.setLeaveTime(Math.max(lastSession.getJoinTime(), lastSaved));
+                        closed++;
+                    }
                 }
+            }
+            if (closed > 0) {
+                logger.info("Closed {} sessions left open by the previous run at {}", closed, new Date(lastSaved));
             }
 
             JDA jda = CushionBot.jda;
