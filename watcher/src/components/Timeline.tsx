@@ -9,6 +9,24 @@ const ROW_H = 40;
 const BAR_H = 24;
 const MIN_SPAN = 10 * MIN;
 const MAX_SPAN = 400 * D;
+// after-bar label: 8px gap + 20px avatar + 6px gap + text, and keep 6px clear of the next bar
+const LABEL_GAP = 8;
+const LABEL_FIXED = 20 + 6;
+const LABEL_CLEAR = 6;
+
+let measureCtx: CanvasRenderingContext2D | null = null;
+const widthCache = new Map<string, number>();
+function textWidth(text: string) {
+  let w = widthCache.get(text);
+  if (w === undefined) {
+    measureCtx ??= document.createElement("canvas").getContext("2d");
+    if (!measureCtx) return text.length * 12;
+    measureCtx.font = `12px ${getComputedStyle(document.body).fontFamily}`;
+    w = Math.ceil(measureCtx.measureText(text).width);
+    widthCache.set(text, w);
+  }
+  return w;
+}
 
 type Props = {
   people: Person[];
@@ -53,6 +71,14 @@ export default function Timeline({ people, hidden, range, now, onRangeChange, on
   const box = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(1000);
   const [hover, setHover] = useState<{ p: Person; s: Session; x: number; y: number } | null>(null);
+  const [, setFontsReady] = useState(false);
+  useEffect(() => {
+    // label widths are measured with the web font, so re-measure once it has loaded
+    document.fonts?.ready.then(() => {
+      widthCache.clear();
+      setFontsReady(true);
+    });
+  }, []);
   const [a, b] = range;
   const bw = Math.max(50, width - NC - 24);
   const X = (t: number) => NC + 12 + ((t - a) / (b - a)) * bw;
@@ -173,9 +199,10 @@ export default function Timeline({ people, hidden, range, now, onRangeChange, on
                 const x1 = Math.max(X(s.s), NC);
                 const x2 = Math.min(X(endOf(s, now)), width);
                 if (x2 <= x1) return null;
+                // show the label only when it fits entirely before the next bar and the right edge
                 const next = sessions[si + 1];
-                const gap = next ? X(next.s) - x2 : Infinity;
-                const label = gap > 90 && x2 + 90 < width;
+                const labelEnd = x2 + LABEL_GAP + LABEL_FIXED + textWidth(p.name) + LABEL_CLEAR;
+                const label = labelEnd <= (next ? X(next.s) : Infinity) && labelEnd <= width;
                 return (
                   <div key={s.s}>
                     <div
