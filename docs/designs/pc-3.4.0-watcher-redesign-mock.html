@@ -269,7 +269,7 @@
 <div id="app"></div>
 <div id="note">
   <div class="top">
-    <div class="r"><h2>watcher 리디자인 시안 (7차)</h2><span id="copied">복사됨</span><button id="copy">결과 복사</button></div>
+    <div class="r"><h2>watcher 리디자인 시안 (8차 · 최종 확인)</h2><span id="copied">복사됨</span><button id="copy">결과 복사</button></div>
     <div class="help">항목에서 옵션을 고르면 시안이 바로 바뀌고 의견을 적을 수 있음. <b>Shift</b>를 누르면 <span class="k1">파란 점선</span>은 누를 수 있는 곳, <span class="k2">주황 점선</span>은 후보가 있는 곳(올리면 후보 툴팁).</div>
   </div>
   <div class="list" id="list"></div>
@@ -471,12 +471,12 @@ const ITEMS = [
 ];
 const state = {}; ITEMS.forEach((it) => (state[it.key] = it.opts.find((o) => o.rec)?.id ?? it.opts[0].id));
 // round 2: confirmed choices are fixed and hidden from the note
-const CONFIRMED = { theme: "slate", layout: "rail", rows: "fixed", ctrl: "seg", summary: "cards", now: "chips", legend: "filter", tip: "card", loading: "skeleton", share: "btn", after: "avatar", click: "page", freq: "both", ublocks: "full", shape: "smooth", bounce: "both", bwhere: "user", bui: "statmini", ntime: "range" };
+const CONFIRMED = { theme: "slate", layout: "rail", rows: "fixed", ctrl: "seg", summary: "cards", now: "chips", legend: "filter", tip: "card", loading: "skeleton", share: "btn", after: "avatar", click: "page", freq: "both", ublocks: "full", shape: "smooth", bounce: "both", bwhere: "user", bui: "statmini", ntime: "range", rankwhere: "tabs", ranklayout: "boards", rankperiod: "switch", myrank: "badge", sharedview: "hide" };
 Object.assign(state, CONFIRMED);
 const OPEN_ITEMS = ITEMS.filter((it) => !(it.key in CONFIRMED));
 const comments = {}; // key -> optId -> text
 let openComment = null; // `${key}:${optId}`
-const view = { shared: false, tab: "timeline", rperiod: "all", rmetric: "total", page: "server", user: null, panel: null, guild: "g1", preset: "24h", zoom: 1, hidden: new Set(), loading: false, loadP: 1, toast: null, hover: null };
+const view = { rfull: null, shared: false, tab: "timeline", rperiod: "all", rmetric: "total", page: "server", user: null, panel: null, guild: "g1", preset: "24h", zoom: 1, hidden: new Set(), loading: false, loadP: 1, toast: null, hover: null };
 
 /* ================= render app ================= */
 const app = document.getElementById("app");
@@ -723,9 +723,15 @@ function rankPage(g) {
     return `${top}<div class="card" data-cand="ranklayout" style="flex:1;overflow:auto;padding:4px 6px"><table class="rt"><thead><tr><th>#</th><th>사람</th>${METRICS.map((x) => `<th class="${x.key === m.key ? "sel" : ""}" data-click data-rm="${x.key}">${x.name}${x.key === m.key ? " ▼" : ""}</th>`).join("")}</tr></thead>
       <tbody>${rows.map((r, i) => `<tr data-user="${r.u.id}"><td>${i + 1}</td><td><span style="display:inline-flex;align-items:center;gap:8px"><img src="${r.u.avatar}" style="width:20px;height:20px;border-radius:10px">${r.u.name}</span></td>${METRICS.map((x) => `<td class="${x.key === m.key ? "sel" : ""}">${r.m[x.key] == null ? "-" : x.fmt(r.m[x.key])}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
   }
+  if (view.rfull) {
+    const m = METRICS.find((x) => x.key === view.rfull);
+    const r = ranked(g, m.key, period); const max = r[0]?.v || 1;
+    return `${top}<div class="card lb" data-new style="flex:1;overflow:auto"><h5><span class="back" data-click data-rfull="">← 리더보드</span><span style="color:var(--strong);font-size:14px;font-weight:700;margin-left:8px">${m.name} 전체 랭킹</span><span>${r.length}명${m.note ? " · " + m.note : ""}</span></h5>
+      ${r.map((x, i) => `<div class="r" data-click data-user="${x.u.id}"><span class="no ${i < 3 ? "m" + (i + 1) : ""}">${i + 1}</span><img src="${x.u.avatar}"><span class="nm" style="min-width:90px">${x.u.name}</span><span class="bar2"><i style="width:${(x.v / max) * 100}%"></i></span><span class="val" style="width:110px">${m.fmt(x.v)}</span></div>`).join("")}</div>`;
+  }
   return `${top}<div class="boards" data-cand="ranklayout">${METRICS.map((m) => {
-    const r = ranked(g, m.key, period).slice(0, 5); const max = r[0]?.v || 1;
-    return `<div class="card lb"><h5>${m.name}</h5>${r.map((x, i) => `<div class="r" data-click data-user="${x.u.id}"><span class="no ${i < 3 ? "m" + (i + 1) : ""}">${i + 1}</span><img src="${x.u.avatar}"><span class="nm">${x.u.name}</span><span class="bar2"><i style="width:${(x.v / max) * 100}%"></i></span><span class="val">${m.fmt(x.v)}</span></div>`).join("") || `<div class="note">기록 없음</div>`}${m.note ? `<div class="note">${m.note}</div>` : ""}</div>`;
+    const all = ranked(g, m.key, period); const r = all.slice(0, 5); const max = r[0]?.v || 1;
+    return `<div class="card lb"><h5>${m.name}${all.length > 5 ? `<span style="margin-left:auto;color:var(--accent);cursor:pointer;font-size:12px;font-weight:600" data-click data-rfull="${m.key}" data-new>더보기 (${all.length}명) →</span>` : ""}</h5>${r.map((x, i) => `<div class="r" data-click data-user="${x.u.id}"><span class="no ${i < 3 ? "m" + (i + 1) : ""}">${i + 1}</span><img src="${x.u.avatar}"><span class="nm">${x.u.name}</span><span class="bar2"><i style="width:${(x.v / max) * 100}%"></i></span><span class="val">${m.fmt(x.v)}</span></div>`).join("") || `<div class="note">기록 없음</div>`}${m.note ? `<div class="note">${m.note}</div>` : ""}</div>`;
   }).join("")}</div>`;
 }
 function rankPanel(g) {
@@ -821,7 +827,7 @@ function render() {
 /* ================= app interactions ================= */
 app.addEventListener("click", (e) => {
   if (document.body.classList.contains("shift")) return;
-  const el = e.target.closest("[data-guild],[data-preset],[data-zoom],[data-ch],[data-act],[data-user],[data-back],[data-closepanel],[data-tab],[data-rp],[data-rm]");
+  const el = e.target.closest("[data-guild],[data-preset],[data-zoom],[data-ch],[data-act],[data-user],[data-back],[data-closepanel],[data-tab],[data-rp],[data-rm],[data-rfull]");
   if (!el) return;
   if (el.dataset.guild) { view.guild = el.dataset.guild; view.hidden.clear(); view.page = "server"; view.panel = null; }
   if (el.dataset.user) { if (state.click === "panel" && !el.dataset.force) view.panel = el.dataset.user; else { view.page = "user"; view.user = el.dataset.user; view.panel = null; } view.hover = null; }
@@ -830,6 +836,8 @@ app.addEventListener("click", (e) => {
   if (el.dataset.tab) view.tab = el.dataset.tab;
   if (el.dataset.rp) view.rperiod = el.dataset.rp;
   if (el.dataset.rm) view.rmetric = el.dataset.rm;
+  if (el.dataset.rfull !== undefined) view.rfull = el.dataset.rfull || null;
+  if (el.dataset.tab || el.dataset.guild) view.rfull = null;
   if (el.dataset.preset) { view.preset = el.dataset.preset; view.zoom = 1; }
   if (el.dataset.zoom) view.zoom = Math.min(8, Math.max(0.05, view.zoom * +el.dataset.zoom));
   if (el.dataset.ch) { const c = el.dataset.ch; view.hidden.has(c) ? view.hidden.delete(c) : view.hidden.add(c); }
@@ -858,6 +866,7 @@ function playLoading() {
 /* ================= note ================= */
 const list = document.getElementById("list");
 function renderNote() {
+  if (!OPEN_ITEMS.length) { list.innerHTML = `<div class="item"><div class="it">남은 후보 없음</div><div class="opt"><div class="d">지금까지 고른 내용이 모두 반영된 최종 모습임. 랭킹 탭의 '더보기'도 7차 의견대로 넣었음. 서버 아이콘, 랭킹 탭, 사람 이름을 눌러 둘러보고 확정 여부를 알려 주면 됨.</div></div></div>`; return; }
   list.innerHTML = OPEN_ITEMS.map((it) => `<div class="item"><div class="it">${it.title}</div>${it.opts.map((o) => {
     const k = `${it.key}:${o.id}`; const cur = state[it.key] === o.id;
     return `<div class="opt ${cur ? "cur" : ""}" data-k="${it.key}" data-o="${o.id}"><div class="n">${o.name}${o.old && o.name !== "기존" ? `<span class="badge old">기존</span>` : ""}${o.rec ? `<span class="badge rec">추천</span>` : ""}</div><div class="d">${o.desc}</div>
@@ -891,7 +900,7 @@ list.addEventListener("input", (e) => {
   (comments[e.target.dataset.k] ??= {})[e.target.dataset.o] = e.target.value; autosize(e.target);
 });
 document.getElementById("copy").onclick = async () => {
-  const lines = ["[watcher 리디자인 시안 7차 선택 결과]"];
+  const lines = ["[watcher 리디자인 시안 8차 확인 결과]"];
   for (const it of OPEN_ITEMS) {
     const o = it.opts.find((x) => x.id === state[it.key]);
     const c = comments[it.key]?.[o.id]?.trim();
