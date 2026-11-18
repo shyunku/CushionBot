@@ -281,6 +281,7 @@
   #app .legend { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; }
   #app .lg { flex: 0 0 auto; }
   #app .tlwrap { min-height: 420px; }
+  #app .rows { overflow-y: auto; }
   #app .boards, #app .grid2 { grid-template-columns: 1fr !important; }
   #app .uhead .nm { font-size: 19px; flex-wrap: wrap; }
   #app .uhead img { width: 44px; height: 44px; }
@@ -313,6 +314,30 @@
   /* bar info as a bottom sheet */
   #app[data-mtip="sheet"] .stip.card { left: 0 !important; right: 0; top: auto !important; bottom: 0; width: auto; border-radius: 16px 16px 0 0; padding: 16px 18px 26px; z-index: 30; }
   #app[data-mtip="sheet"] .stip.card::before { content: ""; display: block; width: 40px; height: 4px; border-radius: 2px; background: var(--line); margin: -6px auto 10px; }
+
+  /* ---------- round 2 ---------- */
+  #app .head { position: relative; }
+  #app .head .title.picker { cursor: pointer; }
+  #app .head .title .car { color: var(--muted); font-size: 14px; margin-left: -4px; }
+  #app .mlist { position: absolute; left: 0; right: 0; top: 40px; z-index: 25; background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 6px; box-shadow: 0 12px 30px rgba(0,0,0,.45); }
+  #app .mlist .it { display: flex; align-items: center; gap: 8px; padding: 9px 8px; border-radius: 8px; cursor: pointer; color: var(--strong); }
+  #app .mlist .it img { width: 24px; height: 24px; border-radius: 7px; }
+  #app .mlist .it.sel { background: var(--panelSel); }
+  #app .mlist .it .cnt { margin-left: auto; color: var(--accent); font-size: 12px; }
+  #app[data-mtabs="bottom"] .stabs button { flex: 1; }
+  /* controls: presets on one row, now / zoom / range on the next */
+  #app .ctrl > .ctrl { width: 100%; }
+  #app .ctrl .seg { width: 100%; }
+  #app .ctrl .seg button { flex: 1; }
+  #app .ctrl .range { width: auto !important; flex: 1; min-width: 0; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; }
+  #app .ctrl .btn[data-zoom] { width: 34px; padding: 5px 0; }
+  /* scrollbars */
+  #app:not([data-mscroll="old"]) *::-webkit-scrollbar { width: 4px; height: 4px; }
+  #app:not([data-mscroll="old"]) *::-webkit-scrollbar-track { background: transparent; }
+  #app:not([data-mscroll="old"]) *::-webkit-scrollbar-corner { background: transparent; }
+  #app[data-mscroll="auto"] *::-webkit-scrollbar-thumb { background: transparent; border-radius: 2px; }
+  #app[data-mscroll="auto"] .scrolling::-webkit-scrollbar-thumb { background: rgba(255,255,255,.3); }
+  #app[data-mscroll="thin"] *::-webkit-scrollbar-thumb { background: rgba(255,255,255,.18); border-radius: 2px; }
 
   /* ---------- mock helpers: shift outlines ---------- */
   body.shift [data-click] { outline: 2px dashed #3fa9ff; outline-offset: -2px; }
@@ -364,7 +389,7 @@
 <div id="app"></div>
 <div id="note">
   <div class="top">
-    <div class="r"><h2>watcher 모바일(반응형) 시안</h2><span id="copied">복사됨</span><button id="copy">결과 복사</button></div>
+    <div class="r"><h2>watcher 모바일(반응형) 시안 (2차)</h2><span id="copied">복사됨</span><button id="copy">결과 복사</button></div>
     <div class="help">항목에서 옵션을 고르면 시안이 바로 바뀌고 의견을 적을 수 있음. <b>Shift</b>를 누르면 <span class="k1">파란 점선</span>은 누를 수 있는 곳, <span class="k2">주황 점선</span>은 후보가 있는 곳(올리면 후보 툴팁).</div>
   </div>
   <div class="list" id="list"></div>
@@ -638,11 +663,20 @@ ITEMS.push(
     { id: "top", name: "기존", desc: "서버 이름 아래 그대로", old: 1 },
     { id: "bottom", name: "아래 탭 막대", desc: "화면 맨 아래에 고정. 엄지로 누르기 쉬움", rec: 1 } ] },
 );
-const MOBILE_KEYS = new Set(["mnav", "mname", "mtouch", "mtip", "mtabs"]);
+ITEMS.push(
+  { key: "mscroll", title: "스크롤바 모양", opts: [
+    { id: "old", name: "기존", desc: "브라우저 기본 스크롤바(굵은 회색 막대)", old: 1 },
+    { id: "auto", name: "얇게, 스크롤할 때만", desc: "4px 둥근 막대. 스크롤하는 동안과 멈춘 뒤 1초만 보이고 평소엔 숨김", rec: 1 },
+    { id: "thin", name: "얇게, 항상", desc: "4px 둥근 막대를 항상 흐리게 표시" } ] },
+  { key: "mscope", title: "새 스크롤바 적용 범위", opts: [
+    { id: "phone", name: "기존 (폰 화면만)", desc: "폰 화면에서만 바꾸고 PC는 브라우저 기본 그대로", old: 1 },
+    { id: "all", name: "PC 화면도", desc: "PC 대시보드(타임라인 목록, 페이지 스크롤 등)도 같은 스크롤바", rec: 1 } ] },
+);
+const MOBILE_KEYS = new Set(["mscroll", "mscope"]);
 const state = {}; ITEMS.forEach((it) => (state[it.key] = it.opts.find((o) => o.rec)?.id ?? it.opts[0].id));
 view_m = { drawer: false };
 // round 2: confirmed choices are fixed and hidden from the note
-const CONFIRMED = { theme: "slate", layout: "rail", rows: "fixed", ctrl: "seg", summary: "cards", now: "chips", legend: "filter", tip: "card", loading: "skeleton", share: "btn", after: "avatar", click: "page", freq: "both", ublocks: "full", shape: "smooth", bounce: "both", bwhere: "user", bui: "statmini", ntime: "range", rankwhere: "tabs", ranklayout: "boards", rankperiod: "switch", myrank: "badge", sharedview: "hide", backsize: "btn", ufill: "big", badge: "big", zoom: "10s", fcur: "tipheat", sstats: "tab", sfreq: "avgppl", grass: "both", scards: "cards", barradius: "tl" };
+const CONFIRMED = { theme: "slate", layout: "rail", rows: "fixed", ctrl: "seg", summary: "cards", now: "chips", legend: "filter", tip: "card", loading: "skeleton", share: "btn", after: "avatar", click: "page", freq: "both", ublocks: "full", shape: "smooth", bounce: "both", bwhere: "user", bui: "statmini", ntime: "range", rankwhere: "tabs", ranklayout: "boards", rankperiod: "switch", myrank: "badge", sharedview: "hide", backsize: "btn", ufill: "big", badge: "big", zoom: "10s", fcur: "tipheat", sstats: "tab", sfreq: "avgppl", grass: "both", scards: "cards", barradius: "tl", cursor: "plain", wheelease: "slow", mnav: "drawer", mname: "avatar", mtouch: "pinch", mtip: "sheet", mtabs: "bottom" };
 Object.assign(state, CONFIRMED);
 const OPEN_ITEMS = ITEMS.filter((it) => MOBILE_KEYS.has(it.key));
 const comments = {}; // key -> optId -> text
@@ -678,6 +712,7 @@ function mobileNav() {
   const badge = (g) => { const on = todayStats(g).online; return on ? `<span class="live big">${on}</span>` : ""; };
   if (state.mnav === "top") return `<div class="mtop" data-cand="mnav" data-new>${GUILDS.map((g) => `<div class="srv ${g.id === view.guild ? "sel" : ""}" data-click data-guild="${g.id}"><img src="${g.icon}">${badge(g)}</div>`).join("")}</div>`;
   if (state.mnav === "drawer") {
+    return "";
     const g = G();
     return `<div class="mdrop" data-cand="mnav" data-new><div class="cur" data-click data-act="drawer"><img src="${g.icon}">${g.name}<span class="car">▾</span></div>
       ${view_m.drawer ? `<div class="list">${GUILDS.map((x) => `<div class="it ${x.id === view.guild ? "sel" : ""}" data-click data-guild="${x.id}"><img src="${x.icon}">${x.name}${todayStats(x).online ? `<span class="cnt">${todayStats(x).online}명 접속</span>` : ""}</div>`).join("")}</div>` : ""}</div>`;
@@ -698,7 +733,7 @@ function header(g) {
     : "";
   const titleClick = state.share === "old" ? `data-click data-act="oldshare" data-cand="share"` : "";
   const spark = state.layout !== "old" ? `<div class="spark">오늘 접속 추이 ${sparkSvg(g, 160, 32, "var(--accent)")}</div>` : "";
-  return `<div class="head"><div class="title" ${titleClick}>${state.layout !== "old" ? `<img src="${g.icon}">` : ""}${g.name}</div>
+  return `<div class="head"><div class="title ${state.mnav === "drawer" ? "picker" : ""}" ${state.mnav === "drawer" ? 'data-click data-act="drawer" data-new' : titleClick}>${state.layout !== "old" ? `<img src="${g.icon}">` : ""}${g.name}${state.mnav === "drawer" ? `<span class="car">▾</span>` : ""}</div>${state.mnav === "drawer" && view_m.drawer ? `<div class="mlist">${GUILDS.map((x) => `<div class="it ${x.id === g.id ? "sel" : ""}" data-click data-guild="${x.id}"><img src="${x.icon}">${x.name}${todayStats(x).online ? `<span class="cnt">${todayStats(x).online}명 접속</span>` : ""}</div>`).join("")}</div>` : ""}
     <span class="meta">멤버 ${g.members}명 · 기록된 사람 ${g.users.length}명</span>${share}${view.shared && state.sharedview !== "all" ? `<span class="pill off" data-cand="sharedview" data-new>공유된 서버만 보기</span>` : ""}${spark}</div>`;
 }
 function summary(g) {
@@ -1004,7 +1039,7 @@ function statsBody(g) {
 }
 function stabs() {
   if (state.rankwhere !== "tabs") return "";
-  return `<div class="stabs" data-cand="mtabs"><button class="${view.tab === "timeline" ? "sel" : ""}" data-click data-tab="timeline">타임라인</button><button class="${view.tab === "rank" ? "sel" : ""}" data-click data-tab="rank">랭킹</button>${state.sstats === "tab" ? `<button class="${view.tab === "stats" ? "sel" : ""}" data-click data-tab="stats" data-cand="sstats" data-new>통계</button>` : ""}</div>`;
+  return `<div class="stabs" data-cand="mscope"><button class="${view.tab === "timeline" ? "sel" : ""}" data-click data-tab="timeline">타임라인</button><button class="${view.tab === "rank" ? "sel" : ""}" data-click data-tab="rank">랭킹</button>${state.sstats === "tab" ? `<button class="${view.tab === "stats" ? "sel" : ""}" data-click data-tab="stats" data-cand="sstats" data-new>통계</button>` : ""}</div>`;
 }
 function periodSeg() {
   if (state.rankperiod !== "switch") return `<span class="range" data-cand="rankperiod">누적 기준</span>`;
@@ -1114,6 +1149,7 @@ function render() {
   app.dataset.theme = state.theme;
   app.dataset.radius = state.barradius;
   app.dataset.cursor = state.cursor;
+  app.dataset.mscroll = state.mscroll;
   app.dataset.mnav = state.mnav; app.dataset.mname = state.mname; app.dataset.mtip = state.mtip; app.dataset.mtabs = state.mtabs;
   const g = G();
   let body;
@@ -1122,7 +1158,7 @@ function render() {
   else if (view.tab === "stats" && state.sstats === "tab") body = `${header(g)}${stabs()}<div style="display:flex;flex-direction:column;gap:12px;flex:1;min-height:0;overflow:auto">${statsBody(g)}</div>`;
   else if (state.rankwhere === "tabs" && view.tab === "rank") body = `${header(g)}${stabs()}${state.sstats === "rank" ? `<div data-cand="sstats" data-new style="display:flex;flex-direction:column;gap:12px;flex:0 0 auto">${statsBody(g)}</div>` : ""}${rankPage(g)}`;
   else body = `${header(g)}${stabs()}${summary(g)}${nowStrip(g)}${controls(g)}
-      <div class="tlwrap"><div class="tl" data-cand="mtouch" id="tl">${timeline(g)}</div>${rpanel(g)}${rankPanel(g)}</div>
+      <div class="tlwrap"><div class="tl" data-cand="mscroll" id="tl">${timeline(g)}</div>${rpanel(g)}${rankPanel(g)}</div>
       ${view.panel ? userPanel(g, g.users.find((x) => x.id === view.panel)) : ""}`;
   app.innerHTML = `${view.loading && state.loading === "old" ? `<div class="loadbar" style="width:${view.loadP * 100}%"></div>` : ""}
     ${serverNav()}<div class="main">${mobileNav()}${tabsNav()}<div class="content" data-cand="loading">${body}</div></div>
@@ -1130,6 +1166,10 @@ function render() {
   app.querySelectorAll("[data-cand]").forEach((el) => { if (!MOBILE_KEYS.has(el.dataset.cand)) el.removeAttribute("data-cand"); });
 }
 
+document.addEventListener("scroll", (e) => {
+  const el = e.target; if (!(el instanceof Element) || !app.contains(el)) return;
+  el.classList.add("scrolling"); clearTimeout(el._st); el._st = setTimeout(() => el.classList.remove("scrolling"), 1000);
+}, true);
 /* ================= wheel zoom + drag pan ================= */
 function curRange() { return rangeOf(); }
 function setRange(a, b) {
@@ -1270,6 +1310,7 @@ function choose(key, opt, focus = true) {
   if ((key === "bwhere" && opt === "both") || key === "ntime") view.page = "server";
   if (["rankwhere", "ranklayout", "rankperiod"].includes(key)) { view.page = "server"; view.tab = state.rankwhere === "tabs" ? "rank" : "timeline"; }
   if (key === "myrank" && view.page !== "user") { view.page = "user"; view.user = ranked(G(), "total", "all")[2]?.u.id ?? G().users[0].id; }
+  if (key === "mscroll" || key === "mscope") { view.page = "server"; view.tab = "timeline"; }
   if (["mnav", "mname", "mtouch", "mtip"].includes(key)) { view.page = "server"; view.tab = "timeline"; }
   if (key === "mtabs") { view.page = "server"; }
   if (key === "cursor" || key === "wheelease") { view.page = "server"; view.tab = "timeline"; }
@@ -1297,7 +1338,7 @@ list.addEventListener("input", (e) => {
   (comments[e.target.dataset.k] ??= {})[e.target.dataset.o] = e.target.value; autosize(e.target);
 });
 document.getElementById("copy").onclick = async () => {
-  const lines = ["[watcher 모바일 시안 결과]"];
+  const lines = ["[watcher 모바일 시안 2차 결과]"];
   for (const it of OPEN_ITEMS) {
     const o = it.opts.find((x) => x.id === state[it.key]);
     const c = comments[it.key]?.[o.id]?.trim();
