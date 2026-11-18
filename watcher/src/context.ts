@@ -9,6 +9,8 @@ export type GuildCtx = {
   base: string;
   shared: boolean;
   guildSummary: GuildSummary | null;
+  /** every server, for the phone server picker */
+  guilds: GuildSummary[] | null;
   share: () => void;
 };
 

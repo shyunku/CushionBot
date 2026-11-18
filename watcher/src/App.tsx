@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useLocation, useParams } from "react-router-do
 import { useGuildData, useGuilds } from "./api";
 import { GuildContext, useNow } from "./context";
 import Rail from "./components/Rail";
+import { useMobile } from "./useMobile";
 import Skeleton from "./components/Skeleton";
 import TimelinePage from "./pages/TimelinePage";
 import RankPage from "./pages/RankPage";
@@ -82,11 +83,12 @@ function GuildShell({ shared }: { shared: boolean }) {
   }, [location.pathname, base, gid]);
 
   const guildSummary = guilds?.find((g) => g.id === gid) ?? null;
-  const ctx = useMemo(() => (data ? { guildId: gid, data, now, base, shared, guildSummary, share } : null), [gid, data, now, base, shared, guildSummary, share]);
+  const mobile = useMobile();
+  const ctx = useMemo(() => (data ? { guildId: gid, data, now, base, shared, guildSummary, guilds, share } : null), [gid, data, now, base, shared, guildSummary, guilds, share]);
 
   return (
     <div className="app">
-      {!shared && <Rail guilds={guilds} selected={gid} />}
+      {!shared && !mobile && <Rail guilds={guilds} selected={gid} />}
       <div className="main">
         <div className="content">
           {error && !data ? (

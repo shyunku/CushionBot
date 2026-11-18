@@ -2,9 +2,12 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Person, Session } from "../types";
 import { barColor, solidColor } from "../colors";
 import { endOf, isOnline, lastActivity, timeIn } from "../stats";
+import { useMobile } from "../useMobile";
 import { D, H, MIN, SEC, fmtDur, fmtFull, fmtHM, fmtHMS, p2 } from "../time";
 
-const NC = 190; // name column width
+// name column width (phones show only avatars there)
+const NC_WIDE = 190;
+const NC_PHONE = 44;
 const ROW_H = 40;
 const BAR_H = 24;
 export const MIN_SPAN = 10 * SEC;
@@ -103,6 +106,10 @@ export default function Timeline({ people, hidden, range, now: baseNow, clockOff
   const box = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(1000);
   const [hover, setHover] = useState<{ p: Person; s: Session; x: number; y: number } | null>(null);
+  const mobile = useMobile();
+  const NC = mobile ? NC_PHONE : NC_WIDE;
+  // phones: tapping a bar opens its info as a bottom sheet
+  const [sheet, setSheet] = useState<{ p: Person; s: Session } | null>(null);
   const [, setFontsReady] = useState(false);
   useEffect(() => {
     // label widths are measured with the web font, so re-measure once it has loaded
@@ -178,7 +185,7 @@ export default function Timeline({ people, hidden, range, now: baseNow, clockOff
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-  }, [onRangeChange]);
+  }, [onRangeChange, NC]);
 
   const onMouseDown = (e: React.MouseEvent) => {
     const el = box.current;
@@ -209,6 +216,55 @@ export default function Timeline({ people, hidden, range, now: baseNow, clockOff
     window.addEventListener("mouseup", up);
   };
 
+  // touch: one finger drags horizontally, two fingers pinch-zoom around their midpoint.
+  // Vertical drags are left to the browser (touch-action: pan-y) to scroll the rows.
+  const touch = useRef<
+    | { kind: "pan"; x0: number; y0: number; r0: [number, number]; dir: "x" | "y" | null }
+    | { kind: "pinch"; d0: number; at: number; r0: [number, number] }
+    | null
+  >(null);
+  const plotX = (clientX: number) => clientX - box.current!.getBoundingClientRect().left - NC - 12;
+  const onTouchStart = (e: React.TouchEvent) => {
+    stopAnim();
+    const [ra, rb] = rangeRef.current;
+    const w = box.current!.clientWidth - NC - 24;
+    if (e.touches.length >= 2) {
+      const [t1, t2] = [e.touches[0], e.touches[1]];
+      const mid = (t1.clientX + t2.clientX) / 2;
+      touch.current = { kind: "pinch", d0: Math.max(10, Math.abs(t1.clientX - t2.clientX)), at: ra + (plotX(mid) / w) * (rb - ra), r0: [ra, rb] };
+    } else {
+      const t = e.touches[0];
+      touch.current = { kind: "pan", x0: t.clientX, y0: t.clientY, r0: [ra, rb], dir: null };
+    }
+  };
+  const onTouchMove = (e: React.TouchEvent) => {
+    const g = touch.current;
+    if (!g) return;
+    const w = box.current!.clientWidth - NC - 24;
+    if (g.kind === "pinch" && e.touches.length >= 2) {
+      const [t1, t2] = [e.touches[0], e.touches[1]];
+      const d = Math.max(10, Math.abs(t1.clientX - t2.clientX));
+      const span = Math.min(MAX_SPAN, Math.max(MIN_SPAN, ((g.r0[1] - g.r0[0]) * g.d0) / d));
+      const f = plotX((t1.clientX + t2.clientX) / 2) / w;
+      onRangeChange([g.at - f * span, g.at + (1 - f) * span]);
+    } else if (g.kind === "pan" && e.touches.length === 1) {
+      const t = e.touches[0];
+      const dx = t.clientX - g.x0;
+      const dy = t.clientY - g.y0;
+      if (!g.dir && Math.hypot(dx, dy) > 6) g.dir = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+      if (g.dir !== "x") return;
+      const dt = -(dx / w) * (g.r0[1] - g.r0[0]);
+      onRangeChange([g.r0[0] + dt, g.r0[1] + dt]);
+    }
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    // lifting one finger of a pinch continues as a pan from the current range
+    if (e.touches.length === 1) {
+      const t = e.touches[0];
+      touch.current = { kind: "pan", x0: t.clientX, y0: t.clientY, r0: [...rangeRef.current], dir: "x" };
+    } else if (e.touches.length === 0) touch.current = null;
+  };
+
   const rows = useMemo(() => {
     const visible = (s: Session) => !hidden.has(s.ch) && endOf(s, now) > a && s.s < b;
     return people
@@ -226,7 +282,16 @@ export default function Timeline({ people, hidden, range, now: baseNow, clockOff
   };
 
   return (
-    <div className="tl" ref={box} onMouseDown={onMouseDown} onMouseLeave={() => setHover(null)}>
+    <div
+      className="tl"
+      ref={box}
+      onMouseDown={onMouseDown}
+      onMouseLeave={() => setHover(null)}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      onTouchCancel={onTouchEnd}
+    >
       <div className="axis">
         {/* skip labels that would be cut in half by the name column */}
         {tk.filter((k) => X(k.t) > NC + 30).map((k) => (
@@ -276,8 +341,9 @@ export default function Timeline({ people, hidden, range, now: baseNow, clockOff
                     <div
                       className={`bar ${s.online ? "online" : ""}`}
                       style={{ left: x1, width: Math.max(2, x2 - x1), top: (ROW_H - BAR_H) / 2, height: BAR_H, background: barColor(s.ch) }}
-                      onMouseMove={(e) => onHover(e, p, s)}
-                      onMouseLeave={() => setHover(null)}
+                      onMouseMove={mobile ? undefined : (e) => onHover(e, p, s)}
+                      onMouseLeave={mobile ? undefined : () => setHover(null)}
+                      onClick={mobile ? () => setSheet({ p, s }) : undefined}
                     />
                     {label && (
                       <div className={`flabel ${s.online ? "on" : ""}`} style={{ left: x2 + 8, top: (ROW_H - 20) / 2 }}>
@@ -292,19 +358,25 @@ export default function Timeline({ people, hidden, range, now: baseNow, clockOff
           );
         })}
       </div>
-      {hover && <SessionTip {...hover} now={now} width={width} seconds={b - a < SECONDS_SPAN} />}
+      {hover && !mobile && <SessionTip {...hover} now={now} width={width} seconds={b - a < SECONDS_SPAN} />}
+      {sheet && mobile && (
+        <>
+          <div className="sheetback" onClick={() => setSheet(null)} />
+          <SessionTip {...sheet} x={0} y={0} now={now} width={width} seconds={b - a < SECONDS_SPAN} sheet />
+        </>
+      )}
     </div>
   );
 }
 
-function SessionTip({ p, s, x, y, now, width, seconds }: { p: Person; s: Session; x: number; y: number; now: number; width: number; seconds: boolean }) {
+function SessionTip({ p, s, x, y, now, width, seconds, sheet }: { p: Person; s: Session; x: number; y: number; now: number; width: number; seconds: boolean; sheet?: boolean }) {
   const when = (t: number) => (seconds ? `${fmtFull(t)}:${p2(new Date(t).getSeconds())}` : fmtFull(t));
   const total = p.sessions.reduce((acc, it) => acc + (endOf(it, now) - it.s), 0);
   const end = endOf(s, now);
   const flipX = x > width - 280;
   const flipY = y > 420;
   return (
-    <div className="stip" style={{ left: flipX ? x - 262 : x + 12, top: flipY ? y - 190 : y + 12 }}>
+    <div className={sheet ? "stip sheet" : "stip"} style={sheet ? undefined : { left: flipX ? x - 262 : x + 12, top: flipY ? y - 190 : y + 12 }}>
       <div className="u">
         <img src={p.avatar} alt="" />
         {p.name}

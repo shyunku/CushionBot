@@ -24,8 +24,15 @@ body {
 }
 a { color: inherit; text-decoration: none; }
 button { font: inherit; color: inherit; }
-*::-webkit-scrollbar { width: 6px; height: 6px; }
-*::-webkit-scrollbar-thumb { background: #2bb37a55; border-radius: 6px; }
+/* thin scrollbars that show only while scrolling (main.tsx toggles .scrolling) */
+*::-webkit-scrollbar { width: 4px; height: 4px; }
+*::-webkit-scrollbar-track, *::-webkit-scrollbar-corner { background: transparent; }
+*::-webkit-scrollbar-thumb { background: transparent; border-radius: 2px; }
+.scrolling::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.3); }
+@supports (-moz-appearance: none) {
+  * { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+  .scrolling { scrollbar-color: rgba(255, 255, 255, 0.3) transparent; }
+}
 
 .app { display: flex; height: 100%; overflow: hidden; }
 .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
@@ -210,8 +217,55 @@ button { font: inherit; color: inherit; }
 @keyframes sk { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 .toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); background: var(--strong); color: var(--bg); padding: 9px 16px; border-radius: 10px; font-weight: 600; z-index: 60; }
 
+/* phone server picker, bar info sheet */
+.picker { position: relative; }
+.picker > .title { background: none; border: 0; padding: 0; cursor: pointer; }
+.picker .car { color: var(--muted); font-size: 14px; margin-left: -4px; }
+.plist { position: absolute; left: 0; top: calc(100% + 6px); z-index: 40; min-width: 260px; max-width: calc(100vw - 24px); background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 6px; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45); max-height: 60vh; overflow-y: auto; }
+.plist .it { display: flex; align-items: center; gap: 8px; padding: 9px 8px; border-radius: 8px; color: var(--strong); }
+.plist .it .gicon { border-radius: 7px; }
+.plist .it .nm { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.plist .it.sel { background: var(--panelSel, #1a2a2a); }
+.plist .it .cnt { color: var(--accent); font-size: 12px; white-space: nowrap; }
+.sheetback { position: fixed; inset: 0; z-index: 45; }
+.stip.sheet { position: fixed; left: 0; right: 0; bottom: 0; top: auto; width: auto; z-index: 46; pointer-events: auto; border-radius: 16px 16px 0 0; padding: 16px 18px 26px; }
+.stip.sheet::before { content: ""; display: block; width: 40px; height: 4px; border-radius: 2px; background: var(--line); margin: -6px auto 10px; }
+
 @media (max-width: 900px) {
   .summary { grid-auto-flow: row; grid-template-columns: repeat(2, 1fr); }
   .boards, .grid2 { grid-template-columns: 1fr; }
   .head .spark { display: none; }
+}
+
+/* phones: keep in sync with MOBILE_QUERY in useMobile.ts */
+@media (max-width: 700px) {
+  .content { padding: 12px 12px 76px; gap: 10px; }
+  .content > :not(.tlwrap) { flex-shrink: 0; }
+  .head { flex-wrap: wrap; gap: 8px; }
+  .head .title { font-size: 19px; }
+  .head .meta { order: 3; width: 100%; }
+  .summary { gap: 8px; }
+  .stat { padding: 8px 10px; }
+  .stat .v { font-size: 16px; }
+  .summary > .stat.bounce { grid-column: 1 / -1; }
+  .nowstrip { flex-wrap: nowrap; overflow-x: auto; }
+  .nowstrip .lbl, .chip { flex: 0 0 auto; white-space: nowrap; }
+  .ctrl { flex-wrap: wrap; }
+  .ctrl > .ctrl { width: 100%; }
+  .ctrl .seg { width: 100%; }
+  .ctrl .seg button { flex: 1; }
+  .ctrl .range { flex: 1; min-width: 0; margin: 0; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; }
+  .legend { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; }
+  .lg { flex: 0 0 auto; }
+  .tlwrap { min-height: 420px; }
+  .tl { touch-action: pan-y; }
+  .namecol { padding-left: 11px; gap: 4px; }
+  .namecol .nm, .namecol .sub, .axis.namehead span { display: none; }
+  .stabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; background: var(--panel); border-top: 1px solid var(--line); border-bottom: 0; padding: 0 0 env(safe-area-inset-bottom); }
+  .stabs a { flex: 1; text-align: center; border-bottom: 0; border-top: 2px solid transparent; padding: 12px 0 14px; }
+  .stabs a.sel { border-top-color: var(--accent); }
+  .uhead .nm { font-size: 19px; flex-wrap: wrap; }
+  .uhead > img { width: 44px; height: 44px; }
+  .hlabels span { white-space: nowrap; }
+  .gmonths span:nth-child(even) { display: none; }
 }

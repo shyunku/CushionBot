@@ -4,6 +4,9 @@ import Header from "../components/Header";
 import { BOUNCE_MIN_SESSIONS, ranked, type MetricKey, type Period } from "../stats";
 import { fmtDur } from "../time";
 
+/** Rows on each leaderboard card. */
+const TOP = 10;
+
 export const METRICS: { key: MetricKey; name: string; fmt: (v: number) => string; note?: string }[] = [
   { key: "total", name: "누적 접속 시간", fmt: fmtDur },
   { key: "count", name: "접속 횟수", fmt: (v) => `${v}회` },
@@ -90,13 +93,13 @@ export default function RankPage() {
       <div className="boards">
         {METRICS.map((m) => {
           const all = ranked(data.people, m.key, period, now);
-          const r = all.slice(0, 5);
+          const r = all.slice(0, TOP);
           const max = r[0]?.v || 1;
           return (
             <div key={m.key} className="card lb">
               <h5>
                 {m.name}
-                {all.length > 5 && (
+                {all.length > TOP && (
                   <Link className="more" to={`${base}/rank/${m.key}${qs}`}>
                     더보기 ({all.length}명) →
                   </Link>

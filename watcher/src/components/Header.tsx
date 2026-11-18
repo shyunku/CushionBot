@@ -1,4 +1,6 @@
-import { NavLink } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, NavLink } from "react-router-dom";
+import { useMobile } from "../useMobile";
 import { useGuild } from "../context";
 import { concurrency } from "../stats";
 import { sod } from "../time";
@@ -14,16 +16,56 @@ export function ShareButton() {
   );
 }
 
+/** On phones the server name opens a list of servers (the icon rail is hidden there). */
+function ServerPicker() {
+  const { data, guilds, guildId } = useGuild();
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: PointerEvent) => {
+      if (!box.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, [open]);
+  return (
+    <div className="picker" ref={box}>
+      <button className="title" onClick={() => setOpen(!open)}>
+        <GuildIcon name={data.info.name} url={data.info.iconUrl} size={32} />
+        {data.info.name}
+        <span className="car">▾</span>
+      </button>
+      {open && (
+        <div className="plist">
+          {(guilds ?? []).map((g) => (
+            <Link key={g.id} to={`/servers/${g.id}`} className={`it ${g.id === guildId ? "sel" : ""}`} onClick={() => setOpen(false)}>
+              <GuildIcon name={g.name} url={g.iconUrl} size={24} />
+              <span className="nm">{g.name}</span>
+              {g.online > 0 && <span className="cnt">{g.online}명 접속</span>}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Header() {
   const { data, now, base, shared } = useGuild();
+  const mobile = useMobile();
   const points = concurrency(data.people, sod(now), now, 96, now);
   return (
     <>
       <div className="head">
-        <div className="title">
-          <GuildIcon name={data.info.name} url={data.info.iconUrl} size={32} />
-          {data.info.name}
-        </div>
+        {mobile && !shared ? (
+          <ServerPicker />
+        ) : (
+          <div className="title">
+            <GuildIcon name={data.info.name} url={data.info.iconUrl} size={32} />
+            {data.info.name}
+          </div>
+        )}
         <span className="meta">
           멤버 {data.info.memberCount}명 · 기록된 사람 {data.people.length}명
         </span>
