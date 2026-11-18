@@ -189,6 +189,36 @@
   .upanel { position:absolute; right: 0; top: 0; bottom: 0; width: 330px; background: var(--panel); border-left: 1px solid var(--line); z-index: 20; padding: 18px; display:flex; flex-direction:column; gap: 12px; box-shadow: -12px 0 30px rgba(0,0,0,.35); }
   .upanel .x { position:absolute; right: 14px; top: 12px; cursor: pointer; color: var(--muted); font-size: 18px; }
 
+  /* ranking */
+  .stabs { display:flex; gap: 2px; border-bottom: 1px solid var(--line); }
+  .stabs button { background: none; border: 0; border-bottom: 2px solid transparent; padding: 6px 14px 9px; color: var(--muted); cursor: pointer; font-weight: 600; }
+  .stabs button.sel { color: var(--strong); border-color: var(--accent); }
+  .boards { display:grid; grid-template-columns: repeat(3, 1fr); gap: 12px; flex: 1; min-height: 0; }
+  .lb { display:flex; flex-direction:column; }
+  .lb .r { display:flex; align-items:center; gap: 9px; padding: 6px 4px; border-radius: 6px; cursor: pointer; }
+  .lb .r:hover { background: var(--panel2); }
+  .lb .r .no { width: 20px; text-align:center; font-weight: 800; color: var(--muted); }
+  .lb .r .no.m1 { color: #f5c542; } .lb .r .no.m2 { color: #c9d1db; } .lb .r .no.m3 { color: #d39360; }
+  .lb .r img { width: 24px; height: 24px; border-radius: 12px; }
+  .lb .r .nm { color: var(--strong); font-weight: 600; min-width: 46px; }
+  .lb .r .bar2 { flex: 1; height: 6px; border-radius: 3px; background: var(--panel2); overflow: hidden; } .lb .r .bar2 i { display:block; height: 100%; background: var(--accent2); }
+  .lb .r .val { width: 86px; text-align: right; color: var(--strong); font-variant-numeric: tabular-nums; }
+  .lb .note { color: var(--muted); font-size: 11px; margin-top: auto; padding-top: 6px; }
+  table.rt { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.rt th { text-align: right; color: var(--muted); font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--line); cursor: pointer; white-space: nowrap; }
+  table.rt th:nth-child(-n+2) { text-align: left; }
+  table.rt th.sel { color: var(--accent); }
+  table.rt td { text-align: right; padding: 7px 10px; border-bottom: 1px solid var(--line); color: var(--text); font-variant-numeric: tabular-nums; }
+  table.rt td:nth-child(-n+2) { text-align: left; }
+  table.rt td.sel { color: var(--strong); font-weight: 700; }
+  table.rt tr { cursor: pointer; } table.rt tbody tr:hover { background: var(--panel2); }
+  .rkpanel { width: 280px; flex: 0 0 auto; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; display:flex; flex-direction:column; gap: 8px; overflow: hidden; }
+  .rkpanel h4 { margin: 0; color: var(--strong); font-size: 13px; }
+  .rkchips { display:flex; flex-wrap: wrap; gap: 4px; }
+  .rkchips span { font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); cursor: pointer; color: var(--muted); }
+  .rkchips span.sel { color: var(--strong); border-color: var(--accent); background: var(--panel2); }
+  .rankpill { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: rgba(245,197,66,.15); color: #f5c542; margin-left: 6px; vertical-align: middle; }
+
   /* ---------- mock helpers: shift outlines ---------- */
   body.shift [data-click] { outline: 2px dashed #3fa9ff; outline-offset: -2px; }
   body.shift [data-cand]:not(.row) { position: relative; }
@@ -239,7 +269,7 @@
 <div id="app"></div>
 <div id="note">
   <div class="top">
-    <div class="r"><h2>watcher 리디자인 시안 (6차)</h2><span id="copied">복사됨</span><button id="copy">결과 복사</button></div>
+    <div class="r"><h2>watcher 리디자인 시안 (7차)</h2><span id="copied">복사됨</span><button id="copy">결과 복사</button></div>
     <div class="help">항목에서 옵션을 고르면 시안이 바로 바뀌고 의견을 적을 수 있음. <b>Shift</b>를 누르면 <span class="k1">파란 점선</span>은 누를 수 있는 곳, <span class="k2">주황 점선</span>은 후보가 있는 곳(올리면 후보 툴팁).</div>
   </div>
   <div class="list" id="list"></div>
@@ -418,18 +448,35 @@ const ITEMS = [
     { id: "plain", name: "오늘 접속 시간 (설명 없음)", desc: "5차 시안 모습. 오늘 0시부터 지금까지 접속한 시간, 없으면 '-'", old: 1 },
     { id: "label", name: "오늘 접속 시간 + 머리글 표시", desc: "같은 값인데 열 머리글에 '오늘'을 적어 무슨 시간인지 보이게 함", rec: 1 },
     { id: "range", name: "보이는 기간 안 접속 시간", desc: "지금 보고 있는 기간(최근 24시간·오늘·7일·확대) 안에서 접속한 시간. 머리글에 '기간 내'" } ] },
+  { key: "rankwhere", title: "서버 랭킹 위치", opts: [
+    { id: "none", name: "기능 없음", desc: "랭킹 없음", old: 1 },
+    { id: "tabs", name: "서버 화면 탭 [타임라인 | 랭킹]", desc: "서버 이름 아래 탭으로 타임라인과 랭킹 화면을 오감. 랭킹도 주소가 따로 있음", rec: 1 },
+    { id: "panel", name: "타임라인 옆 패널", desc: "타임라인 오른쪽에 지표를 골라 보는 랭킹 패널을 늘 띄움" } ] },
+  { key: "ranklayout", title: "랭킹 화면 모양", opts: [
+    { id: "boards", name: "리더보드 카드 6개", desc: "지표마다 카드 하나씩 Top 5 (누적 시간, 접속 횟수, 접속한 날, 평균 접속 길이, 최장 연속 접속, 들낙률)", rec: 1 },
+    { id: "table", name: "큰 표 + 지표 탭", desc: "모든 사람을 한 표에 두고 위 탭으로 정렬 기준(지표)을 바꿈" } ] },
+  { key: "rankperiod", title: "랭킹 집계 기간", opts: [
+    { id: "all", name: "누적만", desc: "기록 전체 기준 하나만" },
+    { id: "switch", name: "누적 · 최근 30일 · 최근 7일 전환", desc: "랭킹 위에서 기간을 바꿔 볼 수 있음", rec: 1 } ] },
+  { key: "myrank", title: "사람 페이지에 순위 표시", opts: [
+    { id: "none", name: "기능 없음", desc: "순위 표시 없음", old: 1 },
+    { id: "badge", name: "요약 카드에 순위", desc: "'누적 총 접속' 카드에 '서버 3위 / 14명', 들낙 카드에 들낙률 순위", rec: 1 } ] },
+  { key: "sharedview", title: "공유 링크로 연 화면", opts: [
+    { id: "all", name: "다른 서버도 보임", desc: "지금처럼 공유 링크로 들어와도 왼쪽에서 모든 서버를 볼 수 있음", old: 1 },
+    { id: "hide", name: "그 서버만, 서버 목록 없음", desc: "왼쪽 아이콘 레일을 없애고 공유된 서버 하나만 보여 줌. 화면이 그만큼 넓어짐", rec: 1 },
+    { id: "single", name: "그 서버만, 레일은 유지", desc: "레일 모양은 그대로 두고 공유된 서버 아이콘 하나만 보여 줌" } ] },
   { key: "share", title: "링크 공유", opts: [
     { id: "old", name: "기존", desc: "서버 이름(제목)을 누르면 주소 복사 후 알림창", old: 1 },
     { id: "btn", name: "공유 버튼 + 토스트", desc: "이름 옆 공유 버튼, 복사되면 화면 아래 짧은 안내", rec: 1 } ] },
 ];
 const state = {}; ITEMS.forEach((it) => (state[it.key] = it.opts.find((o) => o.rec)?.id ?? it.opts[0].id));
 // round 2: confirmed choices are fixed and hidden from the note
-const CONFIRMED = { theme: "slate", layout: "rail", rows: "fixed", ctrl: "seg", summary: "cards", now: "chips", legend: "filter", tip: "card", loading: "skeleton", share: "btn", after: "avatar", click: "page", freq: "both", ublocks: "full", shape: "smooth", bounce: "both", bwhere: "user", bui: "statmini" };
+const CONFIRMED = { theme: "slate", layout: "rail", rows: "fixed", ctrl: "seg", summary: "cards", now: "chips", legend: "filter", tip: "card", loading: "skeleton", share: "btn", after: "avatar", click: "page", freq: "both", ublocks: "full", shape: "smooth", bounce: "both", bwhere: "user", bui: "statmini", ntime: "range" };
 Object.assign(state, CONFIRMED);
 const OPEN_ITEMS = ITEMS.filter((it) => !(it.key in CONFIRMED));
 const comments = {}; // key -> optId -> text
 let openComment = null; // `${key}:${optId}`
-const view = { page: "server", user: null, panel: null, guild: "g1", preset: "24h", zoom: 1, hidden: new Set(), loading: false, loadP: 1, toast: null, hover: null };
+const view = { shared: false, tab: "timeline", rperiod: "all", rmetric: "total", page: "server", user: null, panel: null, guild: "g1", preset: "24h", zoom: 1, hidden: new Set(), loading: false, loadP: 1, toast: null, hover: null };
 
 /* ================= render app ================= */
 const app = document.getElementById("app");
@@ -446,8 +493,9 @@ function serverNav() {
   const L = state.layout;
   if (L === "old") return `<div class="sidebar"><div class="logo" data-cand="theme">서버 연결 현황</div>
       <div data-cand="layout">${GUILDS.map((g) => `<div class="scard ${g.id === view.guild ? "sel" : ""}" data-click data-guild="${g.id}"><div class="h"><img src="${g.icon}">${g.name}</div>${sparkSvg(g, 236, 70, "#39af8a")}</div>`).join("")}</div></div>`;
-  if (L === "rail") return `<div class="rail" data-cand="layout"><div class="logo" data-cand="theme">C</div><div class="sep"></div>
-      ${GUILDS.map((g) => { const on = todayStats(g).online; return `<div class="srv ${g.id === view.guild ? "sel" : ""}" data-click data-guild="${g.id}" title="${g.name}"><img src="${g.icon}">${on ? `<span class="live">${on}</span>` : ""}</div>`; }).join("")}</div>`;
+  if (L === "rail" && view.shared && state.sharedview === "hide") return "";
+  if (L === "rail") return `<div class="rail" data-cand="${view.shared ? "sharedview" : "layout"}"><div class="logo" data-cand="theme">C</div><div class="sep"></div>
+      ${GUILDS.filter((g) => !(view.shared && state.sharedview === "single") || g.id === view.guild).map((g) => { const on = todayStats(g).online; return `<div class="srv ${g.id === view.guild ? "sel" : ""}" data-click data-guild="${g.id}" title="${g.name}"><img src="${g.icon}">${on ? `<span class="live">${on}</span>` : ""}</div>`; }).join("")}</div>`;
   return "";
 }
 function tabsNav() {
@@ -465,7 +513,7 @@ function header(g) {
   const titleClick = state.share === "old" ? `data-click data-act="oldshare" data-cand="share"` : "";
   const spark = state.layout !== "old" ? `<div class="spark">오늘 접속 추이 ${sparkSvg(g, 160, 32, "var(--accent)")}</div>` : "";
   return `<div class="head"><div class="title" ${titleClick}>${state.layout !== "old" ? `<img src="${g.icon}">` : ""}${g.name}</div>
-    <span class="meta">멤버 ${g.members}명 · 기록된 사람 ${g.users.length}명</span>${share}${spark}</div>`;
+    <span class="meta">멤버 ${g.members}명 · 기록된 사람 ${g.users.length}명</span>${share}${view.shared && state.sharedview !== "all" ? `<span class="pill off" data-cand="sharedview" data-new>공유된 서버만 보기</span>` : ""}${spark}</div>`;
 }
 function summary(g) {
   if (state.summary !== "cards") return "";
@@ -515,7 +563,7 @@ function ticks(a, b, width) {
   return out.map((x) => { const d = new Date(x.t); d.setMinutes(0, 0, 0); const day = d.getHours() === 0; return { t: d.getTime(), label: day ? `${d.getMonth() + 1}/${d.getDate()}` : `${d.getHours()}시`, major: day }; });
 }
 function timeline(g) {
-  const W = 1280 - (state.layout === "old" ? 280 : state.layout === "rail" ? 72 : 0) - 44 - (state.now === "panel" ? 252 : 0) - 2;
+  const W = 1280 - (state.layout === "old" ? 280 : state.layout === "rail" && !(view.shared && state.sharedview === "hide") ? 72 : 0) - 44 - (state.now === "panel" ? 252 : 0) - (state.rankwhere === "panel" ? 292 : 0) - 2;
   const fixed = state.rows !== "old";
   const NC = fixed ? 190 : 0;
   const bw = W - NC - 24;
@@ -568,7 +616,7 @@ function rpanel(g) {
   return `<div class="rpanel" data-cand="now" data-new><h4><span class="dot"></span>지금 접속 중</h4>${Object.entries(m).map(([ch, list]) => `<div class="ch"><div class="cn"><i style="background:${chSolid(ch)}"></i>${ch} · ${list.length}명</div>${list.map((x) => `<div class="mem"><img src="${x.u.avatar}">${x.u.name}<span>${fmtDur(NOW - x.s.s)}</span></div>`).join("")}</div>`).join("") || `<div class="cn">아무도 없음</div>`}</div>`;
 }
 function skeleton() {
-  const W = 1280 - (state.layout === "old" ? 280 : state.layout === "rail" ? 72 : 0) - 44;
+  const W = 1280 - (state.layout === "old" ? 280 : state.layout === "rail" && !(view.shared && state.sharedview === "hide") ? 72 : 0) - 44;
   return `<div class="head"><div class="sk" style="width:220px;height:30px"></div><div class="sk" style="width:160px;height:16px"></div></div>
     ${state.summary === "cards" ? `<div class="summary">${"<div class='sk' style='height:62px'></div>".repeat(4)}</div>` : ""}
     <div class="ctrl"><div class="sk" style="width:300px;height:30px"></div></div>
@@ -638,6 +686,57 @@ function freqChart(st, mini = false) {
   }
   return top + heat;
 }
+const METRICS = [
+  { key: "total", name: "누적 접속 시간", fmt: (v) => fmtDur(v) },
+  { key: "count", name: "접속 횟수", fmt: (v) => `${v}회` },
+  { key: "days", name: "접속한 날", fmt: (v) => `${v}일` },
+  { key: "avg", name: "평균 접속 길이", fmt: (v) => fmtDur(v) },
+  { key: "longest", name: "최장 연속 접속", fmt: (v) => fmtDur(v) },
+  { key: "bounce", name: "들낙률", fmt: (v) => `${Math.round(v * 100)}%`, note: "접속 5회 이상인 사람만" },
+];
+function metricsOf(u, period = "all") {
+  const from = period === "30d" ? NOW - 30 * D : period === "7d" ? NOW - 7 * D : 0;
+  const ss = u.sessions.filter((s) => s.e > from);
+  const total = ss.reduce((a, s) => a + (s.e - Math.max(s.s, from)), 0);
+  const shorts = ss.filter((s) => !s.online && s.e - s.s < 5 * 60e3).length;
+  return { total, count: ss.length, days: new Set(ss.map((s) => sod(s.s))).size, avg: ss.length ? total / ss.length : 0,
+    longest: ss.reduce((a, s) => Math.max(a, s.e - s.s), 0), bounce: ss.length >= 5 ? shorts / ss.length : null };
+}
+function ranked(g, key, period) {
+  return g.users.map((u) => ({ u, v: metricsOf(u, period)[key] })).filter((x) => x.v != null && x.v > 0).sort((a, b) => b.v - a.v);
+}
+function rankOf(g, u, key, period = "all") { const r = ranked(g, key, period); const i = r.findIndex((x) => x.u.id === u.id); return i < 0 ? null : { no: i + 1, of: r.length }; }
+function stabs() {
+  if (state.rankwhere !== "tabs") return "";
+  return `<div class="stabs" data-cand="rankwhere" data-new><button class="${view.tab === "timeline" ? "sel" : ""}" data-click data-tab="timeline">타임라인</button><button class="${view.tab === "rank" ? "sel" : ""}" data-click data-tab="rank">랭킹</button></div>`;
+}
+function periodSeg() {
+  if (state.rankperiod !== "switch") return `<span class="range" data-cand="rankperiod">누적 기준</span>`;
+  return `<div class="seg" data-cand="rankperiod">${[["all", "누적"], ["30d", "최근 30일"], ["7d", "최근 7일"]].map(([k, n]) => `<button class="${view.rperiod === k ? "sel" : ""}" data-click data-rp="${k}">${n}</button>`).join("")}</div>`;
+}
+function rankPage(g) {
+  const period = state.rankperiod === "switch" ? view.rperiod : "all";
+  const top = `<div class="ctrl">${periodSeg()}<span class="range">${g.name} · 기록된 ${g.users.length}명</span></div>`;
+  if (state.ranklayout === "table") {
+    const m = METRICS.find((x) => x.key === view.rmetric);
+    const rows = g.users.map((u) => ({ u, m: metricsOf(u, period) })).sort((a, b) => (b.m[m.key] ?? -1) - (a.m[m.key] ?? -1));
+    return `${top}<div class="card" data-cand="ranklayout" style="flex:1;overflow:auto;padding:4px 6px"><table class="rt"><thead><tr><th>#</th><th>사람</th>${METRICS.map((x) => `<th class="${x.key === m.key ? "sel" : ""}" data-click data-rm="${x.key}">${x.name}${x.key === m.key ? " ▼" : ""}</th>`).join("")}</tr></thead>
+      <tbody>${rows.map((r, i) => `<tr data-user="${r.u.id}"><td>${i + 1}</td><td><span style="display:inline-flex;align-items:center;gap:8px"><img src="${r.u.avatar}" style="width:20px;height:20px;border-radius:10px">${r.u.name}</span></td>${METRICS.map((x) => `<td class="${x.key === m.key ? "sel" : ""}">${r.m[x.key] == null ? "-" : x.fmt(r.m[x.key])}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+  }
+  return `${top}<div class="boards" data-cand="ranklayout">${METRICS.map((m) => {
+    const r = ranked(g, m.key, period).slice(0, 5); const max = r[0]?.v || 1;
+    return `<div class="card lb"><h5>${m.name}</h5>${r.map((x, i) => `<div class="r" data-click data-user="${x.u.id}"><span class="no ${i < 3 ? "m" + (i + 1) : ""}">${i + 1}</span><img src="${x.u.avatar}"><span class="nm">${x.u.name}</span><span class="bar2"><i style="width:${(x.v / max) * 100}%"></i></span><span class="val">${m.fmt(x.v)}</span></div>`).join("") || `<div class="note">기록 없음</div>`}${m.note ? `<div class="note">${m.note}</div>` : ""}</div>`;
+  }).join("")}</div>`;
+}
+function rankPanel(g) {
+  if (state.rankwhere !== "panel") return "";
+  const period = state.rankperiod === "switch" ? view.rperiod : "all";
+  const m = METRICS.find((x) => x.key === view.rmetric);
+  const r = ranked(g, m.key, period).slice(0, 10); const max = r[0]?.v || 1;
+  return `<div class="rkpanel lb" data-cand="rankwhere" data-new><h4>랭킹</h4>${state.rankperiod === "switch" ? `<div class="rkchips" data-cand="rankperiod">${[["all", "누적"], ["30d", "30일"], ["7d", "7일"]].map(([k, n]) => `<span class="${view.rperiod === k ? "sel" : ""}" data-click data-rp="${k}">${n}</span>`).join("")}</div>` : ""}
+    <div class="rkchips">${METRICS.map((x) => `<span class="${x.key === m.key ? "sel" : ""}" data-click data-rm="${x.key}">${x.name}</span>`).join("")}</div>
+    ${r.map((x, i) => `<div class="r" data-click data-user="${x.u.id}"><span class="no ${i < 3 ? "m" + (i + 1) : ""}">${i + 1}</span><img src="${x.u.avatar}"><span class="nm">${x.u.name}</span><span class="val" style="margin-left:auto">${m.fmt(x.v)}</span></div>`).join("")}</div>`;
+}
 function userPage(g, u) {
   const st = userStats(u);
   const on = isOnline(u);
@@ -656,7 +755,7 @@ function userPage(g, u) {
         <div class="dbars" style="height:56px">${b.daily.map((v) => `<div style="height:${Math.max(3, (v / bmax) * 100)}%;background:#f5a524" title="${v}번"></div>`).join("")}</div></div>`
     : `<div data-cand="bounce" style="width:20px"></div>`;
   const bstat = state.bui === "card" ? "" : `<div class="stat" data-cand="bui" data-new style="display:flex;gap:10px;align-items:center"><div style="flex:1;min-width:0">
-      <div class="k">들낙 · 5분 안에 나감</div>${state.bui === "statmini"
+      <div class="k">들낙 · 5분 미만${state.myrank === "badge" ? (() => { const r = rankOf(g, u, "bounce"); return r ? `<span class="rankpill" data-cand="myrank" data-new>${r.no}위</span>` : ""; })() : ""}</div>${state.bui === "statmini"
         ? `<div class="v">${Math.round(b.ratio * 100)}%</div><div class="k" style="font-size:11px;margin-top:2px">하루 ${b.perDay.toFixed(1)}번 · ${b.count}/${b.all}회</div>`
         : `<div class="v">${Math.round(b.ratio * 100)}%<span style="font-size:13px;color:var(--muted);font-weight:500">· 하루 ${b.perDay.toFixed(1)}번</span></div><div class="k" style="font-size:11px;margin-top:2px">접속 ${b.all}번 중 ${b.count}번</div>`}</div>
       ${state.bui === "statmini" ? `<div style="width:84px;flex:0 0 auto"><div class="dbars" style="height:38px;gap:2px">${b.daily.map((v) => `<div style="height:${Math.max(4, (v / bmax) * 100)}%;background:#f5a524;opacity:.85;border-radius:2px 2px 0 0" title="${v}번"></div>`).join("")}</div><div class="k" style="font-size:10px;text-align:right;margin-top:3px">최근 14일</div></div>` : ""}</div>`;
@@ -674,7 +773,7 @@ function userPage(g, u) {
     <div class="uhead" data-new><img src="${u.avatar}"><div><div class="nm">${u.name}<span class="pill ${on ? "" : "off"}">${on ? "접속 중 · " + last.ch : "오프라인"}</span>
       <button class="btn sharebtn" data-click data-act="share">🔗 공유</button></div><div class="st">${g.name} · 마지막 접속 ${on ? "지금" : last ? fmtFull(last.e) : "-"}</div></div></div>
     <div class="summary">
-      <div class="stat"><div class="k">누적 총 접속</div><div class="v">${fmtDur(u.sessions.reduce((acc, x) => acc + (x.e - x.s), 0))}</div><div class="k" style="font-size:11px;margin-top:2px">${(() => { const d = new Date(u.sessions[0]?.s ?? NOW); return `${d.getFullYear()}.${p2(d.getMonth() + 1)}.${p2(d.getDate())}부터 기록`; })()}</div></div>
+      <div class="stat"><div class="k">누적 총 접속${state.myrank === "badge" ? (() => { const r = rankOf(g, u, "total"); return r ? `<span class="rankpill" data-cand="myrank" data-new>서버 ${r.no}위 / ${r.of}명</span>` : ""; })() : `<span data-cand="myrank"></span>`}</div><div class="v">${fmtDur(u.sessions.reduce((acc, x) => acc + (x.e - x.s), 0))}</div><div class="k" style="font-size:11px;margin-top:2px">${(() => { const d = new Date(u.sessions[0]?.s ?? NOW); return `${d.getFullYear()}.${p2(d.getMonth() + 1)}.${p2(d.getDate())}부터 기록`; })()}</div></div>
       <div class="stat"><div class="k">접속한 날</div><div class="v">${st.days}일 / 30일</div></div>
       <div class="stat"><div class="k">평균 접속 길이</div><div class="v">${fmtDur(st.avg)}</div></div>
       <div class="stat"><div class="k">가장 많이 간 채널</div><div class="v"><span style="width:14px;height:14px;border-radius:7px;display:inline-block;background:${chSolid(topCh[0]?.[0] ?? "")}"></span>${topCh[0]?.[0] ?? "-"}</div></div>${bstat}</div>
@@ -709,8 +808,9 @@ function render() {
   let body;
   if (view.loading && state.loading === "skeleton") body = skeleton();
   else if (view.page === "user") body = userPage(g, g.users.find((x) => x.id === view.user));
-  else body = `${header(g)}${summary(g)}${nowStrip(g)}${controls(g)}
-      <div class="tlwrap"><div class="tl" data-cand="rows" id="tl">${timeline(g)}</div>${rpanel(g)}</div>
+  else if (state.rankwhere === "tabs" && view.tab === "rank") body = `${header(g)}${stabs()}${rankPage(g)}`;
+  else body = `${header(g)}${stabs()}${summary(g)}${nowStrip(g)}${controls(g)}
+      <div class="tlwrap"><div class="tl" data-cand="rows" id="tl">${timeline(g)}</div>${rpanel(g)}${rankPanel(g)}</div>
       ${view.panel ? userPanel(g, g.users.find((x) => x.id === view.panel)) : ""}`;
   app.innerHTML = `${view.loading && state.loading === "old" ? `<div class="loadbar" style="width:${view.loadP * 100}%"></div>` : ""}
     ${serverNav()}<div class="main">${tabsNav()}<div class="content" data-cand="loading">${body}</div></div>
@@ -721,12 +821,15 @@ function render() {
 /* ================= app interactions ================= */
 app.addEventListener("click", (e) => {
   if (document.body.classList.contains("shift")) return;
-  const el = e.target.closest("[data-guild],[data-preset],[data-zoom],[data-ch],[data-act],[data-user],[data-back],[data-closepanel]");
+  const el = e.target.closest("[data-guild],[data-preset],[data-zoom],[data-ch],[data-act],[data-user],[data-back],[data-closepanel],[data-tab],[data-rp],[data-rm]");
   if (!el) return;
   if (el.dataset.guild) { view.guild = el.dataset.guild; view.hidden.clear(); view.page = "server"; view.panel = null; }
   if (el.dataset.user) { if (state.click === "panel" && !el.dataset.force) view.panel = el.dataset.user; else { view.page = "user"; view.user = el.dataset.user; view.panel = null; } view.hover = null; }
   if (el.dataset.back !== undefined) view.page = "server";
   if (el.dataset.closepanel !== undefined) view.panel = null;
+  if (el.dataset.tab) view.tab = el.dataset.tab;
+  if (el.dataset.rp) view.rperiod = el.dataset.rp;
+  if (el.dataset.rm) view.rmetric = el.dataset.rm;
   if (el.dataset.preset) { view.preset = el.dataset.preset; view.zoom = 1; }
   if (el.dataset.zoom) view.zoom = Math.min(8, Math.max(0.05, view.zoom * +el.dataset.zoom));
   if (el.dataset.ch) { const c = el.dataset.ch; view.hidden.has(c) ? view.hidden.delete(c) : view.hidden.add(c); }
@@ -769,7 +872,11 @@ function choose(key, opt, focus = true) {
   state[key] = opt; openComment = `${key}:${opt}`;
   renderNote();
   if (["shape", "bounce", "bui"].includes(key) || (key === "bwhere" && opt === "user")) { if (view.page !== "user") { view.page = "user"; view.user = [...G().users].sort((x, y) => userStats(y).bounce.ratio - userStats(x).bounce.ratio)[0].id; } }
+  view.shared = key === "sharedview";
+  if (view.shared) { view.page = "server"; view.tab = "timeline"; }
   if ((key === "bwhere" && opt === "both") || key === "ntime") view.page = "server";
+  if (["rankwhere", "ranklayout", "rankperiod"].includes(key)) { view.page = "server"; view.tab = state.rankwhere === "tabs" ? "rank" : "timeline"; }
+  if (key === "myrank" && view.page !== "user") { view.page = "user"; view.user = ranked(G(), "total", "all")[2]?.u.id ?? G().users[0].id; }
   if (key === "loading" && changed) playLoading(); else render();
   const ta = list.querySelector("textarea");
   if (ta && focus) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); ta.closest(".opt").scrollIntoView({ block: "nearest" }); }
@@ -784,7 +891,7 @@ list.addEventListener("input", (e) => {
   (comments[e.target.dataset.k] ??= {})[e.target.dataset.o] = e.target.value; autosize(e.target);
 });
 document.getElementById("copy").onclick = async () => {
-  const lines = ["[watcher 리디자인 시안 6차 선택 결과]"];
+  const lines = ["[watcher 리디자인 시안 7차 선택 결과]"];
   for (const it of OPEN_ITEMS) {
     const o = it.opts.find((x) => x.id === state[it.key]);
     const c = comments[it.key]?.[o.id]?.trim();
