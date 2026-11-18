@@ -20,3 +20,5 @@ nohup.out
 
 # Lavalink downloads plugins on startup
 /plugins/
+/lavalink.log/
+/deploy/
