@@ -124,6 +124,8 @@
   .flabel { position:absolute; display:flex; align-items:center; gap: 6px; white-space: nowrap; font-size: 12px; color: #c8c8c8; pointer-events: none; }
   .flabel img { width: 20px; height: 20px; border-radius: 10px; }
   .flabel.on { color: var(--accent); }
+  .flabel.small { font-size: 11px; color: var(--muted); }
+  .flabel.small.on { color: var(--accent); }
   .dbg { position:absolute; left: 6px; top: 34px; color: #777; font-size: 12px; z-index: 2; }
 
   /* right panel */
@@ -156,9 +158,40 @@
 
   .toast { position:absolute; left: 50%; bottom: 28px; transform: translateX(-50%); background: var(--strong); color: var(--bg); padding: 9px 16px; border-radius: 10px; font-weight: 600; z-index: 60; }
 
+  /* person page */
+  .namecol.link { cursor: pointer; } .namecol.link:hover .nm { text-decoration: underline; }
+  .back { color: var(--muted); cursor: pointer; font-size: 12px; display:inline-flex; gap: 6px; align-items:center; align-self: flex-start; }
+  .back:hover { color: var(--strong); }
+  .uhead { display:flex; align-items:center; gap: 14px; }
+  .uhead img { width: 52px; height: 52px; border-radius: 26px; }
+  .uhead .nm { font-size: 24px; font-weight: 800; color: var(--strong); display:flex; align-items:center; gap: 10px; }
+  .uhead .st { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .uhead .nm .btn { font-size: 12px; font-weight: 500; }
+  .pill { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: rgba(61,220,151,.15); color: var(--accent); }
+  .pill.off { background: var(--panel2); color: var(--muted); }
+  .grid2 { display:grid; grid-template-columns: 1.4fr 1fr; gap: 12px; min-height: 0; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; min-width: 0; }
+  .card h5 { margin: 0 0 10px; font-size: 13px; color: var(--strong); display:flex; align-items:center; gap: 8px; }
+  .card h5 span { color: var(--muted); font-weight: 400; font-size: 11px; }
+  .hbars { display:flex; align-items:flex-end; gap: 3px; height: 120px; }
+  .hbars div { flex: 1; background: var(--accent2); border-radius: 3px 3px 0 0; opacity: .85; }
+  .hbars div.cur { background: var(--now); opacity: 1; }
+  .hlabels { display:flex; gap: 3px; margin-top: 4px; } .hlabels span { flex: 1; text-align: center; font-size: 10px; color: var(--muted); }
+  .heat { display:grid; grid-template-columns: 22px repeat(24, 1fr); gap: 2px; font-size: 10px; color: var(--muted); }
+  .heat i { height: 13px; border-radius: 2px; background: var(--accent2); }
+  .dbars { display:flex; align-items:flex-end; gap: 4px; height: 90px; }
+  .dbars div { flex: 1; background: var(--accent2); border-radius: 3px 3px 0 0; opacity: .7; }
+  .chrow { display:flex; align-items:center; gap: 8px; margin: 6px 0; font-size: 12px; }
+  .chrow .bx { flex: 1; height: 8px; background: var(--panel2); border-radius: 4px; overflow: hidden; } .chrow .bx i { display:block; height: 100%; }
+  .chrow b { width: 70px; color: var(--strong); font-weight: 600; } .chrow span { width: 40px; text-align: right; color: var(--muted); }
+  .slist { font-size: 12px; } .slist div { display:flex; gap: 10px; padding: 5px 0; border-bottom: 1px solid var(--line); } .slist div:last-child { border: 0; }
+  .slist i { width: 8px; height: 8px; border-radius: 4px; margin-top: 4px; flex: 0 0 auto; } .slist .t { color: var(--muted); width: 120px; } .slist .d { margin-left: auto; color: var(--strong); }
+  .upanel { position:absolute; right: 0; top: 0; bottom: 0; width: 330px; background: var(--panel); border-left: 1px solid var(--line); z-index: 20; padding: 18px; display:flex; flex-direction:column; gap: 12px; box-shadow: -12px 0 30px rgba(0,0,0,.35); }
+  .upanel .x { position:absolute; right: 14px; top: 12px; cursor: pointer; color: var(--muted); font-size: 18px; }
+
   /* ---------- mock helpers: shift outlines ---------- */
   body.shift [data-click] { outline: 2px dashed #3fa9ff; outline-offset: -2px; }
-  body.shift [data-cand] { position: relative; }
+  body.shift [data-cand]:not(.row) { position: relative; }
   body.shift [data-cand]::after { content:""; position:absolute; inset: 0; border: 2px dashed #ff9f1a; pointer-events: none; z-index: 40; border-radius: 4px; }
   body.shownew [data-new] { position: relative; }
   body.shownew [data-new]::before { content:"NEW"; position:absolute; top:-8px; right: 6px; background:#e040fb; color:#fff; font-size:10px; font-weight:800; padding:1px 5px; border-radius: 4px; z-index: 45; }
@@ -206,7 +239,7 @@
 <div id="app"></div>
 <div id="note">
   <div class="top">
-    <div class="r"><h2>watcher 리디자인 시안</h2><span id="copied">복사됨</span><button id="copy">결과 복사</button></div>
+    <div class="r"><h2>watcher 리디자인 시안 (3차)</h2><span id="copied">복사됨</span><button id="copy">결과 복사</button></div>
     <div class="help">항목에서 옵션을 고르면 시안이 바로 바뀌고 의견을 적을 수 있음. <b>Shift</b>를 누르면 <span class="k1">파란 점선</span>은 누를 수 있는 곳, <span class="k2">주황 점선</span>은 후보가 있는 곳(올리면 후보 툴팁).</div>
   </div>
   <div class="list" id="list"></div>
@@ -218,6 +251,7 @@
 /* ================= synthetic data (no real users) ================= */
 const NOW = Date.now();
 const H = 3600e3, D = 24 * H;
+const sod = (t = NOW) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
 let seed = 42;
 const rand = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
 const pick = (a) => a[Math.floor(rand() * a.length)];
@@ -233,18 +267,27 @@ const GUILDS = GDEF.map((g, gi) => {
   for (let u = 0; u < g.n; u++) {
     const name = NAMES[(u + gi * 5) % NAMES.length];
     const sessions = [];
-    let t = NOW - 3 * D + rand() * 6 * H;
-    while (t < NOW) {
-      const end = t + (20 + rand() * 200) * 60e3;
-      const online = end > NOW;
-      sessions.push({ ch: pick(g.channels), s: Math.round(t), e: online ? NOW : Math.round(end), online });
-      t = end + (1 + rand() * 14) * H;
+    const pref = [21, 22, 20, 23, 14, 19, 1, 16][(u + gi) % 8]; // favourite hour
+    const activity = 0.35 + rand() * 0.5;
+    for (let day = 30; day >= 0; day--) {
+      const base = sod(NOW - day * D);
+      const weekend = [0, 6].includes(new Date(base).getDay());
+      if (rand() > activity + (weekend ? 0.2 : 0)) continue;
+      const count = rand() < 0.3 ? 2 : 1;
+      for (let k = 0; k < count; k++) {
+        const st = base + (pref + (rand() - 0.5) * 6 + k * 3) * H;
+        const end = st + (20 + rand() * 200) * 60e3;
+        if (st > NOW) continue;
+        if (sessions.length && sessions.at(-1).e > st) continue;
+        const online = end > NOW;
+        sessions.push({ ch: pick(g.channels), s: Math.round(st), e: online ? NOW : Math.round(end), online });
+      }
     }
     // a few people are online right now
     const last = sessions.at(-1);
-    if (u % 3 === 0 && !last.online) {
+    if (u % 3 === 0 && (!last || !last.online)) {
       const st = NOW - (25 + rand() * 140) * 60e3;
-      if (last.e < st) sessions.push({ ch: g.channels[u % 2 === 0 ? 0 : 1], s: Math.round(st), e: NOW, online: true });
+      if (!last || last.e < st) sessions.push({ ch: g.channels[u % 2 === 0 ? 0 : 1], s: Math.round(st), e: NOW, online: true });
     }
     users.push({ id: `${g.id}u${u}`, name, avatar: av(name, (u * 47 + gi * 30) % 360), sessions });
   }
@@ -254,7 +297,6 @@ const HUES = [150, 4, 212, 280, 42, 180];
 const hueOf = (ch) => { for (const g of GDEF) { const i = g.channels.indexOf(ch); if (i >= 0) return HUES[i % HUES.length]; } return 0; };
 const chColor = (ch) => `hsl(${hueOf(ch)}, var(--barS), var(--barL))`;
 const chSolid = (ch) => `hsl(${hueOf(ch)}, 55%, 45%)`;
-const sod = (t = NOW) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
 const fmtDur = (ms) => { const m = Math.round(ms / 60e3); const h = Math.floor(m / 60); return h ? `${h}시간 ${m % 60}분` : `${m}분`; };
 const p2 = (n) => String(n).padStart(2, "0");
 const fmtHM = (t) => { const d = new Date(t); return `${p2(d.getHours())}:${p2(d.getMinutes())}`; };
@@ -321,14 +363,34 @@ const ITEMS = [
   { key: "loading", title: "처음 열 때 로딩", opts: [
     { id: "old", name: "기존", desc: "맨 위 얇은 진행 막대가 차면서 사람이 하나씩 나타남", old: 1 },
     { id: "skeleton", name: "스켈레톤", desc: "화면 틀을 먼저 보여 주고 데이터가 오면 한 번에 채움", rec: 1 } ] },
+  { key: "after", title: "막대 뒤 표시 내용", opts: [
+    { id: "avatar", name: "아바타 + 이름", desc: "기존 화면처럼 막대 뒤에 아바타와 이름", old: 1 },
+    { id: "name", name: "이름만", desc: "왼쪽 열에 아바타가 있으니 막대 뒤에는 이름만 작게", rec: 1 },
+    { id: "channel", name: "채널 이름", desc: "막대 뒤에 사람 대신 그 막대의 채널 이름" } ] },
+  { key: "click", title: "사람 이름을 누르면", opts: [
+    { id: "none", name: "기능 없음", desc: "지금처럼 아무 일도 없음", old: 1 },
+    { id: "page", name: "사람 페이지로 이동", desc: "그 사람 전용 대시보드 페이지(주소가 따로 있어 공유 가능)로 바로 이동", rec: 1 },
+    { id: "panel", name: "미리보기 패널 → 페이지", desc: "오른쪽에 요약·시간대 그래프 패널을 먼저 띄우고 '자세히 보기'로 페이지 이동" } ] },
+  { key: "freq", title: "시간대별 접속 빈도 그래프", opts: [
+    { id: "none", name: "기능 없음", desc: "그래프 없음", old: 1 },
+    { id: "bars", name: "24시간 막대", desc: "0~23시마다 그 시간에 접속해 있던 날의 비율(최근 30일). 지금 시각 막대는 빨간색", rec: 1 },
+    { id: "heat", name: "요일 × 시간 히트맵", desc: "요일별로 나눠 7×24 칸의 색 진하기로 표시" },
+    { id: "both", name: "둘 다", desc: "24시간 막대 아래에 히트맵도 같이" } ] },
+  { key: "ublocks", title: "사람 페이지 추가 정보", opts: [
+    { id: "none", name: "기능 없음", desc: "요약 카드와 시간대 그래프만", old: 1 },
+    { id: "full", name: "일별·채널·최근 접속", desc: "일별 접속 시간 막대(14일), 자주 간 채널 비율, 최근 접속 목록 추가", rec: 1 } ] },
   { key: "share", title: "링크 공유", opts: [
     { id: "old", name: "기존", desc: "서버 이름(제목)을 누르면 주소 복사 후 알림창", old: 1 },
     { id: "btn", name: "공유 버튼 + 토스트", desc: "이름 옆 공유 버튼, 복사되면 화면 아래 짧은 안내", rec: 1 } ] },
 ];
 const state = {}; ITEMS.forEach((it) => (state[it.key] = it.opts.find((o) => o.rec)?.id ?? it.opts[0].id));
+// round 2: confirmed choices are fixed and hidden from the note
+const CONFIRMED = { theme: "slate", layout: "rail", rows: "fixed", ctrl: "seg", summary: "cards", now: "chips", legend: "filter", tip: "card", loading: "skeleton", share: "btn", after: "avatar" };
+Object.assign(state, CONFIRMED);
+const OPEN_ITEMS = ITEMS.filter((it) => !(it.key in CONFIRMED));
 const comments = {}; // key -> optId -> text
 let openComment = null; // `${key}:${optId}`
-const view = { guild: "g1", preset: "24h", zoom: 1, hidden: new Set(), loading: false, loadP: 1, toast: null, hover: null };
+const view = { page: "server", user: null, panel: null, guild: "g1", preset: "24h", zoom: 1, hidden: new Set(), loading: false, loadP: 1, toast: null, hover: null };
 
 /* ================= render app ================= */
 const app = document.getElementById("app");
@@ -420,7 +482,7 @@ function timeline(g) {
   const X = (t) => NC + 12 + ((t - a) / (b - a)) * bw;
   const rowH = state.rows === "compact" ? 26 : state.rows === "fixed" ? 40 : 42;
   const barH = state.rows === "compact" ? 14 : 24;
-  const users = [...g.users].sort((x, y) => (isOnline(y) - isOnline(x)) || (y.sessions.at(-1).e - x.sessions.at(-1).e));
+  const users = [...g.users].sort((x, y) => (isOnline(y) - isOnline(x)) || ((y.sessions.at(-1)?.e ?? 0) - (x.sessions.at(-1)?.e ?? 0)));
   const st0 = sod();
   let html = `<div class="axis">${ticks(a, b, bw).map((k) => `<span class="${k.major ? "major" : ""}" style="left:${X(k.t)}px">${k.label}</span>`).join("")}</div>`;
   html += ticks(a, b, bw).map((k) => `<div class="gridline" style="left:${X(k.t)}px"></div>`).join("");
@@ -431,16 +493,24 @@ function timeline(g) {
     const y = 8 + i * rowH;
     const on = isOnline(u);
     let today = 0; for (const s of u.sessions) { const p = Math.max(s.s, st0), q = Math.min(s.e, NOW); if (q > p) today += q - p; }
-    html += `<div class="row ${fixed && i % 2 ? "alt" : ""}" style="top:${y - 4}px;height:${rowH}px">`;
-    if (fixed) html += `<div class="namecol" style="width:${NC}px">${state.rows === "compact" ? "" : `<img src="${u.avatar}">`}<span class="nm">${u.name}</span>${on ? `<span class="on"></span>` : ""}<span class="sub">${today ? fmtDur(today) : "-"}</span></div>`;
+    html += `<div class="row ${fixed && i % 2 ? "alt" : ""}" data-cand="after" style="top:${y - 4}px;height:${rowH}px">`;
+    if (fixed) html += `<div class="namecol ${state.click !== "none" ? "link" : ""}" ${state.click !== "none" ? `data-click data-user="${u.id}"` : ""} data-cand="click" style="width:${NC}px">${state.rows === "compact" ? "" : `<img src="${u.avatar}">`}<span class="nm">${u.name}</span>${on ? `<span class="on"></span>` : ""}<span class="sub">${today ? fmtDur(today) : "-"}</span></div>`;
     const vis = u.sessions.filter((s) => s.e > a && s.s < b && !view.hidden.has(s.ch));
     vis.forEach((s, si) => {
       const x1 = Math.max(X(s.s), NC), x2 = Math.min(X(s.e), W);
       if (x2 <= x1) return;
       html += `<div class="bar ${s.online ? "online" : ""}" data-cand="tip" data-u="${u.id}" data-s="${u.sessions.indexOf(s)}" style="left:${x1}px;width:${Math.max(2, x2 - x1)}px;top:${(rowH - barH) / 2}px;height:${barH}px;background:${chColor(s.ch)}"></div>`;
+      const next = vis[si + 1];
       if (!fixed) {
-        const next = vis[si + 1];
         if (!next || X(next.s) - x2 > 90) html += `<div class="flabel ${s.online ? "on" : ""}" style="left:${x2 + 10}px;top:${(rowH - 20) / 2}px"><img src="${u.avatar}">${u.name}</div>`;
+      } else {
+        const a2 = state.after;
+        const need = a2 === "avatar" ? 80 : a2 === "channel" ? 20 + s.ch.length * 13 : 50;
+        if (x2 + need < W && (!next || X(next.s) - x2 > need + 10)) {
+          if (a2 === "avatar") html += `<div class="flabel ${s.online ? "on" : ""}" style="left:${x2 + 8}px;top:${(rowH - 20) / 2}px"><img src="${u.avatar}">${u.name}</div>`;
+          else if (a2 === "name") html += `<div class="flabel small ${s.online ? "on" : ""}" style="left:${x2 + 7}px;top:${(rowH - 16) / 2}px">${u.name}</div>`;
+          else html += `<div class="flabel small" style="left:${x2 + 7}px;top:${(rowH - 16) / 2}px;color:${chSolid(s.ch)}">${s.ch}</div>`;
+        }
       }
     });
     html += `</div>`;
@@ -463,6 +533,69 @@ function skeleton() {
     <div class="ctrl"><div class="sk" style="width:300px;height:30px"></div></div>
     <div class="tl" style="padding:44px 16px">${Array.from({ length: 10 }, (_, i) => `<div style="display:flex;gap:16px;margin-bottom:16px"><div class="sk" style="width:150px;height:22px"></div><div class="sk" style="margin-left:${(i * 97) % 400}px;width:${120 + (i * 53) % 260}px;height:22px"></div></div>`).join("")}</div>`;
 }
+function userStats(u, days = 30) {
+  const from = sod(NOW - (days - 1) * D);
+  const ss = u.sessions.filter((s) => s.e > from);
+  const total = ss.reduce((a, s) => a + (s.e - Math.max(s.s, from)), 0);
+  const dayset = new Set(ss.map((s) => sod(s.s)));
+  const hours = Array(24).fill(0), heat = Array.from({ length: 7 }, () => Array(24).fill(0));
+  for (let d = 0; d < days; d++) {
+    const base = sod(NOW - d * D);
+    for (let h = 0; h < 24; h++) {
+      const a = base + h * H, b = a + H;
+      if (a > NOW) continue;
+      if (ss.some((s) => s.s < b && s.e > a)) { hours[h]++; heat[new Date(base).getDay()][h]++; }
+    }
+  }
+  const daily = Array.from({ length: 14 }, (_, i) => { const a = sod(NOW - (13 - i) * D), b = a + D; return ss.reduce((acc, s) => acc + Math.max(0, Math.min(s.e, b) - Math.max(s.s, a)), 0); });
+  const ch = {}; for (const s of ss) ch[s.ch] = (ch[s.ch] ?? 0) + (s.e - s.s);
+  return { ss, total, days: dayset.size, avg: ss.length ? total / ss.length : 0, hours: hours.map((v) => v / days), heat, daily, ch };
+}
+function freqChart(st, mini = false) {
+  const curH = new Date(NOW).getHours();
+  const max = Math.max(0.01, ...st.hours);
+  const bars = `<div class="hbars" style="height:${mini ? 80 : 120}px">${st.hours.map((v, h) => `<div class="${h === curH ? "cur" : ""}" style="height:${Math.max(2, (v / max) * 100)}%" title="${h}시 · ${Math.round(v * 100)}%"></div>`).join("")}</div>
+    <div class="hlabels">${st.hours.map((_, h) => `<span>${mini ? (h % 6 === 0 ? h : "") : h % 3 === 0 ? h + "시" : ""}</span>`).join("")}</div>`;
+  const hmax = Math.max(1, ...st.heat.flat());
+  const dn = ["일", "월", "화", "수", "목", "금", "토"];
+  const heat = `<div class="heat" style="margin-top:${mini ? 6 : 12}px">${[1, 2, 3, 4, 5, 6, 0].map((d) => `<span>${dn[d]}</span>${st.heat[d].map((v) => `<i style="opacity:${0.08 + (v / hmax) * 0.92}"></i>`).join("")}`).join("")}</div>`;
+  if (state.freq === "bars") return bars;
+  if (state.freq === "heat") return heat;
+  if (state.freq === "both") return bars + heat;
+  return "";
+}
+function userPage(g, u) {
+  const st = userStats(u);
+  const on = isOnline(u);
+  const last = u.sessions.at(-1);
+  const topCh = Object.entries(st.ch).sort((a, b) => b[1] - a[1]);
+  const totalCh = topCh.reduce((a, x) => a + x[1], 0) || 1;
+  const freq = state.freq !== "none"
+    ? `<div class="card" data-cand="freq" data-new><h5>시간대별 접속 빈도 <span>최근 30일 · 그 시간에 접속해 있던 날의 비율</span></h5>${freqChart(st)}</div>`
+    : `<div data-cand="freq" style="min-height:20px"></div>`;
+  const blocks = state.ublocks === "full"
+    ? `<div class="grid2" data-cand="ublocks" data-new style="flex:1">
+      <div class="card"><h5>일별 접속 시간 <span>최근 14일</span></h5><div class="dbars">${st.daily.map((v) => `<div style="height:${Math.max(2, (v / Math.max(...st.daily, 1)) * 100)}%" title="${fmtDur(v)}"></div>`).join("")}</div>
+        <h5 style="margin-top:14px">자주 간 채널</h5>${topCh.slice(0, 4).map(([c, v]) => `<div class="chrow"><b>${c}</b><div class="bx"><i style="width:${(v / totalCh) * 100}%;background:${chSolid(c)}"></i></div><span>${Math.round((v / totalCh) * 100)}%</span></div>`).join("")}</div>
+      <div class="card" style="overflow:hidden"><h5>최근 접속</h5><div class="slist">${[...u.sessions].reverse().slice(0, 8).map((s) => `<div><i style="background:${chSolid(s.ch)}"></i><span class="t">${fmtFull(s.s)}</span>${s.ch}<span class="d">${s.online ? "접속 중" : fmtDur(s.e - s.s)}</span></div>`).join("")}</div></div></div>`
+    : `<div data-cand="ublocks" style="min-height:20px"></div>`;
+  return `<span class="back" data-click data-back>← ${g.name} 타임라인</span>
+    <div class="uhead" data-new><img src="${u.avatar}"><div><div class="nm">${u.name}<span class="pill ${on ? "" : "off"}">${on ? "접속 중 · " + last.ch : "오프라인"}</span>
+      <button class="btn sharebtn" data-click data-act="share">🔗 공유</button></div><div class="st">${g.name} · 마지막 접속 ${on ? "지금" : last ? fmtFull(last.e) : "-"}</div></div></div>
+    <div class="summary">
+      <div class="stat"><div class="k">최근 30일 총 접속</div><div class="v">${fmtDur(st.total)}</div></div>
+      <div class="stat"><div class="k">접속한 날</div><div class="v">${st.days}일 / 30일</div></div>
+      <div class="stat"><div class="k">평균 접속 길이</div><div class="v">${fmtDur(st.avg)}</div></div>
+      <div class="stat"><div class="k">가장 많이 간 채널</div><div class="v"><span style="width:14px;height:14px;border-radius:7px;display:inline-block;background:${chSolid(topCh[0]?.[0] ?? "")}"></span>${topCh[0]?.[0] ?? "-"}</div></div></div>
+    ${freq}${blocks}`;
+}
+function userPanel(g, u) {
+  const st = userStats(u);
+  return `<div class="upanel" data-new><span class="x" data-click data-closepanel>✕</span>
+    <div class="uhead"><img src="${u.avatar}" style="width:40px;height:40px"><div><div class="nm" style="font-size:18px">${u.name}</div><div class="st">최근 30일 ${fmtDur(st.total)} · ${st.days}일 접속</div></div></div>
+    ${state.freq !== "none" ? `<div class="card"><h5>시간대별 접속 빈도</h5>${freqChart(st, true)}</div>` : ""}
+    <button class="btn" data-click data-user="${u.id}" data-force="page">자세히 보기 →</button></div>`;
+}
 function sessionTip() {
   if (!view.hover) return "";
   const g = G(); const u = g.users.find((x) => x.id === view.hover.u); const s = u.sessions[view.hover.s];
@@ -477,26 +610,32 @@ function sessionTip() {
   return `<div class="stip card" style="${pos}"><div class="u"><img src="${u.avatar}">${u.name}${s.online ? `<span class="dot" style="margin-left:auto"></span>` : ""}</div>
     <span class="chn" style="background:${chSolid(s.ch)}">🔊 ${s.ch}</span>
     <div class="ln"><span>입장</span><b>${fmtFull(s.s)}</b></div><div class="ln"><span>퇴장</span><b>${s.online ? "접속 중" : fmtFull(s.e)}</b></div>
-    <div class="ln"><span>이번 접속</span><b>${fmtDur(s.e - s.s)}</b></div><div class="tot">최근 3일 총 접속 ${fmtDur(total)}</div></div>`;
+    <div class="ln"><span>이번 접속</span><b>${fmtDur(s.e - s.s)}</b></div><div class="tot">총 접속 ${fmtDur(total)}</div></div>`;
 }
 function render() {
   app.dataset.theme = state.theme;
   const g = G();
   let body;
   if (view.loading && state.loading === "skeleton") body = skeleton();
+  else if (view.page === "user") body = userPage(g, g.users.find((x) => x.id === view.user));
   else body = `${header(g)}${summary(g)}${nowStrip(g)}${controls(g)}
-      <div class="tlwrap"><div class="tl" data-cand="rows" id="tl">${timeline(g)}</div>${rpanel(g)}</div>`;
+      <div class="tlwrap"><div class="tl" data-cand="rows" id="tl">${timeline(g)}</div>${rpanel(g)}</div>
+      ${view.panel ? userPanel(g, g.users.find((x) => x.id === view.panel)) : ""}`;
   app.innerHTML = `${view.loading && state.loading === "old" ? `<div class="loadbar" style="width:${view.loadP * 100}%"></div>` : ""}
     ${serverNav()}<div class="main">${tabsNav()}<div class="content" data-cand="loading">${body}</div></div>
     <div id="tipwrap">${sessionTip()}</div>${view.toast ? `<div class="toast">${view.toast}</div>` : ""}`;
+  app.querySelectorAll("[data-cand]").forEach((el) => { if (el.dataset.cand in CONFIRMED) el.removeAttribute("data-cand"); });
 }
 
 /* ================= app interactions ================= */
 app.addEventListener("click", (e) => {
   if (document.body.classList.contains("shift")) return;
-  const el = e.target.closest("[data-guild],[data-preset],[data-zoom],[data-ch],[data-act]");
+  const el = e.target.closest("[data-guild],[data-preset],[data-zoom],[data-ch],[data-act],[data-user],[data-back],[data-closepanel]");
   if (!el) return;
-  if (el.dataset.guild) { view.guild = el.dataset.guild; view.hidden.clear(); }
+  if (el.dataset.guild) { view.guild = el.dataset.guild; view.hidden.clear(); view.page = "server"; view.panel = null; }
+  if (el.dataset.user) { if (state.click === "panel" && !el.dataset.force) view.panel = el.dataset.user; else { view.page = "user"; view.user = el.dataset.user; view.panel = null; } view.hover = null; }
+  if (el.dataset.back !== undefined) view.page = "server";
+  if (el.dataset.closepanel !== undefined) view.panel = null;
   if (el.dataset.preset) { view.preset = el.dataset.preset; view.zoom = 1; }
   if (el.dataset.zoom) view.zoom = Math.min(8, Math.max(0.05, view.zoom * +el.dataset.zoom));
   if (el.dataset.ch) { const c = el.dataset.ch; view.hidden.has(c) ? view.hidden.delete(c) : view.hidden.add(c); }
@@ -525,7 +664,7 @@ function playLoading() {
 /* ================= note ================= */
 const list = document.getElementById("list");
 function renderNote() {
-  list.innerHTML = ITEMS.map((it) => `<div class="item"><div class="it">${it.title}</div>${it.opts.map((o) => {
+  list.innerHTML = OPEN_ITEMS.map((it) => `<div class="item"><div class="it">${it.title}</div>${it.opts.map((o) => {
     const k = `${it.key}:${o.id}`; const cur = state[it.key] === o.id;
     return `<div class="opt ${cur ? "cur" : ""}" data-k="${it.key}" data-o="${o.id}"><div class="n">${o.name}${o.old && o.name !== "기존" ? `<span class="badge old">기존</span>` : ""}${o.rec ? `<span class="badge rec">추천</span>` : ""}</div><div class="d">${o.desc}</div>
       ${cur && openComment === k ? `<textarea rows="1" data-k="${it.key}" data-o="${o.id}" placeholder="추가 의견 (선택)">${(comments[it.key]?.[o.id] ?? "").replace(/</g, "&lt;")}</textarea>` : ""}</div>`;
@@ -538,6 +677,7 @@ function choose(key, opt, focus = true) {
   const changed = state[key] !== opt;
   state[key] = opt; openComment = `${key}:${opt}`;
   renderNote();
+  if ((key === "freq" || key === "ublocks") && view.page !== "user") { view.page = "user"; view.user = G().users[0].id; }
   if (key === "loading" && changed) playLoading(); else render();
   const ta = list.querySelector("textarea");
   if (ta && focus) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); ta.closest(".opt").scrollIntoView({ block: "nearest" }); }
@@ -552,8 +692,8 @@ list.addEventListener("input", (e) => {
   (comments[e.target.dataset.k] ??= {})[e.target.dataset.o] = e.target.value; autosize(e.target);
 });
 document.getElementById("copy").onclick = async () => {
-  const lines = ["[watcher 리디자인 시안 선택 결과]"];
-  for (const it of ITEMS) {
+  const lines = ["[watcher 리디자인 시안 3차 선택 결과]"];
+  for (const it of OPEN_ITEMS) {
     const o = it.opts.find((x) => x.id === state[it.key]);
     const c = comments[it.key]?.[o.id]?.trim();
     lines.push(`- ${it.title}: ${o.name}${c ? ` — 의견: ${c.replace(/\n/g, " / ")}` : ""}`);
