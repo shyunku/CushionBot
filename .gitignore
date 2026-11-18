@@ -29,3 +29,4 @@ nohup.out
 # Watcher web dashboard
 /watcher/node_modules/
 /watcher/.env
+/watcher/dist/
