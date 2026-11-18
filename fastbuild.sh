@@ -1,7 +1,8 @@
 #!/bin/sh
+set -eu
+
 echo "============ BUILD START ============"
-sh stop.sh
-rm -rf build/libs
 ./gradlew clean build
-sh run.sh
+systemctl --user restart cushionbot.service
+systemctl --user is-active --quiet cushionbot.service
 echo "============ BUILD END ============"

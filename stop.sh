@@ -1,3 +1,5 @@
 #!/bin/sh
-ps -ef | grep CushionBot | grep -v grep | awk '{print $2}' | xargs kill -15
+set -eu
+
+systemctl --user stop cushionbot.service
 echo "============ DAEMON STOPPED ============"

@@ -1,6 +1,6 @@
 #!/bin/sh
-sh stop.sh
-echo "============ DAEMON STOPPED ============"
-nohup java -jar build/libs/CushionBot-1.0-SNAPSHOT.jar &
-tail -f nohup.out
+set -eu
+
+systemctl --user restart cushionbot.service
+systemctl --user is-active --quiet cushionbot.service
 echo "============ DAEMON STARTED ============"

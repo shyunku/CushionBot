@@ -1,0 +1,15 @@
+[Unit]
+Description=CushionBot Discord bot and Lavalink
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/ec2-user/workspace/CushionBot
+ExecStart=/usr/bin/java -Xmx512m -jar /home/ec2-user/workspace/CushionBot/build/libs/CushionBot-1.0-SNAPSHOT.jar
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=30
+
+[Install]
+WantedBy=default.target
