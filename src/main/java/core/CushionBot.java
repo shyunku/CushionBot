@@ -9,6 +9,7 @@ import net.dv8tion.jda.api.requests.GatewayIntent;
 import service.inmemory.RedisClient;
 import service.music.Core.LavaLink;
 import service.watcher.Watcher;
+import service.watcher.WatcherWebServer;
 
 public class CushionBot {
     public static final String BOT_TOKEN = new TokenManager().getDiscordBotToken();
@@ -19,6 +20,7 @@ public class CushionBot {
         try {
             RedisClient redisClient = new RedisClient();
             Watcher.start();
+            WatcherWebServer.startServer();
             LavaLink.startServer();
             lavalinkClient = LavaLink.init();
         } catch (Exception e) {
