@@ -10,7 +10,7 @@ export const METRICS: { key: MetricKey; name: string; fmt: (v: number) => string
   { key: "days", name: "접속한 날", fmt: (v) => `${v}일` },
   { key: "avg", name: "평균 접속 길이", fmt: fmtDur },
   { key: "longest", name: "최장 연속 접속", fmt: fmtDur },
-  { key: "bounce", name: "들낙률", fmt: (v) => `${Math.round(v * 100)}%`, note: `접속 ${BOUNCE_MIN_SESSIONS}회 이상인 사람만 · 5분 미만 접속 비율` },
+  { key: "bounce", name: "들낙률", fmt: (v) => `${Math.round(v * 100)}%`, note: `사람 있는 채널에 ${BOUNCE_MIN_SESSIONS}번 이상 들어간 사람만 · 그중 5분 안에 나간 비율` },
 ];
 
 const PERIODS: [Period, string][] = [

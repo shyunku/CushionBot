@@ -4,6 +4,11 @@ import { D, H, MIN, sod } from "./time";
 export const SHORT_SESSION = 5 * MIN;
 export const BOUNCE_MIN_SESSIONS = 5;
 
+/** Sessions that count toward the bounce rate: joining a channel where someone already was. */
+const bounceBase = (ss: Session[]) => ss.filter((s) => s.withOthers);
+/** Bounces: left within SHORT_SESSION after joining someone. */
+const bounces = (ss: Session[]) => ss.filter((s) => s.withOthers && !s.online && s.e - s.s < SHORT_SESSION);
+
 export const endOf = (s: Session, now: number) => (s.online ? now : s.e);
 export const isOnline = (p: Person) => p.sessions.some((s) => s.online);
 export const lastSession = (p: Person) => p.sessions[p.sessions.length - 1];
@@ -111,7 +116,8 @@ export function userStats(p: Person, now: number, days = 30) {
   });
   const ch = new Map<string, number>();
   for (const s of ss) ch.set(s.ch, (ch.get(s.ch) ?? 0) + overlap(s, from, now, now));
-  const shorts = ss.filter((s) => !s.online && s.e - s.s < SHORT_SESSION);
+  const shorts = bounces(ss);
+  const base = bounceBase(ss).length;
   const bounceDaily = Array.from({ length: 14 }, (_, i) => {
     const a = sod(now) - (13 - i) * D;
     return shorts.filter((s) => s.s >= a && s.s < a + D).length;
@@ -124,8 +130,8 @@ export function userStats(p: Person, now: number, days = 30) {
     channels: [...ch.entries()].sort((a, b) => b[1] - a[1]),
     bounce: {
       count: shorts.length,
-      all: ss.length,
-      ratio: ss.length ? shorts.length / ss.length : 0,
+      all: base,
+      ratio: base ? shorts.length / base : 0,
       perDay: daySet.size ? shorts.length / daySet.size : 0,
       daily: bounceDaily,
     },
@@ -139,14 +145,15 @@ export function metricsOf(p: Person, period: Period, now: number): Record<Metric
   const from = period === "30d" ? now - 30 * D : period === "7d" ? now - 7 * D : 0;
   const ss = p.sessions.filter((s) => endOf(s, now) > from);
   const total = ss.reduce((acc, s) => acc + overlap(s, from, now, now), 0);
-  const shorts = ss.filter((s) => !s.online && s.e - s.s < SHORT_SESSION).length;
+  const shorts = bounces(ss).length;
+  const base = bounceBase(ss).length;
   return {
     total,
     count: ss.length,
     days: new Set(ss.map((s) => sod(Math.max(s.s, from)))).size,
     avg: ss.length ? total / ss.length : 0,
     longest: ss.reduce((acc, s) => Math.max(acc, endOf(s, now) - s.s), 0),
-    bounce: ss.length >= BOUNCE_MIN_SESSIONS ? shorts / ss.length : null,
+    bounce: base >= BOUNCE_MIN_SESSIONS ? shorts / base : null,
   };
 }
 

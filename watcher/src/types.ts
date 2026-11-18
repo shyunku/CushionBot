@@ -16,7 +16,14 @@ export type Snapshot = {
 };
 
 /** A voice session. `e` is 0 while the person is still connected. */
-export type Session = { ch: string; s: number; e: number; online: boolean };
+export type Session = {
+  ch: string;
+  s: number;
+  e: number;
+  online: boolean;
+  /** someone else was already in the channel when this session started */
+  withOthers: boolean;
+};
 
 export type Person = {
   id: string;

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { GuildData, GuildSummary, Person, Snapshot } from "./types";
+import type { GuildData, GuildSummary, Person, Session, Snapshot } from "./types";
 import { setChannelPalette } from "./colors";
 
 async function getJson<T>(url: string): Promise<T> {
@@ -21,6 +21,27 @@ export function defaultAvatar(id: string) {
   return `https://cdn.discordapp.com/embed/avatars/${n}.png`;
 }
 
+/** Flag sessions that started while another person was already in the same channel. */
+function markWithOthers(people: Person[]) {
+  const byChannel = new Map<string, { pid: string; s: Session }[]>();
+  for (const p of people)
+    for (const s of p.sessions) {
+      const list = byChannel.get(s.ch) ?? [];
+      list.push({ pid: p.id, s });
+      byChannel.set(s.ch, list);
+    }
+  for (const list of byChannel.values()) {
+    list.sort((x, y) => x.s.s - y.s.s);
+    let active: { pid: string; start: number; end: number }[] = [];
+    for (const { pid, s } of list) {
+      active = active.filter((x) => x.end > s.s);
+      // strictly earlier joins only: two people joining in the same millisecond do not count
+      s.withOthers = active.some((x) => x.pid !== pid && x.start < s.s);
+      active.push({ pid, start: s.s, end: s.online ? Infinity : s.e });
+    }
+  }
+}
+
 export function toGuildData(snap: Snapshot): GuildData {
   const people: Person[] = Object.entries(snap.sessions)
     .map(([id, raw]) => {
@@ -29,12 +50,13 @@ export function toGuildData(snap: Snapshot): GuildData {
         id,
         name: m?.name ?? `알 수 없음 (${id.slice(-4)})`,
         avatar: m?.avatarUrl ?? defaultAvatar(id),
-        sessions: raw.map((r) => ({ ch: r.channel, s: r.join, e: r.leave, online: r.leave === 0 })),
+        sessions: raw.map((r) => ({ ch: r.channel, s: r.join, e: r.leave, online: r.leave === 0, withOthers: false })),
       };
     })
     .filter((p) => p.sessions.length > 0);
-  const usage = new Map<string, number>();
   const now = snap.serverTime;
+  markWithOthers(people);
+  const usage = new Map<string, number>();
   for (const p of people) for (const s of p.sessions) usage.set(s.ch, (usage.get(s.ch) ?? 0) + ((s.online ? now : s.e) - s.s));
   const channels = [...usage.entries()].sort((a, b) => b[1] - a[1]).map(([c]) => c);
   setChannelPalette(channels);
