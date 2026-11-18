@@ -53,8 +53,27 @@ function GuildShell({ shared }: { shared: boolean }) {
       setToast("링크를 복사했어요");
       window.setTimeout(() => setToast(null), 1600);
     };
-    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(url).then(done, () => window.prompt("링크", url));
-    else window.prompt("링크", url);
+    // navigator.clipboard only exists on HTTPS/localhost; the dashboard is usually served over plain HTTP
+    const legacyCopy = () => {
+      const ta = document.createElement("textarea");
+      ta.value = url;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      let ok = false;
+      try {
+        ok = document.execCommand("copy");
+      } catch {
+        ok = false;
+      }
+      ta.remove();
+      if (ok) done();
+      else window.prompt("링크", url);
+    };
+    if (navigator.clipboard?.writeText && window.isSecureContext) navigator.clipboard.writeText(url).then(done, legacyCopy);
+    else legacyCopy();
   }, [location.pathname, base, gid]);
 
   const guildSummary = guilds?.find((g) => g.id === gid) ?? null;
