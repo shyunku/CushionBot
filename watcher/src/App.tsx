@@ -37,6 +37,10 @@ function GuildShell({ shared }: { shared: boolean }) {
   const now = useNow(data?.clockOffset ?? 0, 5000);
   const [toast, setToast] = useState<string | null>(null);
   const base = shared ? `/channel/${gid}` : `/servers/${gid}`;
+  const guildName = data?.info.name;
+  useEffect(() => {
+    if (guildName) document.title = `대시보드: ${guildName}`;
+  }, [guildName]);
 
   useEffect(() => {
     if (shared) return;
