@@ -15,7 +15,7 @@
 | 구인 | 구인 채널 생성, 모달 입력으로 구인 등록, 수정·취소·광고, 반응으로 참여 | `src/main/java/service/recruit/` |
 | team.gg 연동 | Riot RSO 로그인으로 디스코드 계정 연동, 라인 선호도 설정 (`teamgg.kr` API 호출) | `src/main/java/core/command/SlashCommandParser.java` |
 | 접속 기록 | 음성 채널 입장·퇴장·이동을 기록하고 서버/개인 랭킹을 출력한다. 기록은 `datafiles/access_logs.json`에 저장한다. | `src/main/java/service/watcher/GuildWatcher.java` |
-| watcher 대시보드 | 서버별 접속 타임라인, 오늘 요약, 지금 접속 중, 랭킹(리더보드 6종), 사람별 대시보드(시간대 빈도, 들낙 등). 봇 HTTP 서버(7918)가 빌드된 화면과 API·SSE를 함께 내려준다. 공유 링크(`/channel/{서버}`)로 열면 그 서버만 보인다. | `watcher/`, `src/main/java/service/watcher/` |
+| watcher 대시보드 | 서버별 접속 타임라인(10초까지 확대), 오늘 요약, 지금 접속 중, 랭킹(리더보드 6종), 서버 통계(평균 동시 접속자 곡선, 요일×시간 히트맵, 1년 날짜 잔디), 사람별 대시보드(시간대 빈도, 들낙 등). 봇 HTTP 서버(7918)가 빌드된 화면과 API·SSE를 함께 내려준다. 공유 링크(`/channel/{서버}`)로 열면 그 서버만 보인다. | `watcher/`, `src/main/java/service/watcher/` |
 
 슬래시 명령은 `src/main/java/core/InternalEventListener.java`에서 등록하고 `src/main/java/listeners/SlashCommandInteractionListener.java`에서 분기한다. 명령 이름은 한국어다(예: `음악채널`, `내전모으기`, `구인`, `팀지지등록`).
 
