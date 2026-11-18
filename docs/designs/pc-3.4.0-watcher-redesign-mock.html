@@ -239,7 +239,7 @@
 <div id="app"></div>
 <div id="note">
   <div class="top">
-    <div class="r"><h2>watcher 리디자인 시안 (4차)</h2><span id="copied">복사됨</span><button id="copy">결과 복사</button></div>
+    <div class="r"><h2>watcher 리디자인 시안 (5차)</h2><span id="copied">복사됨</span><button id="copy">결과 복사</button></div>
     <div class="help">항목에서 옵션을 고르면 시안이 바로 바뀌고 의견을 적을 수 있음. <b>Shift</b>를 누르면 <span class="k1">파란 점선</span>은 누를 수 있는 곳, <span class="k2">주황 점선</span>은 후보가 있는 곳(올리면 후보 툴팁).</div>
   </div>
   <div class="list" id="list"></div>
@@ -409,13 +409,18 @@ const ITEMS = [
   { key: "bwhere", title: "들낙 표시 위치", opts: [
     { id: "user", name: "사람 페이지만", desc: "사람 페이지에 들낙 카드(숫자 + 최근 14일 들낙 횟수 막대)", rec: 1 },
     { id: "both", name: "사람 페이지 + 서버 요약", desc: "서버 화면 요약 카드에 '오늘 들낙 많은 사람'도 추가" } ] },
+  { key: "bui", title: "들낙 표시 모양", opts: [
+    { id: "card", name: "따로 카드", desc: "4차 시안 모습. 그래프 오른쪽에 별도 카드", old: 1 },
+    { id: "stat", name: "요약 카드 5번째", desc: "위 요약 카드와 같은 모양으로 숫자만. 아래에 '접속 N번 중 M번'" },
+    { id: "statmini", name: "요약 카드 + 미니 막대", desc: "요약 카드와 같은 모양, 카드 오른쪽에 최근 14일 들낙 횟수 미니 막대", rec: 1 },
+    { id: "statdaily", name: "요약 카드 + 일별 그래프에 겹치기", desc: "요약 카드에는 숫자만, 14일 들낙 횟수는 '일별 접속 시간' 그래프에 주황 막대로 같이" } ] },
   { key: "share", title: "링크 공유", opts: [
     { id: "old", name: "기존", desc: "서버 이름(제목)을 누르면 주소 복사 후 알림창", old: 1 },
     { id: "btn", name: "공유 버튼 + 토스트", desc: "이름 옆 공유 버튼, 복사되면 화면 아래 짧은 안내", rec: 1 } ] },
 ];
 const state = {}; ITEMS.forEach((it) => (state[it.key] = it.opts.find((o) => o.rec)?.id ?? it.opts[0].id));
 // round 2: confirmed choices are fixed and hidden from the note
-const CONFIRMED = { theme: "slate", layout: "rail", rows: "fixed", ctrl: "seg", summary: "cards", now: "chips", legend: "filter", tip: "card", loading: "skeleton", share: "btn", after: "avatar", click: "page", freq: "both", ublocks: "full" };
+const CONFIRMED = { theme: "slate", layout: "rail", rows: "fixed", ctrl: "seg", summary: "cards", now: "chips", legend: "filter", tip: "card", loading: "skeleton", share: "btn", after: "avatar", click: "page", freq: "both", ublocks: "full", shape: "smooth", bounce: "both", bwhere: "user" };
 Object.assign(state, CONFIRMED);
 const OPEN_ITEMS = ITEMS.filter((it) => !(it.key in CONFIRMED));
 const comments = {}; // key -> optId -> text
@@ -646,10 +651,18 @@ function userPage(g, u) {
         <div class="k" style="margin:14px 0 6px;color:var(--muted);font-size:11px">최근 14일 들낙 횟수</div>
         <div class="dbars" style="height:56px">${b.daily.map((v) => `<div style="height:${Math.max(3, (v / bmax) * 100)}%;background:#f5a524" title="${v}번"></div>`).join("")}</div></div>`
     : `<div data-cand="bounce" style="width:20px"></div>`;
-  const freq = `<div style="display:flex;gap:12px"><div class="card" data-cand="shape" data-new style="flex:1"><h5>시간대별 접속 빈도 <span>최근 30일 · 그 시간에 접속해 있던 날의 비율</span></h5>${freqChart(st)}</div>${bcard}</div>`;
+  const bstat = state.bui === "card" ? "" : `<div class="stat" data-cand="bui" data-new style="display:flex;gap:10px;align-items:center"><div style="flex:1;min-width:0">
+      <div class="k">들낙 · 5분 안에 나감</div>${state.bui === "statmini"
+        ? `<div class="v">${Math.round(b.ratio * 100)}%</div><div class="k" style="font-size:11px;margin-top:2px">하루 ${b.perDay.toFixed(1)}번 · ${b.count}/${b.all}회</div>`
+        : `<div class="v">${Math.round(b.ratio * 100)}%<span style="font-size:13px;color:var(--muted);font-weight:500">· 하루 ${b.perDay.toFixed(1)}번</span></div><div class="k" style="font-size:11px;margin-top:2px">접속 ${b.all}번 중 ${b.count}번</div>`}</div>
+      ${state.bui === "statmini" ? `<div style="width:84px;flex:0 0 auto"><div class="dbars" style="height:38px;gap:2px">${b.daily.map((v) => `<div style="height:${Math.max(4, (v / bmax) * 100)}%;background:#f5a524;opacity:.85;border-radius:2px 2px 0 0" title="${v}번"></div>`).join("")}</div><div class="k" style="font-size:10px;text-align:right;margin-top:3px">최근 14일</div></div>` : ""}</div>`;
+  const freq = `<div style="display:flex;gap:12px"><div class="card" data-cand="shape" data-new style="flex:1"><h5>시간대별 접속 빈도 <span>최근 30일 · 그 시간에 접속해 있던 날의 비율</span></h5>${freqChart(st)}</div>${state.bui === "card" ? bcard.replace('data-cand="bounce"', 'data-cand="bui"') : ""}</div>`;
   const blocks = state.ublocks === "full"
     ? `<div class="grid2" data-cand="ublocks" data-new style="flex:1">
-      <div class="card"><h5>일별 접속 시간 <span>최근 14일</span></h5><div class="dbars">${st.daily.map((v) => `<div style="height:${Math.max(2, (v / Math.max(...st.daily, 1)) * 100)}%" title="${fmtDur(v)}"></div>`).join("")}</div>
+      <div class="card"><h5>일별 접속 시간 <span>최근 14일</span>${state.bui === "statdaily" ? `<span style="margin-left:auto;display:flex;gap:10px"><span><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--accent2)"></i> 접속 시간</span><span><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#f5a524"></i> 들낙 횟수</span></span>` : ""}</h5>
+        <div class="dbars">${st.daily.map((v, i) => state.bui === "statdaily"
+          ? `<div style="background:none;display:flex;align-items:flex-end;gap:2px;height:100%;opacity:1"><div style="flex:2;height:${Math.max(2, (v / Math.max(...st.daily, 1)) * 100)}%;background:var(--accent2);opacity:.7;border-radius:3px 3px 0 0"></div><div style="flex:1;height:${Math.max(2, (b.daily[i] / bmax) * 100)}%;background:#f5a524;border-radius:3px 3px 0 0"></div></div>`
+          : `<div style="height:${Math.max(2, (v / Math.max(...st.daily, 1)) * 100)}%" title="${fmtDur(v)}"></div>`).join("")}</div>
         <h5 style="margin-top:14px">자주 간 채널</h5>${topCh.slice(0, 4).map(([c, v]) => `<div class="chrow"><b>${c}</b><div class="bx"><i style="width:${(v / totalCh) * 100}%;background:${chSolid(c)}"></i></div><span>${Math.round((v / totalCh) * 100)}%</span></div>`).join("")}</div>
       <div class="card" style="overflow:hidden"><h5>최근 접속</h5><div class="slist">${[...u.sessions].reverse().slice(0, 8).map((s) => `<div><i style="background:${chSolid(s.ch)}"></i><span class="t">${fmtFull(s.s)}</span>${s.ch}<span class="d">${s.online ? "접속 중" : fmtDur(s.e - s.s)}</span></div>`).join("")}</div></div></div>`
     : `<div data-cand="ublocks" style="min-height:20px"></div>`;
@@ -660,7 +673,7 @@ function userPage(g, u) {
       <div class="stat"><div class="k">최근 30일 총 접속</div><div class="v">${fmtDur(st.total)}</div></div>
       <div class="stat"><div class="k">접속한 날</div><div class="v">${st.days}일 / 30일</div></div>
       <div class="stat"><div class="k">평균 접속 길이</div><div class="v">${fmtDur(st.avg)}</div></div>
-      <div class="stat"><div class="k">가장 많이 간 채널</div><div class="v"><span style="width:14px;height:14px;border-radius:7px;display:inline-block;background:${chSolid(topCh[0]?.[0] ?? "")}"></span>${topCh[0]?.[0] ?? "-"}</div></div></div>
+      <div class="stat"><div class="k">가장 많이 간 채널</div><div class="v"><span style="width:14px;height:14px;border-radius:7px;display:inline-block;background:${chSolid(topCh[0]?.[0] ?? "")}"></span>${topCh[0]?.[0] ?? "-"}</div></div>${bstat}</div>
     ${freq}${blocks}`;
 }
 function userPanel(g, u) {
@@ -751,7 +764,7 @@ function choose(key, opt, focus = true) {
   const changed = state[key] !== opt;
   state[key] = opt; openComment = `${key}:${opt}`;
   renderNote();
-  if (["shape", "bounce"].includes(key) || (key === "bwhere" && opt === "user")) { if (view.page !== "user") { view.page = "user"; view.user = [...G().users].sort((x, y) => userStats(y).bounce.ratio - userStats(x).bounce.ratio)[0].id; } }
+  if (["shape", "bounce", "bui"].includes(key) || (key === "bwhere" && opt === "user")) { if (view.page !== "user") { view.page = "user"; view.user = [...G().users].sort((x, y) => userStats(y).bounce.ratio - userStats(x).bounce.ratio)[0].id; } }
   if (key === "bwhere" && opt === "both") view.page = "server";
   if (key === "loading" && changed) playLoading(); else render();
   const ta = list.querySelector("textarea");
@@ -767,7 +780,7 @@ list.addEventListener("input", (e) => {
   (comments[e.target.dataset.k] ??= {})[e.target.dataset.o] = e.target.value; autosize(e.target);
 });
 document.getElementById("copy").onclick = async () => {
-  const lines = ["[watcher 리디자인 시안 4차 선택 결과]"];
+  const lines = ["[watcher 리디자인 시안 5차 선택 결과]"];
   for (const it of OPEN_ITEMS) {
     const o = it.opts.find((x) => x.id === state[it.key]);
     const c = comments[it.key]?.[o.id]?.trim();
