@@ -70,7 +70,7 @@
   .sharebtn { display:inline-flex; align-items:center; gap: 6px; }
 
   /* summary */
-  .summary { display:grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .summary { display:grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 10px; }
   .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; }
   .stat .k { color: var(--muted); font-size: 12px; }
   .stat .v { color: var(--strong); font-size: 20px; font-weight: 800; margin-top: 2px; display:flex; align-items:center; gap: 8px; }
@@ -239,7 +239,7 @@
 <div id="app"></div>
 <div id="note">
   <div class="top">
-    <div class="r"><h2>watcher 리디자인 시안 (3차)</h2><span id="copied">복사됨</span><button id="copy">결과 복사</button></div>
+    <div class="r"><h2>watcher 리디자인 시안 (4차)</h2><span id="copied">복사됨</span><button id="copy">결과 복사</button></div>
     <div class="help">항목에서 옵션을 고르면 시안이 바로 바뀌고 의견을 적을 수 있음. <b>Shift</b>를 누르면 <span class="k1">파란 점선</span>은 누를 수 있는 곳, <span class="k2">주황 점선</span>은 후보가 있는 곳(올리면 후보 툴팁).</div>
   </div>
   <div class="list" id="list"></div>
@@ -269,19 +269,37 @@ const GUILDS = GDEF.map((g, gi) => {
     const sessions = [];
     const pref = [21, 22, 20, 23, 14, 19, 1, 16][(u + gi) % 8]; // favourite hour
     const activity = 0.35 + rand() * 0.5;
+    const bouncy = ((u * 37 + gi * 11) % 10) / 10; // how often this person pops in and out
     for (let day = 30; day >= 0; day--) {
       const base = sod(NOW - day * D);
       const weekend = [0, 6].includes(new Date(base).getDay());
-      if (rand() > activity + (weekend ? 0.2 : 0)) continue;
-      const count = rand() < 0.3 ? 2 : 1;
-      for (let k = 0; k < count; k++) {
-        const st = base + (pref + (rand() - 0.5) * 6 + k * 3) * H;
-        const end = st + (20 + rand() * 200) * 60e3;
-        if (st > NOW) continue;
-        if (sessions.length && sessions.at(-1).e > st) continue;
-        const online = end > NOW;
-        sessions.push({ ch: pick(g.channels), s: Math.round(st), e: online ? NOW : Math.round(end), online });
+      const dayS = [];
+      if (rand() <= activity + (weekend ? 0.2 : 0)) {
+        const count = rand() < 0.3 ? 2 : 1;
+        for (let k = 0; k < count; k++) {
+          const st = base + (pref + (rand() - 0.5) * 6 + k * 3) * H;
+          dayS.push({ s: st, e: st + (20 + rand() * 200) * 60e3 });
+        }
       }
+      if (rand() < bouncy * 0.7) {
+        const n = 1 + Math.floor(rand() * 3);
+        for (let k = 0; k < n; k++) { const st = base + (pref + (rand() - 0.5) * 9) * H; dayS.push({ s: st, e: st + (0.3 + rand() * 4.2) * 60e3 }); }
+      }
+      dayS.sort((x, y) => x.s - y.s);
+      for (const x of dayS) {
+        if (x.s > NOW) continue;
+        if (sessions.length && sessions.at(-1).e > x.s) continue;
+        const online = x.e > NOW;
+        sessions.push({ ch: pick(g.channels), s: Math.round(x.s), e: online ? NOW : Math.round(x.e), online });
+      }
+    }
+    // bouncy people also popped in and out today
+    if (bouncy >= 0.5) {
+      for (let k = 0; k < 2; k++) {
+        const st = NOW - (1 + rand() * 7) * H, en = st + (0.5 + rand() * 3) * 60e3;
+        if (!sessions.some((x) => x.s < en + 60e3 && x.e > st - 60e3)) sessions.push({ ch: pick(g.channels), s: Math.round(st), e: Math.round(en), online: false });
+      }
+      sessions.sort((x, y) => x.s - y.s);
     }
     // a few people are online right now
     const last = sessions.at(-1);
@@ -379,13 +397,25 @@ const ITEMS = [
   { key: "ublocks", title: "사람 페이지 추가 정보", opts: [
     { id: "none", name: "기능 없음", desc: "요약 카드와 시간대 그래프만", old: 1 },
     { id: "full", name: "일별·채널·최근 접속", desc: "일별 접속 시간 막대(14일), 자주 간 채널 비율, 최근 접속 목록 추가", rec: 1 } ] },
+  { key: "shape", title: "시간대 그래프 모양 (히트맵 위)", opts: [
+    { id: "bars", name: "24시간 막대", desc: "3차 시안 모습. 1시간 단위 막대 24개", old: 1 },
+    { id: "smooth", name: "부드러운 곡선", desc: "10분 단위로 계산해 이어 그린 곡선 + 면 채우기. 지금 시각은 빨간 세로선", rec: 1 },
+    { id: "fine", name: "촘촘한 막대", desc: "15분 단위 막대 96개" } ] },
+  { key: "bounce", title: "들낙 지표 (5분 미만 접속을 들낙으로 셈)", opts: [
+    { id: "none", name: "기능 없음", desc: "들낙 표시 없음", old: 1 },
+    { id: "ratio", name: "들낙 비율", desc: "전체 접속 중 5분 안에 나간 접속의 비율(%)", rec: 1 },
+    { id: "perday", name: "하루 평균 들낙 횟수", desc: "접속한 날 기준 하루에 5분 안에 나간 횟수" },
+    { id: "both", name: "둘 다", desc: "비율과 하루 평균 횟수를 같이 표시" } ] },
+  { key: "bwhere", title: "들낙 표시 위치", opts: [
+    { id: "user", name: "사람 페이지만", desc: "사람 페이지에 들낙 카드(숫자 + 최근 14일 들낙 횟수 막대)", rec: 1 },
+    { id: "both", name: "사람 페이지 + 서버 요약", desc: "서버 화면 요약 카드에 '오늘 들낙 많은 사람'도 추가" } ] },
   { key: "share", title: "링크 공유", opts: [
     { id: "old", name: "기존", desc: "서버 이름(제목)을 누르면 주소 복사 후 알림창", old: 1 },
     { id: "btn", name: "공유 버튼 + 토스트", desc: "이름 옆 공유 버튼, 복사되면 화면 아래 짧은 안내", rec: 1 } ] },
 ];
 const state = {}; ITEMS.forEach((it) => (state[it.key] = it.opts.find((o) => o.rec)?.id ?? it.opts[0].id));
 // round 2: confirmed choices are fixed and hidden from the note
-const CONFIRMED = { theme: "slate", layout: "rail", rows: "fixed", ctrl: "seg", summary: "cards", now: "chips", legend: "filter", tip: "card", loading: "skeleton", share: "btn", after: "avatar" };
+const CONFIRMED = { theme: "slate", layout: "rail", rows: "fixed", ctrl: "seg", summary: "cards", now: "chips", legend: "filter", tip: "card", loading: "skeleton", share: "btn", after: "avatar", click: "page", freq: "both", ublocks: "full" };
 Object.assign(state, CONFIRMED);
 const OPEN_ITEMS = ITEMS.filter((it) => !(it.key in CONFIRMED));
 const comments = {}; // key -> optId -> text
@@ -435,7 +465,9 @@ function summary(g) {
     <div class="stat"><div class="k">지금 접속</div><div class="v"><span class="dot"></span>${st.online}명</div></div>
     <div class="stat"><div class="k">오늘 접속한 사람</div><div class="v">${st.people}명</div></div>
     <div class="stat"><div class="k">오늘 총 접속 시간</div><div class="v">${fmtDur(st.total)}</div></div>
-    <div class="stat"><div class="k">오늘 최장 접속</div><div class="v"><img src="${st.best.u.avatar}">${st.best.u.name} · ${fmtDur(st.best.t)}</div></div></div>`;
+    <div class="stat"><div class="k">오늘 최장 접속</div><div class="v"><img src="${st.best.u.avatar}">${st.best.u.name} · ${fmtDur(st.best.t)}</div></div>
+    ${state.bounce !== "none" && state.bwhere === "both" ? (() => { const s0 = sod(); const top = g.users.map((u) => ({ u, n: u.sessions.filter((x) => !x.online && x.s >= s0 && x.e - x.s < 5 * 60e3).length })).sort((a, b) => b.n - a.n)[0];
+      return `<div class="stat" data-cand="bwhere" data-new><div class="k">오늘 들낙 많은 사람</div><div class="v">${top && top.n ? `<img src="${top.u.avatar}">${top.u.name} · ${top.n}번` : "없음"}</div></div>`; })() : ""}</div>`;
 }
 function onlineByChannel(g) {
   const m = {};
@@ -549,7 +581,19 @@ function userStats(u, days = 30) {
   }
   const daily = Array.from({ length: 14 }, (_, i) => { const a = sod(NOW - (13 - i) * D), b = a + D; return ss.reduce((acc, s) => acc + Math.max(0, Math.min(s.e, b) - Math.max(s.s, a)), 0); });
   const ch = {}; for (const s of ss) ch[s.ch] = (ch[s.ch] ?? 0) + (s.e - s.s);
-  return { ss, total, days: dayset.size, avg: ss.length ? total / ss.length : 0, hours: hours.map((v) => v / days), heat, daily, ch };
+  const slot = (n) => {
+    const out = Array(n).fill(0), len = D / n;
+    for (let d = 0; d < days; d++) {
+      const base = sod(NOW - d * D);
+      for (let i = 0; i < n; i++) { const a = base + i * len, b = a + len; if (a > NOW) continue; if (ss.some((s) => s.s < b && s.e > a)) out[i]++; }
+    }
+    return out.map((v) => v / days);
+  };
+  const SHORT = 5 * 60e3;
+  const shorts = ss.filter((s) => !s.online && s.e - s.s < SHORT);
+  const bDaily = Array.from({ length: 14 }, (_, i) => { const a = sod(NOW - (13 - i) * D); return shorts.filter((s) => s.s >= a && s.s < a + D).length; });
+  return { ss, total, days: dayset.size, avg: ss.length ? total / ss.length : 0, hours: hours.map((v) => v / days), heat, daily, ch, slot,
+    bounce: { count: shorts.length, all: ss.length, ratio: ss.length ? shorts.length / ss.length : 0, perDay: dayset.size ? shorts.length / dayset.size : 0, daily: bDaily } };
 }
 function freqChart(st, mini = false) {
   const curH = new Date(NOW).getHours();
@@ -559,10 +603,31 @@ function freqChart(st, mini = false) {
   const hmax = Math.max(1, ...st.heat.flat());
   const dn = ["일", "월", "화", "수", "목", "금", "토"];
   const heat = `<div class="heat" style="margin-top:${mini ? 6 : 12}px">${[1, 2, 3, 4, 5, 6, 0].map((d) => `<span>${dn[d]}</span>${st.heat[d].map((v) => `<i style="opacity:${0.08 + (v / hmax) * 0.92}"></i>`).join("")}`).join("")}</div>`;
-  if (state.freq === "bars") return bars;
-  if (state.freq === "heat") return heat;
-  if (state.freq === "both") return bars + heat;
-  return "";
+  let top = bars;
+  const hgt = mini ? 80 : 120;
+  if (state.shape === "fine") {
+    const v = st.slot(96), m = Math.max(0.01, ...v), cur = Math.floor((NOW - sod()) / (D / 96));
+    top = `<div class="hbars" style="height:${hgt}px;gap:1px">${v.map((x, i) => `<div class="${i === cur ? "cur" : ""}" style="height:${Math.max(2, (x / m) * 100)}%;border-radius:1px"></div>`).join("")}</div>
+      <div class="hlabels">${st.hours.map((_, h) => `<span>${mini ? (h % 6 === 0 ? h : "") : h % 3 === 0 ? h + "시" : ""}</span>`).join("")}</div>`;
+  } else if (state.shape === "smooth") {
+    const raw = st.slot(144);
+    const sm = raw.map((_, i) => { let a = 0, c = 0; for (let k = -2; k <= 2; k++) { const j = (i + k + 144) % 144; a += raw[j]; c++; } return a / c; });
+    const m = Math.max(0.01, ...sm), W = 1000, Hh = 100;
+    const pts = sm.map((v, i) => [(i / 143) * W, Hh - (v / m) * (Hh - 6) - 2]);
+    let d = `M${pts[0][0]},${pts[0][1]}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[i - 1] ?? pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] ?? p2;
+      d += ` C${p1[0] + (p2[0] - p0[0]) / 6},${p1[1] + (p2[1] - p0[1]) / 6} ${p2[0] - (p3[0] - p1[0]) / 6},${p2[1] - (p3[1] - p1[1]) / 6} ${p2[0]},${p2[1]}`;
+    }
+    const nx = ((NOW - sod()) / D) * W;
+    top = `<svg viewBox="0 0 ${W} ${Hh}" preserveAspectRatio="none" style="width:100%;height:${hgt}px;display:block">
+        <defs><linearGradient id="fg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".45"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>
+        ${[0.25, 0.5, 0.75].map((y) => `<line x1="0" x2="${W}" y1="${Hh * y}" y2="${Hh * y}" stroke="var(--grid)" vector-effect="non-scaling-stroke"/>`).join("")}
+        <path d="${d} L${W},${Hh} L0,${Hh} Z" fill="url(#fg)"/><path d="${d}" fill="none" stroke="var(--accent)" stroke-width="2" vector-effect="non-scaling-stroke"/>
+        <line x1="${nx}" x2="${nx}" y1="0" y2="${Hh}" stroke="var(--now)" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>
+      <div class="hlabels">${st.hours.map((_, h) => `<span>${mini ? (h % 6 === 0 ? h : "") : h % 3 === 0 ? h + "시" : ""}</span>`).join("")}</div>`;
+  }
+  return top + heat;
 }
 function userPage(g, u) {
   const st = userStats(u);
@@ -570,9 +635,18 @@ function userPage(g, u) {
   const last = u.sessions.at(-1);
   const topCh = Object.entries(st.ch).sort((a, b) => b[1] - a[1]);
   const totalCh = topCh.reduce((a, x) => a + x[1], 0) || 1;
-  const freq = state.freq !== "none"
-    ? `<div class="card" data-cand="freq" data-new><h5>시간대별 접속 빈도 <span>최근 30일 · 그 시간에 접속해 있던 날의 비율</span></h5>${freqChart(st)}</div>`
-    : `<div data-cand="freq" style="min-height:20px"></div>`;
+  const b = st.bounce;
+  const bmax = Math.max(1, ...b.daily);
+  const bnum = state.bounce === "ratio" ? `<div class="v">${Math.round(b.ratio * 100)}%</div>`
+    : state.bounce === "perday" ? `<div class="v">하루 ${b.perDay.toFixed(1)}번</div>`
+    : `<div class="v">${Math.round(b.ratio * 100)}% <span style="font-size:13px;color:var(--muted);font-weight:500">· 하루 ${b.perDay.toFixed(1)}번</span></div>`;
+  const bcard = state.bounce !== "none"
+    ? `<div class="card" data-cand="bounce" data-new style="width:270px;flex:0 0 auto"><h5>들낙 <span>5분 안에 나간 접속 · 최근 30일</span></h5>
+        <div class="stat" style="border:0;padding:0;background:none">${bnum}<div class="k" style="margin-top:4px">접속 ${b.all}번 중 ${b.count}번</div></div>
+        <div class="k" style="margin:14px 0 6px;color:var(--muted);font-size:11px">최근 14일 들낙 횟수</div>
+        <div class="dbars" style="height:56px">${b.daily.map((v) => `<div style="height:${Math.max(3, (v / bmax) * 100)}%;background:#f5a524" title="${v}번"></div>`).join("")}</div></div>`
+    : `<div data-cand="bounce" style="width:20px"></div>`;
+  const freq = `<div style="display:flex;gap:12px"><div class="card" data-cand="shape" data-new style="flex:1"><h5>시간대별 접속 빈도 <span>최근 30일 · 그 시간에 접속해 있던 날의 비율</span></h5>${freqChart(st)}</div>${bcard}</div>`;
   const blocks = state.ublocks === "full"
     ? `<div class="grid2" data-cand="ublocks" data-new style="flex:1">
       <div class="card"><h5>일별 접속 시간 <span>최근 14일</span></h5><div class="dbars">${st.daily.map((v) => `<div style="height:${Math.max(2, (v / Math.max(...st.daily, 1)) * 100)}%" title="${fmtDur(v)}"></div>`).join("")}</div>
@@ -677,7 +751,8 @@ function choose(key, opt, focus = true) {
   const changed = state[key] !== opt;
   state[key] = opt; openComment = `${key}:${opt}`;
   renderNote();
-  if ((key === "freq" || key === "ublocks") && view.page !== "user") { view.page = "user"; view.user = G().users[0].id; }
+  if (["shape", "bounce"].includes(key) || (key === "bwhere" && opt === "user")) { if (view.page !== "user") { view.page = "user"; view.user = [...G().users].sort((x, y) => userStats(y).bounce.ratio - userStats(x).bounce.ratio)[0].id; } }
+  if (key === "bwhere" && opt === "both") view.page = "server";
   if (key === "loading" && changed) playLoading(); else render();
   const ta = list.querySelector("textarea");
   if (ta && focus) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); ta.closest(".opt").scrollIntoView({ block: "nearest" }); }
@@ -692,7 +767,7 @@ list.addEventListener("input", (e) => {
   (comments[e.target.dataset.k] ??= {})[e.target.dataset.o] = e.target.value; autosize(e.target);
 });
 document.getElementById("copy").onclick = async () => {
-  const lines = ["[watcher 리디자인 시안 3차 선택 결과]"];
+  const lines = ["[watcher 리디자인 시안 4차 선택 결과]"];
   for (const it of OPEN_ITEMS) {
     const o = it.opts.find((x) => x.id === state[it.key]);
     const c = comments[it.key]?.[o.id]?.trim();
