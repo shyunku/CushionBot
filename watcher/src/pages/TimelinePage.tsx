@@ -1,11 +1,11 @@
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useGuild } from "../context";
+import { useGuild, useNow } from "../context";
 import Header from "../components/Header";
-import Timeline from "../components/Timeline";
+import Timeline, { MAX_SPAN, MIN_SPAN, SECONDS_SPAN } from "../components/Timeline";
 import { solidColor } from "../colors";
 import { endOf, onlineByChannel, todayStats } from "../stats";
-import { D, H, fmtDur, fmtFull, sod } from "../time";
+import { D, H, fmtDur, fmtFull, p2, sod } from "../time";
 
 type Preset = "24h" | "today" | "7d";
 
@@ -29,6 +29,10 @@ export default function TimelinePage() {
   const [hiddenByGuild, setHidden] = useState<Record<string, string[]>>({});
   const hidden = useMemo(() => new Set(hiddenByGuild[guildId] ?? []), [hiddenByGuild, guildId]);
   const range = preset ? presetRange(preset, now) : custom;
+  const seconds = range[1] - range[0] < SECONDS_SPAN;
+  // tick the timeline every second while it is zoomed in to seconds
+  const tlNow = Math.max(now, useNow(data.clockOffset, seconds ? 1000 : 5000));
+  const fmtRange = (t: number) => (seconds ? `${fmtFull(t)}:${p2(new Date(t).getSeconds())}` : fmtFull(t));
 
   const onRangeChange = useCallback((r: [number, number]) => {
     setPreset(null);
@@ -36,7 +40,7 @@ export default function TimelinePage() {
   }, []);
   const zoom = (f: number) => {
     const mid = (range[0] + range[1]) / 2;
-    const half = ((range[1] - range[0]) / 2) * f;
+    const half = Math.min(MAX_SPAN, Math.max(MIN_SPAN, (range[1] - range[0]) * f)) / 2;
     onRangeChange([mid - half, mid + half]);
   };
   const toggleChannel = (ch: string) => {
@@ -123,7 +127,7 @@ export default function TimelinePage() {
             －
           </button>
           <span className="range">
-            {fmtFull(range[0])} ~ {fmtFull(range[1])}
+            {fmtRange(range[0])} ~ {fmtRange(range[1])}
           </span>
         </div>
         <span className="grow" />
@@ -141,7 +145,7 @@ export default function TimelinePage() {
           people={data.people}
           hidden={hidden}
           range={range}
-          now={now}
+          now={tlNow}
           onRangeChange={onRangeChange}
           onOpenPerson={(id) => navigate(`${base}/users/${id}`)}
         />

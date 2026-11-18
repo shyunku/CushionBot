@@ -3,8 +3,10 @@ import { useGuild } from "../context";
 import { ShareButton } from "../components/Header";
 import { DailyBars, FreqCurve, Heatmap, MiniBars } from "../components/Charts";
 import { solidColor } from "../colors";
-import { endOf, isOnline, lastSession, rankOf, slotFrequency, userStats, weekHourHeat } from "../stats";
-import { D, fmtDate, fmtDur, fmtFull, sod } from "../time";
+import { endOf, isOnline, lastSession, rankOf, slotFrequency, userStats, weekHourHeat, weekdayCounts } from "../stats";
+import { fmtDate, fmtDur, fmtFull } from "../time";
+
+const FREQ_DAYS = 30;
 
 export default function UserPage() {
   const { data, now, base } = useGuild();
@@ -12,7 +14,8 @@ export default function UserPage() {
   const p = data.people.find((x) => x.id === uid);
   const back = (
     <Link className="back" to={base}>
-      ← {data.info.name} 타임라인
+      <span className="ar">←</span>
+      {data.info.name} 타임라인
     </Link>
   );
   if (!p)
@@ -32,6 +35,7 @@ export default function UserPage() {
   const topCh = st.channels;
   const chTotal = topCh.reduce((acc, [, v]) => acc + v, 0) || 1;
   const b = st.bounce;
+  const wc = weekdayCounts(FREQ_DAYS, now);
 
   return (
     <>
@@ -98,15 +102,20 @@ export default function UserPage() {
         <h5>
           시간대별 접속 빈도 <span>최근 30일 · 그 시간에 접속해 있던 날의 비율</span>
         </h5>
-        <FreqCurve slots={slotFrequency(p, 144, 30, now)} nowFraction={(now - sod(now)) / D} />
-        <Heatmap heat={weekHourHeat(p, 30, now)} />
+        <FreqCurve
+          slots={slotFrequency(p, 144, FREQ_DAYS, now)}
+          now={now}
+          height={240}
+          format={(v) => `${Math.round(v * 100)}% (${FREQ_DAYS}일 중 ${Math.round(v * FREQ_DAYS)}일)`}
+        />
+        <Heatmap heat={weekHourHeat(p, FREQ_DAYS, now)} cellHeight={22} format={(d, _, v) => `${wc[d]}번 중 ${v}번`} />
       </div>
       <div className="grid2">
         <div className="card">
           <h5>
             일별 접속 시간 <span>최근 14일</span>
           </h5>
-          <DailyBars values={st.daily} />
+          <DailyBars values={st.daily} height={180} />
           <h5 style={{ marginTop: 14 }}>자주 간 채널</h5>
           {topCh.slice(0, 4).map(([c, v]) => (
             <div key={c} className="chrow">
@@ -124,7 +133,7 @@ export default function UserPage() {
           <div className="slist">
             {[...p.sessions]
               .reverse()
-              .slice(0, 8)
+              .slice(0, 14)
               .map((s) => (
                 <div key={s.s}>
                   <i style={{ background: solidColor(s.ch) }} />

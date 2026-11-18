@@ -162,3 +162,56 @@ export function rankOf(people: Person[], person: Person, key: MetricKey, period:
   const i = r.findIndex((x) => x.p.id === person.id);
   return i < 0 ? null : { no: i + 1, of: r.length };
 }
+
+/** How many times each weekday (0 = Sunday) occurs in the last `days` days. */
+export function weekdayCounts(days: number, now: number) {
+  const out = Array(7).fill(0) as number[];
+  for (let i = 0; i < days; i++) out[new Date(sod(now) - i * D).getDay()]++;
+  return out;
+}
+
+/** Server-wide statistics over the last `days` days plus a per-day grass for the whole record. */
+export function serverStats(people: Person[], now: number, days = 30) {
+  const n = 144;
+  const from = sod(now) - (days - 1) * D;
+  const active = people.filter((p) => p.sessions.some((s) => endOf(s, now) > from));
+  // average number of people connected during each 10-minute slot / weekday-hour
+  const slots = Array(n).fill(0) as number[];
+  const heatSum = Array.from({ length: 7 }, () => Array(24).fill(0) as number[]);
+  for (const p of active) {
+    slotFrequency(p, n, days, now).forEach((v, i) => (slots[i] += v));
+    weekHourHeat(p, days, now).forEach((row, d) => row.forEach((v, h) => (heatSum[d][h] += v)));
+  }
+  const wc = weekdayCounts(days, now);
+  const heat = heatSum.map((row, d) => row.map((v) => (wc[d] ? v / wc[d] : 0)));
+
+  // per-day totals for the last year (records are kept for a year)
+  const start = sod(now) - 364 * D;
+  const dayCount = Math.round((sod(now) - start) / D) + 1;
+  const totals = Array(dayCount).fill(0) as number[];
+  const peopleSets = Array.from({ length: dayCount }, () => new Set<string>());
+  for (const p of people) {
+    for (const s of p.sessions) {
+      const a = Math.max(s.s, start), b = endOf(s, now);
+      for (let day = sod(a); day < b; day += D) {
+        const t = Math.min(b, day + D) - Math.max(a, day);
+        if (t <= 0) continue;
+        const i = Math.round((day - start) / D);
+        if (i < 0 || i >= dayCount) continue;
+        totals[i] += t;
+        peopleSets[i].add(p.id);
+      }
+    }
+  }
+  const grass = totals.map((total, i) => ({ day: start + i * D, total, people: peopleSets[i].size }));
+  // DST-safe day starts
+  grass.forEach((g) => (g.day = sod(g.day + 12 * H)));
+
+  const recent = grass.slice(-days);
+  const total = active.reduce((acc, p) => acc + timeIn(p, from, now, now), 0);
+  const avgPeople = recent.reduce((acc, g) => acc + g.people, 0) / days;
+  const peakSlot = slots.indexOf(Math.max(...slots));
+  const dayLoad = heat.map((row) => row.reduce((acc, v) => acc + v, 0));
+  const peakDay = dayLoad.indexOf(Math.max(...dayLoad));
+  return { slots, heat, weekdays: wc, grass, total, avgPeople, peakSlot, peakDay, active: active.length };
+}

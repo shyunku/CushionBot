@@ -40,6 +40,9 @@ export default function Header() {
         <NavLink to={`${base}/rank`} className={({ isActive }) => (isActive ? "sel" : "")}>
           랭킹
         </NavLink>
+        <NavLink to={`${base}/stats`} className={({ isActive }) => (isActive ? "sel" : "")}>
+          통계
+        </NavLink>
       </div>
     </>
   );

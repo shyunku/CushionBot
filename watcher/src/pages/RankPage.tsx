@@ -55,7 +55,7 @@ export default function RankPage() {
         <div className="card lb" style={{ flex: 1, overflow: "auto" }}>
           <h5>
             <Link className="back" to={`${base}/rank${qs}`}>
-              ← 리더보드
+              <span className="ar">←</span>리더보드
             </Link>
             <span className="fulltitle">{full.name} 전체 랭킹</span>
             <span>

@@ -2,13 +2,15 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Person, Session } from "../types";
 import { barColor, solidColor } from "../colors";
 import { endOf, isOnline, lastActivity, timeIn } from "../stats";
-import { D, H, MIN, fmtDur, fmtFull, fmtHM } from "../time";
+import { D, H, MIN, SEC, fmtDur, fmtFull, fmtHM, fmtHMS, p2 } from "../time";
 
 const NC = 190; // name column width
 const ROW_H = 40;
 const BAR_H = 24;
-const MIN_SPAN = 10 * MIN;
-const MAX_SPAN = 400 * D;
+export const MIN_SPAN = 10 * SEC;
+export const MAX_SPAN = 400 * D;
+/** Below this visible span the timeline shows seconds (axis, now tag, tooltip). */
+export const SECONDS_SPAN = 10 * MIN;
 // after-bar label: 8px gap + 20px avatar + 6px gap + text, and keep 6px clear of the next bar
 const LABEL_GAP = 8;
 const LABEL_FIXED = 20 + 6;
@@ -38,19 +40,22 @@ type Props = {
 };
 
 function ticks(a: number, b: number, width: number) {
-  const steps = [10 * MIN, 30 * MIN, H, 2 * H, 3 * H, 6 * H, 12 * H, D, 2 * D, 7 * D, 14 * D, 30 * D];
+  const steps = [SEC, 2 * SEC, 5 * SEC, 10 * SEC, 15 * SEC, 30 * SEC, MIN, 5 * MIN, 10 * MIN, 30 * MIN, H, 2 * H, 3 * H, 6 * H, 12 * H, D, 2 * D, 7 * D, 14 * D, 30 * D];
   const step = steps.find((s) => width / ((b - a) / s) >= 64) ?? 30 * D;
   const out: { t: number; label: string; major: boolean }[] = [];
   const start = new Date(a);
   start.setHours(0, 0, 0, 0);
-  for (let t = start.getTime(); t <= b; ) {
+  // sub-day steps start at the first tick inside the range instead of walking from midnight
+  let t0 = start.getTime();
+  if (step < D) t0 += Math.max(0, Math.floor((a - t0) / step)) * step;
+  for (let t = t0; t <= b; ) {
     if (t >= a) {
       const d = new Date(t);
       const midnight = d.getHours() === 0 && d.getMinutes() === 0;
       out.push({
         t,
-        label: midnight ? `${d.getMonth() + 1}/${d.getDate()}` : step < H ? fmtHM(t) : `${d.getHours()}시`,
-        major: midnight,
+        label: midnight && d.getSeconds() === 0 ? `${d.getMonth() + 1}/${d.getDate()}` : step < MIN ? fmtHMS(t) : step < H ? fmtHM(t) : `${d.getHours()}시`,
+        major: midnight && d.getSeconds() === 0,
       });
     }
     if (step >= D) {
@@ -161,7 +166,8 @@ export default function Timeline({ people, hidden, range, now, onRangeChange, on
   return (
     <div className="tl" ref={box} onMouseDown={onMouseDown} onMouseLeave={() => setHover(null)}>
       <div className="axis">
-        {tk.map((k) => (
+        {/* skip labels that would be cut in half by the name column */}
+        {tk.filter((k) => X(k.t) > NC + 30).map((k) => (
           <span key={k.t} className={k.major ? "major" : ""} style={{ left: X(k.t) }}>
             {k.label}
           </span>
@@ -178,7 +184,7 @@ export default function Timeline({ people, hidden, range, now, onRangeChange, on
         <>
           <div className="nowline" style={{ left: nx - 1 }} />
           <div className="nowtag" style={{ left: nx }}>
-            {fmtHM(now)}
+            {b - a < SECONDS_SPAN ? fmtHMS(now) : fmtHM(now)}
           </div>
         </>
       )}
@@ -224,12 +230,13 @@ export default function Timeline({ people, hidden, range, now, onRangeChange, on
           );
         })}
       </div>
-      {hover && <SessionTip {...hover} now={now} width={width} />}
+      {hover && <SessionTip {...hover} now={now} width={width} seconds={b - a < SECONDS_SPAN} />}
     </div>
   );
 }
 
-function SessionTip({ p, s, x, y, now, width }: { p: Person; s: Session; x: number; y: number; now: number; width: number }) {
+function SessionTip({ p, s, x, y, now, width, seconds }: { p: Person; s: Session; x: number; y: number; now: number; width: number; seconds: boolean }) {
+  const when = (t: number) => (seconds ? `${fmtFull(t)}:${p2(new Date(t).getSeconds())}` : fmtFull(t));
   const total = p.sessions.reduce((acc, it) => acc + (endOf(it, now) - it.s), 0);
   const end = endOf(s, now);
   const flipX = x > width - 280;
@@ -246,11 +253,11 @@ function SessionTip({ p, s, x, y, now, width }: { p: Person; s: Session; x: numb
       </span>
       <div className="ln">
         <span>입장</span>
-        <b>{fmtFull(s.s)}</b>
+        <b>{when(s.s)}</b>
       </div>
       <div className="ln">
         <span>퇴장</span>
-        <b>{s.online ? "접속 중" : fmtFull(end)}</b>
+        <b>{s.online ? "접속 중" : when(end)}</b>
       </div>
       <div className="ln">
         <span>이번 접속</span>

@@ -1,3 +1,4 @@
+export const SEC = 1e3;
 export const MIN = 60e3;
 export const H = 60 * MIN;
 export const D = 24 * H;
@@ -20,6 +21,11 @@ export function fmtDur(ms: number) {
 export function fmtHM(t: number) {
   const d = new Date(t);
   return `${p2(d.getHours())}:${p2(d.getMinutes())}`;
+}
+
+export function fmtHMS(t: number) {
+  const d = new Date(t);
+  return `${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}`;
 }
 
 export function fmtFull(t: number) {

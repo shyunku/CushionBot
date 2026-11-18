@@ -7,6 +7,7 @@ import Skeleton from "./components/Skeleton";
 import TimelinePage from "./pages/TimelinePage";
 import RankPage from "./pages/RankPage";
 import UserPage from "./pages/UserPage";
+import StatsPage from "./pages/StatsPage";
 
 const LAST_GUILD = "watcher.lastGuild";
 
@@ -94,6 +95,7 @@ function GuildShell({ shared }: { shared: boolean }) {
                 <Route index element={<TimelinePage />} />
                 <Route path="rank" element={<RankPage />} />
                 <Route path="rank/:metric" element={<RankPage />} />
+                <Route path="stats" element={<StatsPage />} />
                 <Route path="users/:uid" element={<UserPage />} />
                 <Route path="*" element={<Navigate to={base} replace />} />
               </Routes>
