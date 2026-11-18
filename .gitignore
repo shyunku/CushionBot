@@ -22,3 +22,6 @@ nohup.out
 /plugins/
 /lavalink.log/
 /deploy/
+
+# Local scratch files
+/.local/
