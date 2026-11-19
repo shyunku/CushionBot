@@ -51,6 +51,8 @@ function tickStep(a: number, b: number, width: number) {
 }
 /** From this grid step down, the timeline redraws every frame so the now line moves smoothly. */
 const LIVE_STEP = 10 * MIN;
+/** Extra range rendered on each side, as a share of the visible span. */
+const OVERSCAN = 0.5;
 /** Duration of the eased wheel zoom. */
 const WHEEL_EASE_MS = 300;
 
@@ -266,7 +268,10 @@ export default function Timeline({ people, hidden, range, now: baseNow, clockOff
   };
 
   const rows = useMemo(() => {
-    const visible = (s: Session) => !hidden.has(s.ch) && endOf(s, now) > a && s.s < b;
+    // render a margin beyond the visible range so bars and their name labels slide in and out at the
+    // edges instead of popping when the range moves
+    const margin = (b - a) * OVERSCAN;
+    const visible = (s: Session) => !hidden.has(s.ch) && endOf(s, now) > a - margin && s.s < b + margin;
     return people
       .filter((p) => p.sessions.some(visible))
       .sort((x, y) => Number(isOnline(y)) - Number(isOnline(x)) || lastActivity(y, now) - lastActivity(x, now))
@@ -330,23 +335,28 @@ export default function Timeline({ people, hidden, range, now: baseNow, clockOff
               </div>
               {sessions.map((s, si) => {
                 const x1 = Math.max(X(s.s), NC);
-                const x2 = Math.min(X(endOf(s, now)), width);
-                if (x2 <= x1) return null;
-                // show the label only when it fits entirely before the next bar and the right edge
+                const xEnd = X(endOf(s, now));
+                const x2 = Math.min(xEnd, width);
+                const barShown = x2 > x1;
+                // the label follows the bar's real end (it may sit under the name column or past the right
+                // edge, where the timeline clips it); show it only when it fits before the next bar
                 const next = sessions[si + 1];
-                const labelEnd = x2 + LABEL_GAP + LABEL_FIXED + textWidth(p.name) + LABEL_CLEAR;
-                const label = labelEnd <= (next ? X(next.s) : Infinity) && labelEnd <= width;
+                const labelEnd = xEnd + LABEL_GAP + LABEL_FIXED + textWidth(p.name) + LABEL_CLEAR;
+                const label = labelEnd <= (next ? X(next.s) : Infinity) && labelEnd > NC && xEnd < width;
+                if (!barShown && !label) return null;
                 return (
                   <div key={s.s}>
-                    <div
-                      className={`bar ${s.online ? "online" : ""}`}
-                      style={{ left: x1, width: Math.max(2, x2 - x1), top: (ROW_H - BAR_H) / 2, height: BAR_H, background: barColor(s.ch) }}
-                      onMouseMove={mobile ? undefined : (e) => onHover(e, p, s)}
-                      onMouseLeave={mobile ? undefined : () => setHover(null)}
-                      onClick={mobile ? () => setSheet({ p, s }) : undefined}
-                    />
+                    {barShown && (
+                      <div
+                        className={`bar ${s.online ? "online" : ""}`}
+                        style={{ left: x1, width: Math.max(2, x2 - x1), top: (ROW_H - BAR_H) / 2, height: BAR_H, background: barColor(s.ch) }}
+                        onMouseMove={mobile ? undefined : (e) => onHover(e, p, s)}
+                        onMouseLeave={mobile ? undefined : () => setHover(null)}
+                        onClick={mobile ? () => setSheet({ p, s }) : undefined}
+                      />
+                    )}
                     {label && (
-                      <div className={`flabel ${s.online ? "on" : ""}`} style={{ left: x2 + 8, top: (ROW_H - 20) / 2 }}>
+                      <div className={`flabel ${s.online ? "on" : ""}`} style={{ left: xEnd + LABEL_GAP, top: (ROW_H - 20) / 2 }}>
                         <img src={p.avatar} alt="" />
                         {p.name}
                       </div>
