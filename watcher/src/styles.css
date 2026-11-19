@@ -76,7 +76,7 @@ button { font: inherit; color: inherit; }
 .stat .k { color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .stat .k.small { font-size: 13px; margin-top: 2px; }
 .stat .k.tiny { font-size: 12px; text-align: right; margin-top: 3px; }
-.stat .v { color: var(--strong); font-size: 22px; font-weight: 600; margin-top: 2px; display: flex; align-items: center; gap: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stat .v { color: var(--strong); font-size: 20px; font-weight: 600; margin-top: 2px; display: flex; align-items: center; gap: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .stat .v img { width: 22px; height: 22px; border-radius: 11px; }
 .stat.bounce { display: flex; gap: 10px; align-items: center; }
 .stat .minibox { width: 84px; flex: 0 0 auto; }
@@ -270,7 +270,7 @@ button { font: inherit; color: inherit; }
   .head .meta { order: 3; width: 100%; }
   .summary { gap: 8px; }
   .stat { padding: 8px 10px; }
-  .stat .v { font-size: 18px; }
+  .stat .v { font-size: 17px; }
   .nowstrip { flex-wrap: nowrap; overflow-x: auto; }
   .nowstrip .lbl, .chip { flex: 0 0 auto; white-space: nowrap; }
   .ctrl { flex-wrap: wrap; }
