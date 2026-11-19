@@ -328,6 +328,18 @@
   .grasswrap .wd { display: block !important; position: relative; }
   .grasswrap .wd span { position: absolute; left: 0; transform: translateY(-50%); line-height: 1; }
 
+  /* ---------- 3.3.2.2 round 2 ---------- */
+  #app { --today: #5f9fd3; }
+  #app[data-tc="old"] { --today: var(--now); }
+  #app[data-tc="sky"] { --today: #7cb8e6; }
+  #app[data-tc="slate"] { --today: #7f9dc4; }
+  .grassrow { align-items: stretch; }
+  .gcard .gbody { flex: 1; display: flex; flex-direction: column; min-height: 0; margin: 0 !important; }
+  .gcard .grasswrap { flex: 1; min-height: 0; }
+  .gcard .glegend { margin-top: 6px !important; }
+  .chance .nm { width: 85px !important; min-width: 85px !important; }
+  .heat span.today { color: var(--today) !important; }
+
   /* ---------- mock helpers: shift outlines ---------- */
   body.shift [data-click] { outline: 2px dashed #3fa9ff; outline-offset: -2px; }
   body.shift [data-cand]:not(.row) { position: relative; }
@@ -378,7 +390,7 @@
 <div id="app"></div>
 <div id="note">
   <div class="top">
-    <div class="r"><h2>watcher 3.3.2.2 시안</h2><span id="copied">복사됨</span><button id="copy">결과 복사</button></div>
+    <div class="r"><h2>watcher 3.3.2.2 시안 (2차)</h2><span id="copied">복사됨</span><button id="copy">결과 복사</button></div>
     <div class="help">항목에서 옵션을 고르면 시안이 바로 바뀌고 의견을 적을 수 있음. <b>Shift</b>를 누르면 <span class="k1">파란 점선</span>은 누를 수 있는 곳, <span class="k2">주황 점선</span>은 후보가 있는 곳(올리면 후보 툴팁).</div>
   </div>
   <div class="list" id="list"></div>
@@ -673,11 +685,18 @@ ITEMS.push(
     { id: "center", name: "잔디를 카드 세로 가운데로", desc: "잔디와 범례를 카드 높이의 가운데에 둠", rec: 1 },
     { id: "bottom", name: "범례를 카드 맨 아래로", desc: "잔디는 위에 두고 '적음~많음' 범례만 카드 맨 아래에 붙임" } ] },
 );
-const MOBILE_KEYS = new Set(["dimrow", "grassfit"]);
+ITEMS.push(
+  { key: "todaycolor", title: "오늘 요일 줄 색", opts: [
+    { id: "old", name: "기존", desc: "빨강 (현재 시각선 색)", old: 1 },
+    { id: "sky", name: "연한 하늘", desc: "#7cb8e6 · 밝고 부드러운 하늘색" },
+    { id: "calm", name: "차분한 하늘", desc: "#5f9fd3 · 채도를 낮춘 하늘~파랑 중간", rec: 1 },
+    { id: "slate", name: "회청", desc: "#7f9dc4 · 회색이 섞인 푸른색" } ] },
+);
+const MOBILE_KEYS = new Set(["todaycolor"]);
 const state = {}; ITEMS.forEach((it) => (state[it.key] = it.opts.find((o) => o.rec)?.id ?? it.opts[0].id));
 state.font = "ox";
 // round 2: confirmed choices are fixed and hidden from the note
-const CONFIRMED = { theme: "slate", layout: "rail", rows: "fixed", ctrl: "seg", summary: "cards", now: "chips", legend: "filter", tip: "card", loading: "skeleton", share: "btn", after: "avatar", click: "page", freq: "both", ublocks: "full", shape: "smooth", bounce: "both", bwhere: "user", bui: "statmini", ntime: "range", rankwhere: "tabs", ranklayout: "boards", rankperiod: "switch", myrank: "badge", sharedview: "hide", backsize: "btn", ufill: "big", badge: "big", zoom: "10s", fcur: "tipheat", sstats: "tab", sfreq: "avgppl", grass: "both", scards: "cards", barradius: "tl", cursor: "plain", wheelease: "slow", attend: "rate", probwin: "pm30", probonline: "show", dayheat: "focus", grasstoday: "old", fontup: "mix", font: "ox" };
+const CONFIRMED = { theme: "slate", layout: "rail", rows: "fixed", ctrl: "seg", summary: "cards", now: "chips", legend: "filter", tip: "card", loading: "skeleton", share: "btn", after: "avatar", click: "page", freq: "both", ublocks: "full", shape: "smooth", bounce: "both", bwhere: "user", bui: "statmini", ntime: "range", rankwhere: "tabs", ranklayout: "boards", rankperiod: "switch", myrank: "badge", sharedview: "hide", backsize: "btn", ufill: "big", badge: "big", zoom: "10s", fcur: "tipheat", sstats: "tab", sfreq: "avgppl", grass: "both", scards: "cards", barradius: "tl", cursor: "plain", wheelease: "slow", attend: "rate", probwin: "pm30", probonline: "show", dayheat: "focus", grasstoday: "old", fontup: "mix", font: "ox", dimrow: "red", grassfit: "old" };
 Object.assign(state, CONFIRMED);
 const OPEN_ITEMS = ITEMS.filter((it) => MOBILE_KEYS.has(it.key));
 const comments = {}; // key -> optId -> text
@@ -976,10 +995,10 @@ function curveY(id, vals, axis, hgt) {
 }
 function heatY(id, heat, cellH, focusWd) {
   const hmax = Math.max(0.0001, ...heat.flat());
-  return `<div class="heat" data-h="${id}" data-cand="dimrow" style="margin-top:12px">${[1, 2, 3, 4, 5, 6, 0].map((d) => {
+  return `<div class="heat" data-h="${id}" data-cand="todaycolor" style="margin-top:12px">${[1, 2, 3, 4, 5, 6, 0].map((d) => {
     const dim = focusWd != null && (state.dimrow === "old" || state.dimrow === "reddim") && d !== focusWd;
     const red = d === TODAY_WD && state.dimrow !== "old";
-    return `<span class="${dim ? "dim" : ""} ${d === TODAY_WD ? "today" : ""}">${DN[d]}</span>${heat[d].map((v, h) => `<i data-d="${d}" data-hh="${h}" ${red ? 'data-new' : ""} style="opacity:${(0.08 + (v / hmax) * 0.92) * (dim ? 0.3 : 1)};height:${cellH}px${red ? ";background:var(--now)" : ""}"></i>`).join("")}`;
+    return `<span class="${dim ? "dim" : ""} ${d === TODAY_WD ? "today" : ""}">${DN[d]}</span>${heat[d].map((v, h) => `<i data-d="${d}" data-hh="${h}" ${red ? 'data-new' : ""} style="opacity:${(0.08 + (v / hmax) * 0.92) * (dim ? 0.3 : 1)};height:${cellH}px${red ? ";background:var(--today)" : ""}"></i>`).join("")}`;
   }).join("")}</div>`;
 }
 function dd(key, opts) { return `<select class="dd" data-dd="${key}" data-new>${opts.map(([v, n]) => `<option value="${v}" ${FV[key] === v ? "selected" : ""}>${n}</option>`).join("")}</select>`; }
@@ -1123,7 +1142,7 @@ function statsBody(g) {
     const chance = `<div class="card chance" data-cand="probonline" data-new><h5>지금 들어올 확률 <span>${DN[TODAY_WD]}요일 · 최근 30일</span></h5>
       ${cands.length ? "" : ""}${cands.map((x, i) => `<div class="cr" data-click data-user="${x.u.id}"><span class="no">${i + 1}</span><img src="${x.u.avatar}"><span class="nm ${isOnline(x.u) ? "on" : ""}" title="${isOnline(x.u) ? "지금 접속 중" : ""}">${x.u.name}</span><span class="bar2"><i style="width:${x.p * 100}%"></i></span><span class="val">${Math.round(x.p * 100)}%</span></div>`).join("") || `<div class="note">지금 시간대에 들어올 만한 사람이 없음</div>`}<div class="chance-legend"><i></i>초록 이름은 지금 접속 중</div></div>`;
     yearHtml = `<div class="grassrow"><div class="card gcard" data-cand="grassfit" style="flex:1;min-width:0"><h5>날짜별 잔디 <span>최근 1년 · 진할수록 그날 총 접속 시간이 김</span></h5>
-      <div class="gbody"><div class="gmonths">${months}</div><div class="grasswrap"><div class="wd">${DN.map((x, i) => (i % 2 ? `<span style="top:${((i * 12 + 5) / (7 * 12 - 2)) * 100}%">${x}</span>` : "")).join("")}</div><svg class="grass" data-g="1" viewBox="0 0 ${weeks * 12 - 2} ${7 * 12 - 2}" style="display:block;width:100%;height:auto">${cells.join("")}</svg></div>
+      <div class="gbody"><div class="gmonths">${months}</div><div class="grasswrap"><div class="wd">${DN.map((x, i) => (i % 2 ? `<span style="top:${((i * 12 + 5) / (7 * 12 - 2)) * 100}%">${x}</span>` : "")).join("")}</div><svg class="grass" data-g="1" viewBox="0 0 ${weeks * 12 - 2} ${7 * 12 - 2}" preserveAspectRatio="none" style="display:block;width:100%;height:100%">${cells.join("")}</svg></div>
       </div><div class="glegend">적음 ${[0.2, 0.4, 0.6, 0.8, 1].map((o) => `<i style="opacity:${o}"></i>`).join("")} 많음</div></div>${chance}</div>`;
   }
   return `${cards}${curve}${yearHtml}`;
@@ -1243,7 +1262,7 @@ function render() {
   app.dataset.theme = state.theme;
   app.dataset.radius = state.barradius;
   app.dataset.cursor = state.cursor;
-  app.dataset.font = state.fontup; app.dataset.ff = state.font; app.dataset.gfit = state.grassfit; app.dataset.today = state.grasstoday;
+  app.dataset.font = state.fontup; app.dataset.ff = state.font; app.dataset.gfit = state.grassfit; app.dataset.tc = state.todaycolor; app.dataset.today = state.grasstoday;
   const g = G();
   let body;
   if (view.loading && state.loading === "skeleton") body = skeleton();
@@ -1411,7 +1430,7 @@ function choose(key, opt, focus = true) {
   if (["rankwhere", "ranklayout", "rankperiod"].includes(key)) { view.page = "server"; view.tab = state.rankwhere === "tabs" ? "rank" : "timeline"; }
   if (key === "myrank" && view.page !== "user") { view.page = "user"; view.user = ranked(G(), "total", "all")[2]?.u.id ?? G().users[0].id; }
   if (["attend", "probwin", "fontup"].includes(key)) { view.page = "user"; view.user = ranked(G(), "total", "all")[0].u.id; }
-  if (["probonline", "grasstoday", "dayheat", "dimrow", "grassfit"].includes(key)) { view.page = "server"; view.tab = "stats"; }
+  if (["probonline", "grasstoday", "dayheat", "dimrow", "grassfit", "todaycolor"].includes(key)) { view.page = "server"; view.tab = "stats"; }
   if (key === "cursor" || key === "wheelease") { view.page = "server"; view.tab = "timeline"; }
   if (key === "barradius" && opt !== "all") { view.page = "user"; view.user = ranked(G(), "total", "all")[0].u.id; }
   if (key === "barradius" && opt === "all") { view.page = "server"; view.tab = "timeline"; view.preset = "24h"; view.zoom = 1; view.center = null; }
@@ -1437,7 +1456,7 @@ list.addEventListener("input", (e) => {
   (comments[e.target.dataset.k] ??= {})[e.target.dataset.o] = e.target.value; autosize(e.target);
 });
 document.getElementById("copy").onclick = async () => {
-  const lines = ["[watcher 3.3.2.2 시안 결과]"];
+  const lines = ["[watcher 3.3.2.2 시안 2차 결과]"];
   for (const it of OPEN_ITEMS) {
     const o = it.opts.find((x) => x.id === state[it.key]);
     const c = comments[it.key]?.[o.id]?.trim();
