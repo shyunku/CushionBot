@@ -222,3 +222,89 @@ export function serverStats(people: Person[], now: number, days = 30) {
   const peakDay = dayLoad.indexOf(Math.max(...dayLoad));
   return { slots, heat, weekdays: wc, grass, total, avgPeople, peakSlot, peakDay, active: active.length };
 }
+
+export type FreqPeriod = "30d" | "all";
+
+/** Day starts covered by a period: the last 30 days, or every day since the first record (records keep a year). */
+export function periodDays(people: Person[], period: FreqPeriod, now: number) {
+  let count = 30;
+  if (period === "all") {
+    const first = Math.min(now, ...people.map((p) => p.sessions[0]?.s ?? now));
+    count = Math.min(365, Math.round((sod(now) - sod(first)) / D) + 1);
+  }
+  return Array.from({ length: count }, (_, i) => sod(sod(now) - i * D + 12 * H));
+}
+
+/**
+ * Per 10-minute slot of the day: (person, day) pairs connected in that slot divided by the number of days.
+ * For one person this is the share of days they were on; for a whole server it is the average number of people.
+ */
+export function slotsFor(people: Person[], period: FreqPeriod, weekday: number | null, now: number) {
+  const n = 144;
+  const len = D / n;
+  const days = periodDays(people, period, now).filter((d) => weekday == null || new Date(d).getDay() === weekday);
+  const daySet = new Set(days);
+  const out = Array(n).fill(0) as number[];
+  for (const p of people) {
+    const hit = new Set<string>();
+    for (const s of p.sessions) {
+      const end = endOf(s, now);
+      for (let t = Math.floor(s.s / len) * len; t < end; t += len) {
+        const day = sod(t);
+        if (!daySet.has(day)) continue;
+        const i = Math.floor((t - day) / len);
+        const key = `${day}:${i}`;
+        if (!hit.has(key)) {
+          hit.add(key);
+          out[i]++;
+        }
+      }
+    }
+  }
+  return { values: out.map((v) => v / Math.max(1, days.length)), days: days.length };
+}
+
+/** Weekday x hour counts of (person, day) pairs connected in that hour, plus how often each weekday occurs. */
+export function heatFor(people: Person[], period: FreqPeriod, now: number) {
+  const days = periodDays(people, period, now);
+  const daySet = new Set(days);
+  const heat = Array.from({ length: 7 }, () => Array(24).fill(0) as number[]);
+  const weekdays = Array(7).fill(0) as number[];
+  for (const d of days) weekdays[new Date(d).getDay()]++;
+  for (const p of people) {
+    const seen = new Set<string>();
+    for (const s of p.sessions) {
+      const end = endOf(s, now);
+      for (let t = Math.floor(s.s / H) * H; t < end; t += H) {
+        const day = sod(t);
+        if (!daySet.has(day)) continue;
+        const d = new Date(t);
+        const key = `${day}:${d.getHours()}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        heat[d.getDay()][d.getHours()]++;
+      }
+    }
+  }
+  return { heat, weekdays };
+}
+
+/** Window around the current time used for "chance to be on now". */
+export const CHANCE_WINDOW = 30 * MIN;
+
+/**
+ * Chance that a person is connected around this time: over the same weekday in the last 30 days
+ * (today excluded), the share of days with a session within ±CHANCE_WINDOW of the current time of day.
+ */
+export function chanceNow(p: Person, now: number) {
+  const tod = now - sod(now);
+  const today = new Date(now).getDay();
+  const days = Array.from({ length: 30 }, (_, i) => sod(sod(now) - (i + 1) * D + 12 * H)).filter((d) => new Date(d).getDay() === today);
+  let hits = 0;
+  for (const day of days) {
+    const a = day + tod - CHANCE_WINDOW;
+    const b = day + tod + CHANCE_WINDOW;
+    if (p.sessions.some((s) => s.s < b && endOf(s, now) > a)) hits++;
+  }
+  return { chance: days.length ? hits / days.length : 0, hits, days: days.length };
+}

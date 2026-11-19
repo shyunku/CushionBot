@@ -1,5 +1,5 @@
 import { useId, useRef, useState, type ReactNode } from "react";
-import { D, fmtDur, fmtHM, sod } from "../time";
+import { D, H, fmtDur, fmtHM, sod } from "../time";
 
 export const DAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -38,11 +38,23 @@ function useChartTip() {
   return { box, tip, show, hide: () => setTip(null), width: box.current?.clientWidth ?? 0 };
 }
 
+export type Axis = { top: number; ticks: number[]; label: (v: number) => string };
+
+/** 0..100% axis for shares. */
+export const PERCENT_AXIS: Axis = { top: 1, ticks: [0, 0.2, 0.4, 0.6, 0.8, 1], label: (v) => `${Math.round(v * 100)}` };
+
+/** Round axis for counts such as an average number of people. */
+export function countAxis(max: number): Axis {
+  const step = [0.5, 1, 2, 5, 10, 20, 50].find((x) => Math.ceil(max / x) <= 5) ?? 100;
+  const top = Math.max(step, Math.ceil(max / step) * step);
+  return { top, ticks: Array.from({ length: Math.round(top / step) + 1 }, (_, i) => i * step), label: (v) => `${v}` };
+}
+
 /**
- * Smooth area curve for a day split into equal slots, with the current time marked and a hover
- * tooltip per slot. `format` turns a slot's raw value into the tooltip text.
+ * Smooth area curve for a day split into equal slots on a fixed y axis, with the current time marked
+ * and a hover tooltip per slot. `format` turns a slot's raw value into the tooltip text.
  */
-export function FreqCurve({ slots, now, height = 120, format }: { slots: number[]; now: number; height?: number; format: (v: number) => ReactNode }) {
+export function FreqCurve({ slots, now, height = 120, axis, format }: { slots: number[]; now: number; height?: number; axis: Axis; format: (v: number) => ReactNode }) {
   const gid = useId();
   const { box, tip, show, hide, width } = useChartTip();
   const [guide, setGuide] = useState<number | null>(null);
@@ -52,10 +64,10 @@ export function FreqCurve({ slots, now, height = 120, format }: { slots: number[
     for (let k = -2; k <= 2; k++) acc += slots[(i + k + n) % n];
     return acc / 5;
   });
-  const max = Math.max(0.01, ...smooth);
   const W = 1000;
   const Hh = 100;
-  const pts = smooth.map((v, i) => [(i / (n - 1)) * W, Hh - (v / max) * (Hh - 6) - 2]);
+  const yOf = (v: number) => Hh - Math.min(1, v / axis.top) * Hh;
+  const pts = smooth.map((v, i) => [(i / (n - 1)) * W, yOf(v)]);
   let d = `M${pts[0][0]},${pts[0][1]}`;
   for (let i = 0; i < pts.length - 1; i++) {
     const p0 = pts[i - 1] ?? pts[i];
@@ -78,7 +90,15 @@ export function FreqCurve({ slots, now, height = 120, format }: { slots: number[
   };
 
   return (
-    <>
+    <div className="ychart">
+      <div className="yax" style={{ height }}>
+        {axis.ticks.map((v) => (
+          <span key={v} style={{ bottom: `${(v / axis.top) * 100}%` }}>
+            {axis.label(v)}
+          </span>
+        ))}
+      </div>
+      <div>
       <div
         className="fwrap"
         ref={box}
@@ -95,8 +115,8 @@ export function FreqCurve({ slots, now, height = 120, format }: { slots: number[
               <stop offset="1" stopColor="var(--accent)" stopOpacity={0} />
             </linearGradient>
           </defs>
-          {[0.25, 0.5, 0.75].map((y) => (
-            <line key={y} x1={0} x2={W} y1={Hh * y} y2={Hh * y} stroke="var(--grid)" vectorEffect="non-scaling-stroke" />
+          {axis.ticks.map((v) => (
+            <line key={v} x1={0} x2={W} y1={yOf(v)} y2={yOf(v)} stroke="var(--grid)" vectorEffect="non-scaling-stroke" />
           ))}
           <path d={`${d} L${W},${Hh} L0,${Hh} Z`} fill={`url(#${gid})`} />
           <path d={d} fill="none" stroke="var(--accent)" strokeWidth={2} vectorEffect="non-scaling-stroke" />
@@ -109,22 +129,31 @@ export function FreqCurve({ slots, now, height = 120, format }: { slots: number[
         <ChartTip tip={tip} width={width} />
       </div>
       <HourLabels />
-    </>
+      </div>
+    </div>
   );
 }
 
-/** Weekday x hour heatmap (Monday first) with a hover tooltip per cell. */
-export function Heatmap({ heat, cellHeight = 13, format }: { heat: number[][]; cellHeight?: number; format: (day: number, hour: number, v: number) => ReactNode }) {
+/**
+ * Weekday x hour heatmap (Monday first) with a hover tooltip per cell. Today's weekday label is red;
+ * with `focus` set, the other weekdays are dimmed.
+ */
+export function Heatmap({ heat, cellHeight = 13, now, focus, format }: { heat: number[][]; cellHeight?: number; now: number; focus: number | null; format: (day: number, hour: number, v: number) => ReactNode }) {
   const { box, tip, show, hide, width } = useChartTip();
   const max = Math.max(0.0001, ...heat.flat());
+  const today = new Date(now).getDay();
   return (
     <div className="heatbox" ref={box} onMouseLeave={hide}>
       <div className="heat">
         {[1, 2, 3, 4, 5, 6, 0].map((d) => (
           <div key={d} style={{ display: "contents" }}>
-            <span>{DAYS[d]}</span>
+            <span className={`${d === today ? "today" : ""} ${focus != null && d !== focus ? "dim" : ""}`}>{DAYS[d]}</span>
             {heat[d].map((v, h) => (
-              <i key={h} style={{ opacity: 0.08 + (v / max) * 0.92, height: cellHeight }} onMouseMove={(e) => show(e, `${DAYS[d]}요일 ${h}시`, format(d, h, v))} />
+              <i
+                key={h}
+                style={{ opacity: (0.08 + (v / max) * 0.92) * (focus != null && d !== focus ? 0.3 : 1), height: cellHeight }}
+                onMouseMove={(e) => show(e, `${DAYS[d]}요일 ${h}시`, format(d, h, v))}
+              />
             ))}
           </div>
         ))}
@@ -205,13 +234,25 @@ export function Grass({ days }: { days: GrassDay[] }) {
   );
 }
 
-export function DailyBars({ values, height = 90 }: { values: number[]; height?: number }) {
+/** Daily totals for consecutive days ending today, with a date tooltip per bar. */
+export function DailyBars({ values, now, height = 90 }: { values: number[]; now: number; height?: number }) {
+  const { box, tip, show, hide, width } = useChartTip();
   const max = Math.max(1, ...values);
   return (
-    <div className="dbars" style={{ height }}>
-      {values.map((v, i) => (
-        <div key={i} style={{ height: `${Math.max(2, (v / max) * 100)}%` }} title={fmtDur(v)} />
-      ))}
+    <div className="dailybox" ref={box} onMouseLeave={hide}>
+      <div className="dbars" style={{ height }}>
+        {values.map((v, i) => {
+          const d = new Date(sod(now) - (values.length - 1 - i) * D + 12 * H);
+          return (
+            <div
+              key={i}
+              style={{ height: `${Math.max(2, (v / max) * 100)}%` }}
+              onMouseMove={(e) => show(e, `${d.getMonth() + 1}월 ${d.getDate()}일 (${DAYS[d.getDay()]})`, v ? fmtDur(v) : "접속 없음")}
+            />
+          );
+        })}
+      </div>
+      <ChartTip tip={tip} width={width} />
     </div>
   );
 }
@@ -224,5 +265,24 @@ export function MiniBars({ values }: { values: number[] }) {
         <div key={i} style={{ height: `${Math.max(4, (v / max) * 100)}%` }} title={`${v}번`} />
       ))}
     </div>
+  );
+}
+
+export type FreqFilter = { period: "30d" | "all"; weekday: "today" | "all" };
+export const DEFAULT_FREQ_FILTER: FreqFilter = { period: "30d", weekday: "today" };
+
+/** Period and weekday dropdowns shown next to a frequency chart title. */
+export function FreqFilters({ value, now, onChange }: { value: FreqFilter; now: number; onChange: (v: FreqFilter) => void }) {
+  return (
+    <>
+      <select className="dd" value={value.period} onChange={(e) => onChange({ ...value, period: e.target.value as FreqFilter["period"] })}>
+        <option value="30d">최근 30일</option>
+        <option value="all">전체</option>
+      </select>
+      <select className="dd" value={value.weekday} onChange={(e) => onChange({ ...value, weekday: e.target.value as FreqFilter["weekday"] })}>
+        <option value="today">{DAYS[new Date(now).getDay()]}요일</option>
+        <option value="all">전체 요일</option>
+      </select>
+    </>
   );
 }

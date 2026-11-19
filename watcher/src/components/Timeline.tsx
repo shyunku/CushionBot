@@ -26,7 +26,7 @@ function textWidth(text: string) {
   if (w === undefined) {
     measureCtx ??= document.createElement("canvas").getContext("2d");
     if (!measureCtx) return text.length * 12;
-    measureCtx.font = `12px ${getComputedStyle(document.body).fontFamily}`;
+    measureCtx.font = `13px ${getComputedStyle(document.body).fontFamily}`;
     w = Math.ceil(measureCtx.measureText(text).width);
     widthCache.set(text, w);
   }

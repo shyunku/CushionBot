@@ -1,16 +1,35 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useGuild } from "../context";
 import Header from "../components/Header";
-import { DAYS, FreqCurve, Grass, Heatmap } from "../components/Charts";
-import { serverStats } from "../stats";
+import { DAYS, DEFAULT_FREQ_FILTER, FreqCurve, FreqFilters, Grass, Heatmap, countAxis } from "../components/Charts";
+import { chanceNow, heatFor, isOnline, serverStats, slotsFor } from "../stats";
 import { MIN, fmtDur, fmtHM, sod } from "../time";
 
 export default function StatsPage() {
-  const { data, now } = useGuild();
+  const { data, now, base } = useGuild();
+  const [filter, setFilter] = useState(DEFAULT_FREQ_FILTER);
   // recompute at most once a minute; the curves do not move faster than that
   const minute = Math.floor(now / MIN);
   const st = useMemo(() => serverStats(data.people, minute * MIN), [data.people, minute]);
   const empty = st.total === 0;
+  const today = new Date(now).getDay();
+  const focus = filter.weekday === "today" ? today : null;
+  const freq = useMemo(() => slotsFor(data.people, filter.period, focus, minute * MIN), [data.people, filter.period, focus, minute]);
+  const heat = useMemo(() => {
+    const h = heatFor(data.people, filter.period, minute * MIN);
+    return h.heat.map((row, d) => row.map((v) => (h.weekdays[d] ? v / h.weekdays[d] : 0)));
+  }, [data.people, filter.period, minute]);
+  // people most likely to be on around now (same weekday, last 30 days); people already on stay in, in green
+  const chances = useMemo(
+    () =>
+      data.people
+        .map((p) => ({ p, ...chanceNow(p, minute * MIN) }))
+        .filter((x) => x.chance > 0)
+        .sort((a, b) => b.chance - a.chance)
+        .slice(0, 10),
+    [data.people, minute],
+  );
 
   return (
     <>
@@ -35,16 +54,40 @@ export default function StatsPage() {
       </div>
       <div className="card">
         <h5>
-          시간대별 접속 빈도 · 서버 전체 <span>최근 30일 · 그 시각 평균 동시 접속자 수</span>
+          시간대별 접속 빈도 · 서버 전체 <FreqFilters value={filter} now={now} onChange={setFilter} />
+          <span>그 시각 평균 동시 접속자 수(명)</span>
         </h5>
-        <FreqCurve slots={st.slots} now={now} height={200} format={(v) => `평균 ${v.toFixed(1)}명`} />
-        <Heatmap heat={st.heat} cellHeight={15} format={(_, __, v) => `평균 ${v.toFixed(1)}명`} />
+        <FreqCurve slots={freq.values} now={now} height={200} axis={countAxis(Math.max(...freq.values))} format={(v) => `평균 ${v.toFixed(1)}명`} />
+        <Heatmap heat={heat} cellHeight={15} now={now} focus={focus} format={(_, __, v) => `평균 ${v.toFixed(1)}명`} />
       </div>
-      <div className="card">
-        <h5>
-          날짜별 잔디 <span>최근 1년 · 진할수록 그날 총 접속 시간이 김</span>
-        </h5>
-        <Grass days={st.grass} />
+      <div className="grassrow">
+        <div className="card grasscard">
+          <h5>
+            날짜별 잔디 <span>최근 1년 · 진할수록 그날 총 접속 시간이 김</span>
+          </h5>
+          <Grass days={st.grass} />
+        </div>
+        <div className="card chance">
+          <h5>
+            지금 들어올 확률 <span>{DAYS[today]}요일 · 최근 30일</span>
+          </h5>
+          {chances.map((x, i) => (
+            <Link key={x.p.id} className="cr" to={`${base}/users/${x.p.id}`}>
+              <span className="no">{i + 1}</span>
+              <img src={x.p.avatar} alt="" />
+              <span className={`nm ${isOnline(x.p) ? "on" : ""}`}>{x.p.name}</span>
+              <span className="bar2">
+                <i style={{ width: `${x.chance * 100}%` }} />
+              </span>
+              <span className="val">{Math.round(x.chance * 100)}%</span>
+            </Link>
+          ))}
+          {chances.length === 0 && <div className="note">이 시간대에 들어올 만한 사람이 없음</div>}
+          <div className="chance-legend">
+            <i />
+            초록 이름은 지금 접속 중
+          </div>
+        </div>
       </div>
     </>
   );
