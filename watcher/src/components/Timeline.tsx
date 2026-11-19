@@ -6,7 +6,7 @@ import { useMobile } from "../useMobile";
 import { D, H, MIN, SEC, fmtDur, fmtFull, fmtHM, fmtHMS, p2 } from "../time";
 
 // name column width (phones show only avatars there)
-const NC_WIDE = 190;
+const NC_WIDE = 285;
 const NC_PHONE = 44;
 const ROW_H = 40;
 const BAR_H = 24;

@@ -122,7 +122,7 @@ export default function UserPage() {
           axis={PERCENT_AXIS}
           format={(v) => `${Math.round(v * 100)}% (${freq.days}일 중 ${Math.round(v * freq.days)}일)`}
         />
-        <Heatmap heat={heat.heat} cellHeight={22} now={now} focus={focus} format={(d, _, v) => `${heat.weekdays[d]}번 중 ${v}번`} />
+        <Heatmap heat={heat.heat} cellHeight={22} now={now} format={(d, _, v) => `${heat.weekdays[d]}번 중 ${v}번`} />
       </div>
       <div className="grid2">
         <div className="card">

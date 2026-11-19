@@ -11,6 +11,7 @@
   --now: #ff5c5c;
   --grid: rgba(255, 255, 255, 0.06);
   --bounce: #f5a524;
+  --today: #3b82f6;
   color-scheme: dark;
 }
 
@@ -120,7 +121,7 @@ button { font: inherit; color: inherit; }
 .row.alt { background: rgba(127, 127, 127, 0.04); }
 .namecol { position: absolute; left: 0; top: 0; bottom: 0; display: flex; align-items: center; gap: 8px; padding-left: 12px; border-right: 1px solid var(--line); background: var(--panel); z-index: 2; cursor: pointer; }
 .namecol img { width: 22px; height: 22px; border-radius: 11px; }
-.namecol .nm { color: var(--strong); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90px; }
+.namecol .nm { color: var(--strong); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px; }
 .namecol:hover .nm { text-decoration: underline; }
 .namecol .sub { color: var(--muted); font-size: 13px; margin-left: auto; padding-right: 10px; white-space: nowrap; }
 .namecol .on { width: 7px; height: 7px; border-radius: 4px; background: var(--accent); box-shadow: 0 0 6px var(--accent); flex: 0 0 auto; }
@@ -128,7 +129,7 @@ button { font: inherit; color: inherit; }
 .tl.dragging, .tl.dragging .bar, .tl.dragging .namecol { cursor: grabbing; }
 .bar.online { box-shadow: 0 0 10px var(--accent), inset 0 0 0 1px var(--accent); }
 .bar:hover { filter: brightness(1.35); }
-.flabel { position: absolute; display: flex; align-items: center; gap: 6px; white-space: nowrap; font-size: 13px; color: #c8c8c8; pointer-events: none; }
+.flabel { position: absolute; display: flex; align-items: center; gap: 6px; white-space: nowrap; font-size: 13px; color: #c8c8c8; pointer-events: none; opacity: 0.4; }
 .flabel img { width: 20px; height: 20px; border-radius: 10px; }
 .flabel.on { color: var(--accent); }
 
@@ -158,7 +159,7 @@ button { font: inherit; color: inherit; }
 .lb .r .no.m2 { color: #c9d1db; }
 .lb .r .no.m3 { color: #d39360; }
 .lb .r img { width: 24px; height: 24px; border-radius: 12px; }
-.lb .r .nm { color: var(--strong); font-weight: 600; min-width: 46px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
+.lb .r .nm { color: var(--strong); font-weight: 600; width: 150px; flex: 0 0 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lb .r .bar2 { flex: 1; height: 6px; border-radius: 3px; background: var(--panel2); overflow: hidden; min-width: 30px; }
 .lb .r .bar2 i { display: block; height: 100%; background: var(--accent2); }
 .lb .r .val { width: 86px; text-align: right; color: var(--strong); font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -176,8 +177,8 @@ button { font: inherit; color: inherit; }
 .hlabels span { flex: 1; text-align: center; font-size: 12px; color: var(--muted); }
 .heat { display: grid; grid-template-columns: 22px repeat(24, 1fr); gap: 2px; font-size: 12px; color: var(--muted); margin-top: 12px; }
 .heat span { display: flex; align-items: center; }
-.heat span.today { color: var(--now); font-weight: 800; }
-.heat span.dim:not(.today) { opacity: 0.35; }
+.heat span.today { color: var(--today); font-weight: 800; }
+.heat i.today { background: var(--today); }
 .heat i { height: 13px; border-radius: 2px; background: var(--accent2); }
 .heat i:hover { outline: 2px solid var(--strong); outline-offset: -1px; }
 
@@ -191,13 +192,14 @@ button { font: inherit; color: inherit; }
 .dd:hover { color: var(--strong); }
 /* stats: grass + chance list */
 .grassrow { display: flex; gap: 12px; align-items: stretch; flex: 0 0 auto; }
-.grasscard { flex: 1; min-width: 0; }
-.chance { width: 300px; flex: 0 0 auto; display: flex; flex-direction: column; }
+.grasscard { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.grasscard .grassbox { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.chance { width: 600px; flex: 0 0 auto; display: flex; flex-direction: column; }
 .chance .cr { display: flex; align-items: center; gap: 8px; padding: 4px 2px; border-radius: 6px; }
 .chance .cr:hover { background: var(--panel2); }
 .chance .no { width: 16px; text-align: center; color: var(--muted); font-weight: 800; }
 .chance img { width: 22px; height: 22px; border-radius: 11px; }
-.chance .nm { color: var(--strong); font-weight: 600; min-width: 40px; max-width: 110px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chance .nm { color: var(--strong); font-weight: 600; width: 85px; flex: 0 0 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .chance .nm.on { color: var(--accent); }
 .chance .bar2 { flex: 1; height: 6px; background: var(--panel2); overflow: hidden; min-width: 30px; }
 .chance .bar2 i { display: block; height: 100%; background: var(--accent2); }
@@ -210,12 +212,13 @@ button { font: inherit; color: inherit; }
 .ctip b { color: var(--strong); font-size: 14px; }
 
 /* year grass */
-.gmonths { position: relative; height: 14px; margin-left: 26px; font-size: 12px; color: var(--muted); }
+.gmonths { position: relative; height: 16px; margin-left: 26px; font-size: 12px; color: var(--muted); }
 .gmonths span { position: absolute; white-space: nowrap; }
-.grasswrap { display: grid; grid-template-columns: 22px 1fr; gap: 4px; font-size: 12px; color: var(--muted); }
-.grasswrap .wd { display: grid; grid-template-rows: repeat(7, 1fr); }
-.grasswrap .wd span { display: flex; align-items: center; }
-.grass { display: block; width: 100%; height: auto; }
+.grasswrap { flex: 1; display: grid; grid-template-columns: 22px 1fr; gap: 4px; min-height: 120px; font-size: 12px; color: var(--muted); }
+.grasswrap .wd { position: relative; }
+.grasswrap .wd span { position: absolute; left: 0; transform: translateY(-50%); line-height: 1; }
+.garea { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
+.grass { display: block; position: absolute; inset: 0; }
 .grass rect { fill: var(--accent2); }
 .grass rect.empty { fill: var(--panel2); }
 .grass rect:hover { stroke: var(--strong); stroke-width: 1.5px; }
@@ -290,7 +293,6 @@ button { font: inherit; color: inherit; }
   .uhead .nm { font-size: 19px; flex-wrap: wrap; }
   .uhead > img { width: 44px; height: 44px; }
   .hlabels span { white-space: nowrap; }
-  .gmonths span:nth-child(even) { display: none; }
   .grassrow { flex-direction: column; }
   .chance { width: auto; }
   /* weekday labels would be taller than the tiny grass cells on phones */

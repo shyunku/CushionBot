@@ -1,4 +1,4 @@
-import { useId, useRef, useState, type ReactNode } from "react";
+import { useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { D, H, fmtDur, fmtHM, sod } from "../time";
 
 export const DAYS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -134,11 +134,8 @@ export function FreqCurve({ slots, now, height = 120, axis, format }: { slots: n
   );
 }
 
-/**
- * Weekday x hour heatmap (Monday first) with a hover tooltip per cell. Today's weekday label is red;
- * with `focus` set, the other weekdays are dimmed.
- */
-export function Heatmap({ heat, cellHeight = 13, now, focus, format }: { heat: number[][]; cellHeight?: number; now: number; focus: number | null; format: (day: number, hour: number, v: number) => ReactNode }) {
+/** Weekday x hour heatmap (Monday first) with a hover tooltip per cell. Today's weekday row is drawn in blue. */
+export function Heatmap({ heat, cellHeight = 22, now, format }: { heat: number[][]; cellHeight?: number; now: number; format: (day: number, hour: number, v: number) => ReactNode }) {
   const { box, tip, show, hide, width } = useChartTip();
   const max = Math.max(0.0001, ...heat.flat());
   const today = new Date(now).getDay();
@@ -147,11 +144,12 @@ export function Heatmap({ heat, cellHeight = 13, now, focus, format }: { heat: n
       <div className="heat">
         {[1, 2, 3, 4, 5, 6, 0].map((d) => (
           <div key={d} style={{ display: "contents" }}>
-            <span className={`${d === today ? "today" : ""} ${focus != null && d !== focus ? "dim" : ""}`}>{DAYS[d]}</span>
+            <span className={d === today ? "today" : ""}>{DAYS[d]}</span>
             {heat[d].map((v, h) => (
               <i
                 key={h}
-                style={{ opacity: (0.08 + (v / max) * 0.92) * (focus != null && d !== focus ? 0.3 : 1), height: cellHeight }}
+                className={d === today ? "today" : ""}
+                style={{ opacity: 0.08 + (v / max) * 0.92, height: cellHeight }}
                 onMouseMove={(e) => show(e, `${DAYS[d]}요일 ${h}시`, format(d, h, v))}
               />
             ))}
@@ -165,62 +163,96 @@ export function Heatmap({ heat, cellHeight = 13, now, focus, format }: { heat: n
 
 export type GrassDay = { day: number; total: number; people: number };
 
-const CELL = 10;
-const GAP = 2;
-const PITCH = CELL + GAP;
+/** Gap between grass cells in px. */
+const GAP = 3;
+/** Room a month label ("12월") needs before the next one starts. */
+const MONTH_LABEL_PX = 34;
 
 /** GitHub-style daily grid (columns are weeks, rows Sunday..Saturday). */
 export function Grass({ days }: { days: GrassDay[] }) {
   const { box, tip, show, hide, width } = useChartTip();
+  // the grid fills its box: the height comes from the card (matched to the table beside it) and the
+  // cells stretch horizontally with the width
+  const area = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState({ w: 0, h: 0 });
+  useLayoutEffect(() => {
+    const el = area.current;
+    if (!el) return;
+    const update = () => setSize({ w: el.clientWidth, h: el.clientHeight });
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    update();
+    return () => ro.disconnect();
+  }, []);
   if (days.length === 0) return null;
   const max = Math.max(1, ...days.map((x) => x.total));
   const lead = new Date(days[0].day).getDay();
   const weeks = Math.ceil((lead + days.length) / 7);
-  const months: { col: number; label: string }[] = [];
+  const cw = Math.max(1, (size.w - GAP * (weeks - 1)) / weeks);
+  const ch = Math.max(1, (size.h - GAP * 6) / 7);
+  const colX = (c: number) => c * (cw + GAP);
+  const rowY = (r: number) => r * (ch + GAP);
+  // month labels at the first column of each month, skipping any that would overlap the previous one
+  const starts: { col: number; label: string }[] = [];
   let lastMonth = -1;
   days.forEach((x, i) => {
     const m = new Date(x.day).getMonth();
     if (m !== lastMonth) {
       lastMonth = m;
-      months.push({ col: Math.floor((lead + i) / 7), label: `${m + 1}월` });
+      starts.push({ col: Math.floor((lead + i) / 7), label: `${m + 1}월` });
     }
   });
+  const months: typeof starts = [];
+  for (const m of starts) {
+    const prev = months[months.length - 1];
+    if (!prev || colX(m.col) - colX(prev.col) >= MONTH_LABEL_PX) months.push(m);
+  }
   return (
     <div className="grassbox" ref={box} onMouseLeave={hide}>
       <div className="gmonths">
-        {months.map((m) => (
-          <span key={`${m.col}-${m.label}`} style={{ left: `${(m.col / weeks) * 100}%` }}>
-            {m.label}
-          </span>
-        ))}
+        {size.w > 0 &&
+          months.map((m) => (
+            <span key={`${m.col}-${m.label}`} style={{ left: colX(m.col) }}>
+              {m.label}
+            </span>
+          ))}
       </div>
       <div className="grasswrap">
         <div className="wd">
-          {DAYS.map((x, i) => (
-            <span key={x}>{i % 2 ? x : ""}</span>
-          ))}
+          {size.h > 0 &&
+            DAYS.map((x, i) =>
+              i % 2 ? (
+                <span key={x} style={{ top: rowY(i) + ch / 2 }}>
+                  {x}
+                </span>
+              ) : null,
+            )}
         </div>
-        <svg className="grass" viewBox={`0 0 ${weeks * PITCH - GAP} ${7 * PITCH - GAP}`}>
-          {days.map((x, i) => {
-            const d = new Date(x.day);
-            const k = lead + i;
-            return (
-              <rect
-                key={x.day}
-                x={Math.floor(k / 7) * PITCH}
-                y={(k % 7) * PITCH}
-                width={CELL}
-                height={CELL}
-                rx={2}
-                className={x.total ? "" : "empty"}
-                style={x.total ? { opacity: 0.2 + (x.total / max) * 0.8 } : undefined}
-                onMouseMove={(e) =>
-                  show(e, `${d.getMonth() + 1}월 ${d.getDate()}일 (${DAYS[d.getDay()]})`, x.total ? `총 ${fmtDur(x.total)} · ${x.people}명` : "접속 없음")
-                }
-              />
-            );
-          })}
-        </svg>
+        <div className="garea" ref={area}>
+          {size.w > 0 && (
+            <svg className="grass" width={size.w} height={size.h}>
+              {days.map((x, i) => {
+                const d = new Date(x.day);
+                const k = lead + i;
+                return (
+                  <rect
+                    key={x.day}
+                    x={colX(Math.floor(k / 7))}
+                    y={rowY(k % 7)}
+                    width={cw}
+                    height={ch}
+                    rx={2}
+                    className={x.total ? "" : "empty"}
+                    style={x.total ? { opacity: 0.2 + (x.total / max) * 0.8 } : undefined}
+                    onMouseMove={(e) =>
+                      show(e, `${d.getMonth() + 1}월 ${d.getDate()}일 (${DAYS[d.getDay()]})`, x.total ? `총 ${fmtDur(x.total)} · ${x.people}명` : "접속 없음")
+                    }
+                  />
+                );
+              })}
+            </svg>
+          )}
+        </div>
       </div>
       <div className="glegend">
         적음

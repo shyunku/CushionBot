@@ -58,7 +58,7 @@ export default function StatsPage() {
           <span>그 시각 평균 동시 접속자 수(명)</span>
         </h5>
         <FreqCurve slots={freq.values} now={now} height={200} axis={countAxis(Math.max(...freq.values))} format={(v) => `평균 ${v.toFixed(1)}명`} />
-        <Heatmap heat={heat} cellHeight={15} now={now} focus={focus} format={(_, __, v) => `평균 ${v.toFixed(1)}명`} />
+        <Heatmap heat={heat} cellHeight={22} now={now} format={(_, __, v) => `평균 ${v.toFixed(1)}명`} />
       </div>
       <div className="grassrow">
         <div className="card grasscard">
