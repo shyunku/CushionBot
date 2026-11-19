@@ -298,6 +298,15 @@
   #app[data-font="p2"] :is(.namecol .nm, .flabel, .btn, .seg button, .stabs button, .lb .r, .chance .cr, .back) { font-size: 15px; }
   #app:not([data-font="old"]) .stat .k[style*="font-size:11px"] { font-size: 12px !important; }
 
+  /* ---------- 3.3.2.1 round 2 ---------- */
+  .chance .nm.on { color: var(--accent); }
+  .heat span.today { color: var(--now); font-weight: 800; opacity: 1; }
+  /* cards: wrap to the next row before any text would be cut or wrapped */
+  #app .summary { grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)) !important; }
+  #app .stat .k, #app .stat .v { white-space: nowrap; }
+  .chance-legend { margin-top: auto; padding-top: 8px; font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .chance-legend i { width: 8px; height: 8px; border-radius: 4px; background: var(--accent); display: inline-block; }
+
   /* ---------- mock helpers: shift outlines ---------- */
   body.shift [data-click] { outline: 2px dashed #3fa9ff; outline-offset: -2px; }
   body.shift [data-cand]:not(.row) { position: relative; }
@@ -348,7 +357,7 @@
 <div id="app"></div>
 <div id="note">
   <div class="top">
-    <div class="r"><h2>watcher 3.3.2.1 시안</h2><span id="copied">복사됨</span><button id="copy">결과 복사</button></div>
+    <div class="r"><h2>watcher 3.3.2.1 시안 (2차 · 최종 확인)</h2><span id="copied">복사됨</span><button id="copy">결과 복사</button></div>
     <div class="help">항목에서 옵션을 고르면 시안이 바로 바뀌고 의견을 적을 수 있음. <b>Shift</b>를 누르면 <span class="k1">파란 점선</span>은 누를 수 있는 곳, <span class="k2">주황 점선</span>은 후보가 있는 곳(올리면 후보 툴팁).</div>
   </div>
   <div class="list" id="list"></div>
@@ -628,10 +637,10 @@ ITEMS.push(
     { id: "mix", name: "작을수록 더", desc: "10·11px은 +2px, 12·13px은 +1px. 카드 큰 숫자·제목은 그대로", rec: 1 },
     { id: "p2", name: "+2px", desc: "13px 이하 글자 전부 2px씩" } ] },
 );
-const MOBILE_KEYS = new Set(["attend", "probwin", "probonline", "dayheat", "grasstoday", "fontup"]);
+const MOBILE_KEYS = new Set();
 const state = {}; ITEMS.forEach((it) => (state[it.key] = it.opts.find((o) => o.rec)?.id ?? it.opts[0].id));
 // round 2: confirmed choices are fixed and hidden from the note
-const CONFIRMED = { theme: "slate", layout: "rail", rows: "fixed", ctrl: "seg", summary: "cards", now: "chips", legend: "filter", tip: "card", loading: "skeleton", share: "btn", after: "avatar", click: "page", freq: "both", ublocks: "full", shape: "smooth", bounce: "both", bwhere: "user", bui: "statmini", ntime: "range", rankwhere: "tabs", ranklayout: "boards", rankperiod: "switch", myrank: "badge", sharedview: "hide", backsize: "btn", ufill: "big", badge: "big", zoom: "10s", fcur: "tipheat", sstats: "tab", sfreq: "avgppl", grass: "both", scards: "cards", barradius: "tl", cursor: "plain", wheelease: "slow" };
+const CONFIRMED = { theme: "slate", layout: "rail", rows: "fixed", ctrl: "seg", summary: "cards", now: "chips", legend: "filter", tip: "card", loading: "skeleton", share: "btn", after: "avatar", click: "page", freq: "both", ublocks: "full", shape: "smooth", bounce: "both", bwhere: "user", bui: "statmini", ntime: "range", rankwhere: "tabs", ranklayout: "boards", rankperiod: "switch", myrank: "badge", sharedview: "hide", backsize: "btn", ufill: "big", badge: "big", zoom: "10s", fcur: "tipheat", sstats: "tab", sfreq: "avgppl", grass: "both", scards: "cards", barradius: "tl", cursor: "plain", wheelease: "slow", attend: "rate", probwin: "pm30", probonline: "show", dayheat: "focus", grasstoday: "old", fontup: "mix" };
 Object.assign(state, CONFIRMED);
 const OPEN_ITEMS = ITEMS.filter((it) => MOBILE_KEYS.has(it.key));
 const comments = {}; // key -> optId -> text
@@ -932,7 +941,7 @@ function heatY(id, heat, cellH, focusWd) {
   const hmax = Math.max(0.0001, ...heat.flat());
   return `<div class="heat" data-h="${id}" data-cand="dayheat" style="margin-top:12px">${[1, 2, 3, 4, 5, 6, 0].map((d) => {
     const dim = focusWd != null && state.dayheat === "focus" && d !== focusWd;
-    return `<span class="${dim ? "dim" : ""}">${DN[d]}</span>${heat[d].map((v, h) => `<i data-d="${d}" data-hh="${h}" style="opacity:${(0.08 + (v / hmax) * 0.92) * (dim ? 0.3 : 1)};height:${cellH}px"></i>`).join("")}`;
+    return `<span class="${dim ? "dim" : ""} ${d === TODAY_WD ? "today" : ""}">${DN[d]}</span>${heat[d].map((v, h) => `<i data-d="${d}" data-hh="${h}" style="opacity:${(0.08 + (v / hmax) * 0.92) * (dim ? 0.3 : 1)};height:${cellH}px"></i>`).join("")}`;
   }).join("")}</div>`;
 }
 function dd(key, opts) { return `<select class="dd" data-dd="${key}" data-new>${opts.map(([v, n]) => `<option value="${v}" ${FV[key] === v ? "selected" : ""}>${n}</option>`).join("")}</select>`; }
@@ -1072,7 +1081,7 @@ function statsBody(g) {
     FREQ.year = st.year;
     const cands = g.users.filter((u) => state.probonline === "show" || !isOnline(u)).map((u) => ({ u, ...probNow(u) })).filter((x) => x.p > 0).sort((a, b) => b.p - a.p).slice(0, 10);
     const chance = `<div class="card chance" data-cand="probonline" data-new><h5>지금 들어올 확률 <span>${probBasis()} · 최근 30일</span></h5>
-      ${cands.map((x, i) => `<div class="cr" data-click data-user="${x.u.id}"><span class="no">${i + 1}</span><img src="${x.u.avatar}"><span class="nm">${x.u.name}</span>${isOnline(x.u) ? `<span class="pill">접속 중</span>` : ""}<span class="bar2"><i style="width:${x.p * 100}%"></i></span><span class="val">${Math.round(x.p * 100)}%</span></div>`).join("") || `<div class="note">지금 시간대에 들어올 만한 사람이 없음</div>`}</div>`;
+      ${cands.length ? "" : ""}${cands.map((x, i) => `<div class="cr" data-click data-user="${x.u.id}"><span class="no">${i + 1}</span><img src="${x.u.avatar}"><span class="nm ${isOnline(x.u) ? "on" : ""}" title="${isOnline(x.u) ? "지금 접속 중" : ""}">${x.u.name}</span><span class="bar2"><i style="width:${x.p * 100}%"></i></span><span class="val">${Math.round(x.p * 100)}%</span></div>`).join("") || `<div class="note">지금 시간대에 들어올 만한 사람이 없음</div>`}<div class="chance-legend"><i></i>초록 이름은 지금 접속 중</div></div>`;
     yearHtml = `<div class="grassrow"><div class="card" data-cand="grass" style="flex:1;min-width:0"><h5>날짜별 잔디 <span>최근 1년 · 진할수록 그날 총 접속 시간이 김</span></h5>
       <div class="gmonths">${months}</div><div class="grasswrap"><div class="wd">${DN.map((x, i) => `<span>${i % 2 ? x : ""}</span>`).join("")}</div><div class="grass" data-g="1" data-cand="barradius" style="grid-template-columns:repeat(${weeks}, minmax(0, 1fr))">${cells.join("")}</div></div>
       <div class="glegend">적음 ${[0.2, 0.4, 0.6, 0.8, 1].map((o) => `<i style="opacity:${o}"></i>`).join("")} 많음</div></div>${chance}</div>`;
@@ -1341,7 +1350,7 @@ function playLoading() {
 /* ================= note ================= */
 const list = document.getElementById("list");
 function renderNote() {
-  if (!OPEN_ITEMS.length) { list.innerHTML = `<div class="item"><div class="it">남은 후보 없음</div><div class="opt"><div class="d">지금까지 고른 내용이 모두 반영된 최종 모습임. 랭킹 탭의 '더보기'도 7차 의견대로 넣었음. 서버 아이콘, 랭킹 탭, 사람 이름을 눌러 둘러보고 확정 여부를 알려 주면 됨.</div></div></div>`; return; }
+  if (!OPEN_ITEMS.length) { list.innerHTML = `<div class="item"><div class="it">남은 후보 없음</div><div class="opt"><div class="d">1차에서 고른 내용과 의견을 모두 반영한 최종 모습임. 통계 탭(곡선·히트맵·잔디·지금 들어올 확률)과 사람 이름을 눌러 사람 페이지(카드·곡선·일별 막대 툴팁)를 둘러보고 확정 여부를 알려 주면 됨. 창 너비를 줄이면 카드가 글자가 잘리기 전에 줄을 바꿈.</div></div></div>`; return; }
   list.innerHTML = OPEN_ITEMS.map((it) => `<div class="item"><div class="it">${it.title}</div>${it.opts.map((o) => {
     const k = `${it.key}:${o.id}`; const cur = state[it.key] === o.id;
     return `<div class="opt ${cur ? "cur" : ""}" data-k="${it.key}" data-o="${o.id}"><div class="n">${o.name}${o.old && o.name !== "기존" ? `<span class="badge old">기존</span>` : ""}${o.rec ? `<span class="badge rec">추천</span>` : ""}</div><div class="d">${o.desc}</div>
@@ -1388,7 +1397,7 @@ list.addEventListener("input", (e) => {
   (comments[e.target.dataset.k] ??= {})[e.target.dataset.o] = e.target.value; autosize(e.target);
 });
 document.getElementById("copy").onclick = async () => {
-  const lines = ["[watcher 3.3.2.1 시안 결과]"];
+  const lines = ["[watcher 3.3.2.1 시안 2차 결과]"];
   for (const it of OPEN_ITEMS) {
     const o = it.opts.find((x) => x.id === state[it.key]);
     const c = comments[it.key]?.[o.id]?.trim();
