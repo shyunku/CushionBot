@@ -37,8 +37,9 @@ public class SseHandler extends IntermediateHttpHandler {
                 try {
                     while (!Thread.currentThread().isInterrupted()) {
                         try {
-                            os.write(":\n\n".getBytes()); // 주기적으로 ping을 보내 연결을 유지
-                            os.flush();
+                            // a data ping keeps proxies from closing the connection and lets the
+                            // dashboard notice a dead connection when pings stop arriving
+                            write("data: " + PING + "\n\n");
                             Thread.sleep(15000);
                         } catch (IOException e) {
                             break;
@@ -60,14 +61,20 @@ public class SseHandler extends IntermediateHttpHandler {
         }
     }
 
+    private static final String PING = "{\"type\":\"ping\",\"data\":null}";
+
+    /** Pings and data are written from different threads; keep each message whole. */
+    private synchronized void write(String message) throws IOException {
+        os.write(message.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        os.flush();
+    }
+
     public void sendData(SseResponse data) {
         if (os != null) {
             try {
                 ObjectMapper mapper = new ObjectMapper();
                 String json = mapper.writeValueAsString(data);
-                String message = "data: " + json + "\n\n";
-                os.write(message.getBytes());
-                os.flush();
+                write("data: " + json + "\n\n");
             } catch (IOException e) {
                 closeConnection();
             }

@@ -67,22 +67,72 @@ type Listener = (type: string, guildId: string | null) => void;
 const listeners = new Set<Listener>();
 let source: EventSource | null = null;
 
+/** The bot sends a ping message every 15 seconds; silence longer than this means a dead connection. */
+const STALE_MS = 50_000;
+let lastSeen = 0;
+let missedEvents = false;
+let watching = false;
+
+/** Ask every subscriber to reload, after events may have been missed. */
+function resync() {
+  listeners.forEach((l) => l("resync", null));
+}
+
+function reconnect() {
+  missedEvents = true;
+  source?.close();
+  source = null;
+  ensureSource();
+}
+
 function ensureSource() {
   if (source || typeof EventSource === "undefined") return;
+  watchConnection();
+  lastSeen = Date.now();
   source = new EventSource("/sse");
+  source.onopen = () => {
+    lastSeen = Date.now();
+    if (missedEvents) {
+      missedEvents = false;
+      resync();
+    }
+  };
   source.onmessage = (ev) => {
+    lastSeen = Date.now();
     try {
       const { type, data } = JSON.parse(ev.data) as { type: string; data: string | null };
+      if (type === "ping") return;
       listeners.forEach((l) => l(type, data));
     } catch {
-      /* ping or malformed message */
+      /* malformed message */
     }
   };
   source.onerror = () => {
+    missedEvents = true;
     source?.close();
     source = null;
     setTimeout(ensureSource, 3000);
   };
+}
+
+/**
+ * Background tabs can be throttled or frozen and come back with a dead connection or missed events.
+ * Reconnect when the connection goes quiet, and reload when the tab becomes visible again.
+ */
+function watchConnection() {
+  if (watching) return;
+  watching = true;
+  const wake = () => {
+    if (document.visibilityState !== "visible") return;
+    if (!source || source.readyState === EventSource.CLOSED || Date.now() - lastSeen > STALE_MS) reconnect();
+    else resync();
+  };
+  document.addEventListener("visibilitychange", wake);
+  window.addEventListener("pageshow", wake);
+  window.addEventListener("online", wake);
+  window.setInterval(() => {
+    if (source && Date.now() - lastSeen > STALE_MS) reconnect();
+  }, 20_000);
 }
 
 /** Subscribe to watcher change events ("change" / "members" with a guild id). */
