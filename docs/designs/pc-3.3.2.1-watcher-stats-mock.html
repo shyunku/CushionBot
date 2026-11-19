@@ -4,6 +4,7 @@
 <meta charset="utf-8" />
 <title>watcher 3.3.2.1 시안 (pc 3.3.2.1)</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&family=Oxanium:wght@400;500;600;700;800&display=swap" />
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; }
@@ -307,6 +308,9 @@
   .chance-legend { margin-top: auto; padding-top: 8px; font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
   .chance-legend i { width: 8px; height: 8px; border-radius: 4px; background: var(--accent); display: inline-block; }
 
+  /* ---------- font candidate ---------- */
+  #app[data-ff="ox"], #app[data-ff="ox"] :is(*, button, select, input) { font-family: "Oxanium", "Noto Sans KR", sans-serif; }
+
   /* ---------- mock helpers: shift outlines ---------- */
   body.shift [data-click] { outline: 2px dashed #3fa9ff; outline-offset: -2px; }
   body.shift [data-cand]:not(.row) { position: relative; }
@@ -357,7 +361,7 @@
 <div id="app"></div>
 <div id="note">
   <div class="top">
-    <div class="r"><h2>watcher 3.3.2.1 시안 (2차 · 최종 확인)</h2><span id="copied">복사됨</span><button id="copy">결과 복사</button></div>
+    <div class="r"><h2>watcher 3.3.2.1 시안 (3차 · 글꼴)</h2><span id="copied">복사됨</span><button id="copy">결과 복사</button></div>
     <div class="help">항목에서 옵션을 고르면 시안이 바로 바뀌고 의견을 적을 수 있음. <b>Shift</b>를 누르면 <span class="k1">파란 점선</span>은 누를 수 있는 곳, <span class="k2">주황 점선</span>은 후보가 있는 곳(올리면 후보 툴팁).</div>
   </div>
   <div class="list" id="list"></div>
@@ -637,8 +641,14 @@ ITEMS.push(
     { id: "mix", name: "작을수록 더", desc: "10·11px은 +2px, 12·13px은 +1px. 카드 큰 숫자·제목은 그대로", rec: 1 },
     { id: "p2", name: "+2px", desc: "13px 이하 글자 전부 2px씩" } ] },
 );
-const MOBILE_KEYS = new Set();
+ITEMS.push(
+  { key: "font", title: "글꼴", opts: [
+    { id: "old", name: "기존", desc: "Pretendard 하나로 숫자·영어·한글 전부", old: 1 },
+    { id: "ox", name: "숫자·영어 Oxanium + 한글 Noto Sans KR", desc: "숫자와 영어는 각진 Oxanium, 한글은 Noto Sans KR로 섞어 씀" } ] },
+);
+const MOBILE_KEYS = new Set(["font"]);
 const state = {}; ITEMS.forEach((it) => (state[it.key] = it.opts.find((o) => o.rec)?.id ?? it.opts[0].id));
+state.font = "ox";
 // round 2: confirmed choices are fixed and hidden from the note
 const CONFIRMED = { theme: "slate", layout: "rail", rows: "fixed", ctrl: "seg", summary: "cards", now: "chips", legend: "filter", tip: "card", loading: "skeleton", share: "btn", after: "avatar", click: "page", freq: "both", ublocks: "full", shape: "smooth", bounce: "both", bwhere: "user", bui: "statmini", ntime: "range", rankwhere: "tabs", ranklayout: "boards", rankperiod: "switch", myrank: "badge", sharedview: "hide", backsize: "btn", ufill: "big", badge: "big", zoom: "10s", fcur: "tipheat", sstats: "tab", sfreq: "avgppl", grass: "both", scards: "cards", barradius: "tl", cursor: "plain", wheelease: "slow", attend: "rate", probwin: "pm30", probonline: "show", dayheat: "focus", grasstoday: "old", fontup: "mix" };
 Object.assign(state, CONFIRMED);
@@ -682,7 +692,7 @@ function header(g) {
     : "";
   const titleClick = state.share === "old" ? `data-click data-act="oldshare" data-cand="share"` : "";
   const spark = state.layout !== "old" ? `<div class="spark">오늘 접속 추이 ${sparkSvg(g, 160, 32, "var(--accent)")}</div>` : "";
-  return `<div class="head"><div class="title" ${titleClick}>${state.layout !== "old" ? `<img src="${g.icon}">` : ""}${g.name}</div>
+  return `<div class="head" data-cand="font"><div class="title" ${titleClick}>${state.layout !== "old" ? `<img src="${g.icon}">` : ""}${g.name}</div>
     <span class="meta">멤버 ${g.members}명 · 기록된 사람 ${g.users.length}명</span>${share}${view.shared && state.sharedview !== "all" ? `<span class="pill off" data-cand="sharedview" data-new>공유된 서버만 보기</span>` : ""}${spark}</div>`;
 }
 function summary(g) {
@@ -1166,7 +1176,7 @@ function userPage(g, u) {
   return `${backLink(`${g.name} 타임라인`, "data-back")}
     <div class="uhead" data-new><img src="${u.avatar}"><div><div class="nm">${u.name}<span class="pill ${on ? "" : "off"}">${on ? "접속 중 · " + last.ch : "오프라인"}</span>
       <button class="btn sharebtn" data-click data-act="share">🔗 공유</button></div><div class="st">${g.name} · 마지막 접속 ${on ? "지금" : last ? fmtFull(last.e) : "-"}</div></div></div>
-    <div class="summary" data-cand="fontup">
+    <div class="summary" data-cand="font">
       <div class="stat"><div class="k">누적 총 접속${state.myrank === "badge" ? (() => { const r = rankOf(g, u, "total"); return r ? `<span class="rankpill" data-cand="myrank" data-new>서버 ${r.no}위 / ${r.of}명</span>` : ""; })() : `<span data-cand="myrank"></span>`}</div><div class="v">${fmtDur(u.sessions.reduce((acc, x) => acc + (x.e - x.s), 0))}</div><div class="k" style="font-size:11px;margin-top:2px">${(() => { const d = new Date(u.sessions[0]?.s ?? NOW); return `${d.getFullYear()}.${p2(d.getMonth() + 1)}.${p2(d.getDate())}부터 기록`; })()}</div></div>
       ${state.attend === "rate" ? `<div class="stat" data-cand="attend" data-new><div class="k">출석률 (최근 30일)</div><div class="v">${Math.round((st.days / 30) * 100)}%</div><div class="k" style="font-size:11px;margin-top:2px">30일 중 ${st.days}일</div></div>`
         : `<div class="stat" data-cand="attend"><div class="k">접속한 날</div><div class="v">${st.days}일 / 30일</div></div>${state.attend === "add" ? `<div class="stat" data-cand="attend" data-new><div class="k">출석률 (최근 30일)</div><div class="v">${Math.round((st.days / 30) * 100)}%</div></div>` : ""}`}
@@ -1203,7 +1213,7 @@ function render() {
   app.dataset.theme = state.theme;
   app.dataset.radius = state.barradius;
   app.dataset.cursor = state.cursor;
-  app.dataset.font = state.fontup; app.dataset.today = state.grasstoday;
+  app.dataset.font = state.fontup; app.dataset.ff = state.font; app.dataset.today = state.grasstoday;
   const g = G();
   let body;
   if (view.loading && state.loading === "skeleton") body = skeleton();
@@ -1397,7 +1407,7 @@ list.addEventListener("input", (e) => {
   (comments[e.target.dataset.k] ??= {})[e.target.dataset.o] = e.target.value; autosize(e.target);
 });
 document.getElementById("copy").onclick = async () => {
-  const lines = ["[watcher 3.3.2.1 시안 2차 결과]"];
+  const lines = ["[watcher 3.3.2.1 시안 3차 결과]"];
   for (const it of OPEN_ITEMS) {
     const o = it.opts.find((x) => x.id === state[it.key]);
     const c = comments[it.key]?.[o.id]?.trim();
