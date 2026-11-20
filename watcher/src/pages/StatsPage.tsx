@@ -37,12 +37,13 @@ export default function StatsPage() {
       data.people
         .filter(isOnline)
         .map((p) => ({ p, ...leaveChance(p, minute * MIN) }))
-        .filter((x) => x.days > 0)
-        .sort((a, b) => b.chance - a.chance)
+        // never on at this time on the basis days: listed last with an unknown chance
+        .map((x) => ({ ...x, unknown: x.days === 0 }))
+        .sort((a, b) => Number(a.unknown) - Number(b.unknown) || b.chance - a.chance)
         .slice(0, 10),
     [data.people, minute],
   );
-  const chanceRows = (rows: { p: Person; chance: number }[]) =>
+  const chanceRows = (rows: { p: Person; chance: number; unknown?: boolean }[]) =>
     rows.map((x, i) => (
       <Link key={x.p.id} className="cr" to={`${base}/users/${x.p.id}`}>
         <span className="no">{i + 1}</span>
@@ -51,7 +52,7 @@ export default function StatsPage() {
         <span className="bar2">
           <i style={{ width: `${x.chance * 100}%` }} />
         </span>
-        <span className="val">{Math.round(x.chance * 100)}%</span>
+        <span className="val">{x.unknown ? "??%" : `${Math.round(x.chance * 100)}%`}</span>
       </Link>
     ));
 
@@ -103,7 +104,7 @@ export default function StatsPage() {
             지금 나갈 확률 <span>30분 안 · 접속 중인 사람</span>
           </h5>
           {chanceRows(leave)}
-          {leave.length === 0 && <div className="note">지금 접속 중인 사람이 없거나 기록이 부족함</div>}
+          {leave.length === 0 && <div className="note">지금 접속 중인 사람이 없음</div>}
         </div>
       </div>
     </>
