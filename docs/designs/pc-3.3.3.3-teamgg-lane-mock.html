@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>team.gg 라인 설정 시안 4차 (pc 3.3.3.3)</title>
+<title>team.gg 라인 설정 시안 확정 (pc 3.3.3.3)</title>
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; }
@@ -132,7 +132,7 @@
 <div id="app"></div>
 <div id="note">
   <div class="top">
-    <div class="r"><h2>team.gg 라인 설정 시안 (4차)</h2><span id="copied">복사됨</span><button id="copy">결과 복사</button></div>
+    <div class="r"><h2>team.gg 라인 설정 시안 (확정)</h2><span id="copied">복사됨</span><button id="copy">결과 복사</button></div>
     <div class="help">항목에서 옵션을 고르면 시안이 바로 바뀌고 의견을 적을 수 있음. <b>Shift</b>를 누르면 <span class="k1">파란 점선</span>은 누를 수 있는 곳, <span class="k2">주황 점선</span>은 후보가 있는 곳(올리면 후보 툴팁). 패널의 버튼·드롭다운은 실제처럼 눌러 볼 수 있음.</div>
   </div>
   <div class="list" id="list"></div>
@@ -154,8 +154,9 @@ const ITEMS = [
     { id: "bar", name: "세로 막대", desc: "▮▮▮▯▯ 모양. 레벨 게이지처럼 읽히고 폭이 좁아 줄이 짧음", rec: 1 } ] },
 ];
 // decided in rounds 1-3
-const FIXED = { cmd: "one", layout: "rows", save: "button", show: "word", init: "fetch", starcolor: "value", prefcolor: "dot" };
-const state = { ...FIXED }; ITEMS.forEach((it) => (state[it.key] = it.opts.find((o) => o.rec)?.id ?? it.opts[0].id));
+const FIXED = { cmd: "one", layout: "rows", save: "button", show: "word", init: "fetch", starcolor: "value", prefcolor: "dot", laneicon: "both", mastsym: "square" };
+const state = { ...FIXED };
+ITEMS.length = 0; // every choice is decided
 const comments = {};
 let openComment = null;
 
@@ -348,6 +349,7 @@ app.addEventListener("click", (e) => {
 /* ================= note ================= */
 const list = document.getElementById("list");
 function renderNote() {
+  if (!ITEMS.length) { list.innerHTML = `<div class="item"><div class="itt">남은 후보 없음</div><div class="opt"><div class="d">1~4차에서 고른 내용을 모두 반영한 최종 모습임. 선호·숙련 버튼으로 값을 바꾸고 [저장]·[되돌리기]·[취소]를 눌러 볼 수 있음. (숫자)는 흰 글자로 둠.</div></div></div>`; return; }
   list.innerHTML = ITEMS.map((it) => `<div class="item"><div class="itt">${it.title}</div>${it.opts.map((o) => {
     const k = `${it.key}:${o.id}`; const cur = state[it.key] === o.id;
     return `<div class="opt ${cur ? "cur" : ""}" data-k="${it.key}" data-o="${o.id}"><div class="n">${o.name}${o.old && o.name !== "기존" ? `<span class="badge old">기존</span>` : ""}${o.rec ? `<span class="badge rec">추천</span>` : ""}</div><div class="d">${o.desc}</div>
@@ -367,7 +369,7 @@ function choose(key, opt, focus = true) {
 list.addEventListener("click", (e) => { if (e.target.tagName === "TEXTAREA") return; const o = e.target.closest(".opt"); if (!o) return; choose(o.dataset.k, o.dataset.o); });
 list.addEventListener("input", (e) => { if (e.target.tagName !== "TEXTAREA") return; (comments[e.target.dataset.k] ??= {})[e.target.dataset.o] = e.target.value; autosize(e.target); });
 document.getElementById("copy").onclick = async () => {
-  const lines = ["[team.gg 라인 설정 시안 4차 결과]"];
+  const lines = ["[team.gg 라인 설정 시안 확정]"];
   for (const it of ITEMS) {
     const o = it.opts.find((x) => x.id === state[it.key]);
     const c = comments[it.key]?.[o.id]?.trim();
