@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>team.gg 라인 설정 시안 2차 (pc 3.3.3.3)</title>
+<title>team.gg 라인 설정 시안 3차 (pc 3.3.3.3)</title>
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; }
@@ -132,7 +132,7 @@
 <div id="app"></div>
 <div id="note">
   <div class="top">
-    <div class="r"><h2>team.gg 라인 설정 시안 (2차)</h2><span id="copied">복사됨</span><button id="copy">결과 복사</button></div>
+    <div class="r"><h2>team.gg 라인 설정 시안 (3차)</h2><span id="copied">복사됨</span><button id="copy">결과 복사</button></div>
     <div class="help">항목에서 옵션을 고르면 시안이 바로 바뀌고 의견을 적을 수 있음. <b>Shift</b>를 누르면 <span class="k1">파란 점선</span>은 누를 수 있는 곳, <span class="k2">주황 점선</span>은 후보가 있는 곳(올리면 후보 툴팁). 패널의 버튼·드롭다운은 실제처럼 눌러 볼 수 있음.</div>
   </div>
   <div class="list" id="list"></div>
@@ -143,13 +143,13 @@
 <script>
 /* ================= decision items ================= */
 const ITEMS = [
-  { key: "starcolor", title: "숙련도 별 색", opts: [
-    { id: "old", name: "기존", desc: "색 없이 흰 별", old: 1 },
-    { id: "value", name: "값에 따라 한 색", desc: "채워진 별을 값의 색으로: 1 빨강 · 2 주황 · 3 노랑 · 4 초록 · 5 하늘 (3이면 별 3개 모두 노랑)", rec: 1 },
-    { id: "position", name: "자리마다 다른 색", desc: "첫째 별 빨강, 둘째 주황, 셋째 노랑, 넷째 초록, 다섯째 하늘 (값이 클수록 무지개가 길어짐)" } ] },
+  { key: "prefcolor", title: "선호도 색 넣는 방법", opts: [
+    { id: "old", name: "기존", desc: "색 없이 글자만: 싫음 (−1)", old: 1 },
+    { id: "dot", name: "색 점 + 글자", desc: "🔴 싫음 (−1) · 🟡 보통 (0) · 🟢 좋음 (1) · 🔵 주라인 (2). 디스코드는 글자 색을 못 바꿔서 앞에 색 점 이모지를 붙임. 점은 봇 전용 이모지로 하늘색까지 맞춤", rec: 1 },
+    { id: "img", name: "색 글자 이모지", desc: "'싫음' 같은 글자 자체를 색 입힌 작은 그림(봇 전용 이모지)으로 넣음. 색은 정확하지만 이모지 크기(약 22px)라 글자가 작게 보임" } ] },
 ];
-// decided in round 1
-const FIXED = { cmd: "one", layout: "rows", save: "button", show: "word", init: "fetch" };
+// decided in rounds 1-2
+const FIXED = { cmd: "one", layout: "rows", save: "button", show: "word", init: "fetch", starcolor: "value" };
 const state = { ...FIXED }; ITEMS.forEach((it) => (state[it.key] = it.opts.find((o) => o.rec)?.id ?? it.opts[0].id));
 const comments = {};
 let openComment = null;
@@ -157,20 +157,31 @@ let openComment = null;
 /* ================= mock data ================= */
 const LANES = ["탑", "정글", "미드", "원딜", "서폿"];
 const CUR = { pref: [2, -1, 1, 0, 0], mast: [4, 1, 3, 2, 2] }; // what team.gg holds now
-let draft, lane, saved, openSel, modal;
+let draft, lane, saved, openSel, modal, closed = false;
 function reset() {
   const start = state.init === "fetch" ? CUR : state.init === "zero" ? { pref: [0, 0, 0, 0, 0], mast: [0, 0, 0, 0, 0] } : { pref: [null, null, null, null, null], mast: [null, null, null, null, null] };
   draft = { pref: [...start.pref], mast: [...start.mast] };
-  lane = 0; saved = null; openSel = null; modal = null;
+  lane = 0; saved = null; openSel = null; modal = null; closed = false;
 }
 reset();
 
 const PREF_WORD = { "-1": "싫음", "0": "보통", "1": "좋음", "2": "주라인" };
 const PREF_EMO = { "-1": "👎", "0": "➖", "1": "👍", "2": "🔥" };
-function fmtPref(v) { if (v == null) return "?"; return state.show === "word" ? PREF_WORD[v] : state.show === "emoji" ? PREF_EMO[v] : String(v); }
+const PREF_COLORS = { "-1": "#f23f43", "0": "#f0c33c", "1": "#3ba55d", "2": "#4fb8f0" };
+const num = (v) => (v < 0 ? `\u2212${-v}` : `\u2007${v}`); // minus and figure space keep "(−1)" and "( 2)" the same width
+function fmtPref(v) {
+  if (v == null) return "?";
+  const w = PREF_WORD[v], c = PREF_COLORS[v];
+  const word = state.prefcolor === "img"
+    ? `<span style="display:inline-block;width:3em;text-align:left"><span style="display:inline-block;font-size:10px;line-height:22px;height:22px;vertical-align:middle;color:${c};font-weight:800">${w}</span></span>`
+    : `<span style="display:inline-block;width:3em">${w}</span>`;
+  const dot = state.prefcolor === "dot" ? `<span style="display:inline-block;width:12px;height:12px;border-radius:6px;background:${c};margin-right:6px;vertical-align:-1px"></span>` : "";
+  return `${dot}${word} (${num(v)})`;
+}
 const STAR_COLORS = ["#f23f43", "#f0883e", "#f0c33c", "#3ba55d", "#4fb8f0"];
 function fmtMast(v) {
   if (v == null) return "?";
+  // stars colored by value (decided in round 2)
   const filled = Array.from({ length: v }, (_, i) => {
     const c = state.starcolor === "value" ? STAR_COLORS[v - 1] : state.starcolor === "position" ? STAR_COLORS[i] : "#f2f3f5";
     return `<span style="color:${c}">★</span>`;
@@ -232,15 +243,16 @@ function panel(ms, idx) {
     comps = rows.join("");
   } else if (state.layout === "rows") {
     const can = complete(ms) && dirty(ms);
-    const lines = LANES.map((l, i) => `<div class="lrow" data-cand="starcolor"><b>${padTo(l, 2)}</b>${IDEO}${IDEO}${padTo(fmtPref(draft.pref[i]), 3)}${IDEO}${IDEO}${fmtMast(draft.mast[i])}</div>
+    const lines = LANES.map((l, i) => `<div class="lrow" data-cand="starcolor"><b>${padTo(l, 2)}</b>${IDEO}${IDEO}${fmtPref(draft.pref[i])}${IDEO}${IDEO}${fmtMast(draft.mast[i])}</div>
       <div class="arow">${ms.map((m) => `<button class="btn" data-click data-step="${m}" data-lane="${i}" data-d="-1" data-idx="${idx}">${m === "pref" ? "선호 −" : "숙련 −"}</button><button class="btn" data-click data-step="${m}" data-lane="${i}" data-d="1" data-idx="${idx}">${m === "pref" ? "선호 +" : "숙련 +"}</button>`).join("")}</div>`).join("");
+    if (closed) return `<div class="ed" style="margin-top:4px">설정을 취소했어요. 바꾼 값은 저장되지 않았어요.</div>`;
     return `<div class="v2" data-new>
-      <div class="et">${title} · 션 쿠</div>
+      <div class="et">션 쿠 · 라인 선호도 및 숙련도 설정</div>
       <div class="ed">${desc}</div>
       <div class="lanes">${lines}</div>
       <div class="sep"></div>
       ${saved && saved.idx === idx ? `<div class="ef ok">✓ ${saved.at} 저장됨 · 들어가 있는 내전 2개에 반영, 다음 내전부터 기본값으로 적용</div>` : `<div class="ef">team.gg에 저장된 지금 값 · 고친 뒤 [저장]을 눌러야 반영됨</div>`}
-      <div class="arow" style="margin-top:8px"><button class="btn ok ${can ? "" : "dis"}" data-click data-save="${idx}">저장</button><button class="btn ${dirty(ms) ? "" : "dis"}" data-click data-undo="${idx}">되돌리기</button></div>
+      <div class="arow" style="margin-top:8px"><button class="btn ok ${can ? "" : "dis"}" data-click data-save="${idx}">저장</button><button class="btn ${dirty(ms) ? "" : "dis"}" data-click data-undo="${idx}">되돌리기</button><button class="btn" data-click data-cancel="${idx}">취소</button></div>
     </div>`;
   } else if (false) {
     comps = LANES.map((l, i) => `<div class="arow"><button class="btn lab">${l} · ${ms.map((m) => m === "pref" ? fmtPref(draft.pref[i]) : fmtMast(draft.mast[i])).join(" · ")}</button>${ms.map((m) => `<button class="btn" data-click data-step="${m}" data-lane="${i}" data-d="-1" data-idx="${idx}">${ms.length === 2 ? (m === "pref" ? "선호 −" : "숙련 −") : "−"}</button><button class="btn" data-click data-step="${m}" data-lane="${i}" data-d="1" data-idx="${idx}">${ms.length === 2 ? (m === "pref" ? "선호 +" : "숙련 +") : "+"}</button>`).join("")}</div>`).join("");
@@ -265,7 +277,7 @@ function render() {
       <div class="msg" style="margin-top:0"><div class="av" style="background:#3ddc97">C</div><div class="body">
         <div class="who"><b>CushionBot</b><span class="bot">앱</span><span class="t">오늘 오후 3:42</span></div>
         ${panel(ms, idx)}
-        <div class="eph">👁 나만 볼 수 있어요 · <a>메시지 닫기</a></div>
+        <div class="eph">👁 나만 볼 수 있어요 · <a>메시지 닫기</a>${closed ? ` · <a data-click data-reopen style="cursor:pointer">(시안) 다시 열기</a>` : ""}</div>
       </div></div>`).join("");
   }
   let modalHtml = "";
@@ -303,6 +315,8 @@ app.addEventListener("click", (e) => {
   if (d.pref != null) { draft.pref[lane] = +d.pref; saved = null; if (instant) doSave(+d.idx); render(); return; }
   if (d.save != null) { doSave(+d.save); render(); return; }
   if (d.undo != null) { reset(); render(); return; }
+  if (d.reopen != null) { reset(); render(); return; }
+  if (d.cancel != null) { reset(); closed = true; render(); return; }
   if (d.step) {
     const m = d.step, i = +d.lane, lo = m === "pref" ? -1 : 0, hi = m === "pref" ? 2 : 5;
     const cur = draft[m][i] ?? (m === "pref" ? 0 : 0);
@@ -327,7 +341,7 @@ function renderNote() {
 function autosize(ta) { ta.style.height = "auto"; ta.style.height = ta.scrollHeight + "px"; }
 function choose(key, opt, focus = true) {
   state[key] = opt; openComment = `${key}:${opt}`;
-  if (key === "save" && state.layout !== "lane") state.layout = "lane";
+
   if (["init", "cmd", "layout", "save"].includes(key)) reset();
   renderNote(); render();
   const ta = list.querySelector("textarea");
@@ -336,7 +350,7 @@ function choose(key, opt, focus = true) {
 list.addEventListener("click", (e) => { if (e.target.tagName === "TEXTAREA") return; const o = e.target.closest(".opt"); if (!o) return; choose(o.dataset.k, o.dataset.o); });
 list.addEventListener("input", (e) => { if (e.target.tagName !== "TEXTAREA") return; (comments[e.target.dataset.k] ??= {})[e.target.dataset.o] = e.target.value; autosize(e.target); });
 document.getElementById("copy").onclick = async () => {
-  const lines = ["[team.gg 라인 설정 시안 2차 결과]"];
+  const lines = ["[team.gg 라인 설정 시안 3차 결과]"];
   for (const it of ITEMS) {
     const o = it.opts.find((x) => x.id === state[it.key]);
     const c = comments[it.key]?.[o.id]?.trim();
