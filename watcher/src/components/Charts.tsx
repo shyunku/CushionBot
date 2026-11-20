@@ -167,14 +167,13 @@ export type GrassDay = { day: number; total: number; people: number };
 const GAP = 3;
 /** Room a month label ("12월") needs before the next one starts. */
 const MONTH_LABEL_PX = 34;
-/** Smallest grass cell; when a year of weeks would be smaller, the oldest weeks are left out. */
-const GRASS_MIN_CELL = 14;
+/** Grass cell size (square). The number of weeks follows the width. */
+const GRASS_CELL = 20;
 
 /** GitHub-style daily grid (columns are weeks, rows Sunday..Saturday). */
 export function Grass({ days: allDays }: { days: GrassDay[] }) {
   const { box, tip, show, hide, width } = useChartTip();
-  // the cells are square: the width sets the cell size and the grid height follows; when the cells
-  // would get smaller than GRASS_MIN_CELL, only the most recent weeks that fit are drawn
+  // fixed square cells: as many recent weeks as fit the width are drawn (older than the record = empty)
   const area = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 0 });
   useLayoutEffect(() => {
@@ -189,14 +188,16 @@ export function Grass({ days: allDays }: { days: GrassDay[] }) {
   }, []);
   if (allDays.length === 0) return null;
   const max = Math.max(1, ...allDays.map((x) => x.total));
-  const allLead = kst(allDays[0].day).weekday;
-  const allWeeks = Math.ceil((allLead + allDays.length) / 7);
-  const weeks = Math.max(1, Math.min(allWeeks, Math.floor((size.w + GAP) / (GRASS_MIN_CELL + GAP))));
-  // drop whole weeks from the start so the remaining columns still begin on Sunday
-  const days = allDays.slice(Math.max(0, (allWeeks - weeks) * 7 - allLead));
-  const lead = kst(days[0].day).weekday;
-  const cw = Math.max(1, (size.w - GAP * (weeks - 1)) / weeks);
-  const ch = cw;
+  const weeks = Math.max(1, Math.floor((size.w + GAP) / (GRASS_CELL + GAP)));
+  // the last column is the current week; the first starts on the Sunday weeks-1 weeks before it
+  const last = allDays[allDays.length - 1].day;
+  const count = kst(last).weekday + (weeks - 1) * 7 + 1;
+  const first = last - (count - 1) * D;
+  const byDay = new Map(allDays.map((x) => [x.day, x]));
+  const days = Array.from({ length: count }, (_, i) => byDay.get(first + i * D) ?? { day: first + i * D, total: 0, people: 0 });
+  const lead = 0;
+  const cw = GRASS_CELL;
+  const ch = GRASS_CELL;
   const gridH = ch * 7 + GAP * 6;
   const colX = (c: number) => c * (cw + GAP);
   const rowY = (r: number) => r * (ch + GAP);

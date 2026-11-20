@@ -215,7 +215,7 @@ button { font: inherit; color: inherit; }
 /* year grass */
 .gmonths { position: relative; height: 16px; margin: 0 0 6px 26px; font-size: 12px; color: var(--muted); }
 .gmonths span { position: absolute; white-space: nowrap; }
-.grasswrap { display: grid; grid-template-columns: 22px 1fr; gap: 4px; font-size: 11px; color: var(--muted); }
+.grasswrap { display: grid; grid-template-columns: 22px 1fr; gap: 4px; font-size: 12px; color: var(--muted); }
 .grasswrap .wd { position: relative; }
 .grasswrap .wd span { position: absolute; left: 0; transform: translateY(-50%); line-height: 1; }
 .garea { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
