@@ -20,6 +20,8 @@ export type Snapshot = {
 
 /** A voice session. `e` is 0 while the person is still connected. */
 export type Session = {
+  /** position in the person's list; unique per person (join times can repeat in old records) */
+  id: number;
   ch: string;
   s: number;
   e: number;

@@ -53,6 +53,37 @@ function tickStep(a: number, b: number, width: number) {
 const LIVE_STEP = 10 * MIN;
 /** Extra range rendered on each side, as a share of the visible span. */
 const OVERSCAN = 0.5;
+/**
+ * Sessions of one person closer than this many pixels are drawn as one bar. Bars are at least 2px wide,
+ * so such neighbours already touch on screen; merging keeps the DOM small when zoomed far out.
+ */
+const MERGE_PX = 2;
+
+type Run = { members: Session[]; xStart: number; xEnd: number; ch: string };
+
+/** Group a person's sessions (in time order) into runs that would touch on screen. */
+function mergeRuns(sessions: Session[], X: (t: number) => number, now: number): Run[] {
+  const runs: Run[] = [];
+  for (const s of sessions) {
+    const xs = X(s.s);
+    const xe = X(endOf(s, now));
+    const prev = runs[runs.length - 1];
+    if (prev && xs - prev.xEnd < MERGE_PX) {
+      prev.members.push(s);
+      prev.xEnd = Math.max(prev.xEnd, xe);
+    } else {
+      runs.push({ members: [s], xStart: xs, xEnd: xe, ch: s.ch });
+    }
+  }
+  // a merged run takes the color of the channel it spent the most time in
+  for (const run of runs) {
+    if (run.members.length < 2) continue;
+    const time = new Map<string, number>();
+    for (const m of run.members) time.set(m.ch, (time.get(m.ch) ?? 0) + (endOf(m, now) - m.s));
+    run.ch = [...time.entries()].sort((x, y) => y[1] - x[1])[0][0];
+  }
+  return runs;
+}
 /** Duration of the eased wheel zoom. */
 const WHEEL_EASE_MS = 300;
 /** Zoom per wheel pixel: ln(1.25) / 100, so one mouse notch scales the span by 1.25. */
@@ -327,30 +358,45 @@ export default function Timeline({ people, hidden, range, now: baseNow, clockOff
                 {on && <span className="on" />}
                 <span className="sub">{inRange ? fmtDur(inRange) : "-"}</span>
               </div>
-              {sessions.map((s, si) => {
-                const x1 = Math.max(X(s.s), NC);
-                const xEnd = X(endOf(s, now));
-                const x2 = Math.min(xEnd, width);
+              {mergeRuns(sessions, X, now).map((run, ri, runs) => {
+                const last = run.members[run.members.length - 1];
+                const x1 = Math.max(run.xStart, NC);
+                const x2 = Math.min(run.xEnd, width);
                 const barShown = x2 > x1;
-                // the label follows the bar's real end (it may sit under the name column or past the right
-                // edge, where the timeline clips it); show it only when it fits before the next bar
-                const next = sessions[si + 1];
-                const labelEnd = xEnd + LABEL_GAP + LABEL_FIXED + textWidth(p.name) + LABEL_CLEAR;
-                const label = labelEnd <= (next ? X(next.s) : Infinity) && labelEnd > NC && xEnd < width;
+                // the label follows the run's real end (it may sit under the name column or past the right
+                // edge, where the timeline clips it); show it only when it fits before the next run
+                const next = runs[ri + 1];
+                const labelEnd = run.xEnd + LABEL_GAP + LABEL_FIXED + textWidth(p.name) + LABEL_CLEAR;
+                const label = labelEnd <= (next ? next.xStart : Infinity) && labelEnd > NC && run.xEnd < width;
                 if (!barShown && !label) return null;
+                // a merged run shows the session under the pointer
+                const pick = (clientX: number) => {
+                  if (run.members.length === 1) return run.members[0];
+                  const t = a + ((clientX - box.current!.getBoundingClientRect().left - NC - 12) / bw) * (b - a);
+                  let best = run.members[0];
+                  let bestDist = Infinity;
+                  for (const m of run.members) {
+                    const dist = t < m.s ? m.s - t : t > endOf(m, now) ? t - endOf(m, now) : 0;
+                    if (dist < bestDist) {
+                      best = m;
+                      bestDist = dist;
+                    }
+                  }
+                  return best;
+                };
                 return (
-                  <div key={s.s}>
+                  <div key={run.members[0].id}>
                     {barShown && (
                       <div
-                        className={`bar ${s.online ? "online" : ""}`}
-                        style={{ left: x1, width: Math.max(2, x2 - x1), top: (ROW_H - BAR_H) / 2, height: BAR_H, background: barColor(s.ch) }}
-                        onMouseMove={mobile ? undefined : (e) => onHover(e, p, s)}
+                        className={`bar ${last.online ? "online" : ""}`}
+                        style={{ left: x1, width: Math.max(2, x2 - x1), top: (ROW_H - BAR_H) / 2, height: BAR_H, background: barColor(run.ch) }}
+                        onMouseMove={mobile ? undefined : (e) => onHover(e, p, pick(e.clientX))}
                         onMouseLeave={mobile ? undefined : () => setHover(null)}
-                        onClick={mobile ? () => setSheet({ p, s }) : undefined}
+                        onClick={mobile ? (e) => setSheet({ p, s: pick(e.clientX) }) : undefined}
                       />
                     )}
                     {label && (
-                      <div className={`flabel ${s.online ? "on" : ""}`} style={{ left: xEnd + LABEL_GAP, top: (ROW_H - 20) / 2 }}>
+                      <div className={`flabel ${last.online ? "on" : ""}`} style={{ left: run.xEnd + LABEL_GAP, top: (ROW_H - 20) / 2 }}>
                         <img src={p.avatar} alt="" />
                         {p.name}
                       </div>

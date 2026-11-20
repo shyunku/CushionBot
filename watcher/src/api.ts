@@ -57,7 +57,7 @@ export function toGuildData(snap: Snapshot): GuildData {
         id,
         name: m?.name ?? `알 수 없음 (${id.slice(-4)})`,
         avatar: m?.avatarUrl ?? defaultAvatar(id),
-        sessions: raw.map((r) => ({ ch: r.channel, s: r.join, e: r.leave, online: r.leave === 0, withOthers: false })),
+        sessions: raw.map((r, i) => ({ id: i, ch: r.channel, s: r.join, e: r.leave, online: r.leave === 0, withOthers: false })),
       };
     })
     .filter((p) => p.sessions.length > 0);
