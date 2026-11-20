@@ -1,5 +1,5 @@
 import type { Person, Session } from "./types";
-import { D, H, MIN, sod } from "./time";
+import { D, H, MIN, kst, sod } from "./time";
 
 export const SHORT_SESSION = 5 * MIN;
 export const BOUNCE_MIN_SESSIONS = 5;
@@ -95,11 +95,11 @@ export function weekHourHeat(p: Person, days: number, now: number) {
     const a = Math.max(s.s, from), b = endOf(s, now);
     for (let t = Math.floor(a / H) * H; t < b; t += H) {
       if (t + H <= a) continue;
-      const d = new Date(t);
-      const key = `${sod(t)}-${d.getHours()}`;
+      const k = kst(t);
+      const key = `${sod(t)}-${k.hour}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      heat[d.getDay()][d.getHours()]++;
+      heat[k.weekday][k.hour]++;
     }
   }
   return heat;
@@ -173,7 +173,7 @@ export function rankOf(people: Person[], person: Person, key: MetricKey, period:
 /** How many times each weekday (0 = Sunday) occurs in the last `days` days. */
 export function weekdayCounts(days: number, now: number) {
   const out = Array(7).fill(0) as number[];
-  for (let i = 0; i < days; i++) out[new Date(sod(now) - i * D).getDay()]++;
+  for (let i = 0; i < days; i++) out[kst(sod(now) - i * D).weekday]++;
   return out;
 }
 
@@ -212,7 +212,6 @@ export function serverStats(people: Person[], now: number, days = 30) {
   }
   const grass = totals.map((total, i) => ({ day: start + i * D, total, people: peopleSets[i].size }));
   // DST-safe day starts
-  grass.forEach((g) => (g.day = sod(g.day + 12 * H)));
 
   const recent = grass.slice(-days);
   const total = active.reduce((acc, p) => acc + timeIn(p, from, now, now), 0);
@@ -232,7 +231,7 @@ export function periodDays(people: Person[], period: FreqPeriod, now: number) {
     const first = Math.min(now, ...people.map((p) => p.sessions[0]?.s ?? now));
     count = Math.min(365, Math.round((sod(now) - sod(first)) / D) + 1);
   }
-  return Array.from({ length: count }, (_, i) => sod(sod(now) - i * D + 12 * H));
+  return Array.from({ length: count }, (_, i) => sod(now) - i * D);
 }
 
 /**
@@ -242,7 +241,7 @@ export function periodDays(people: Person[], period: FreqPeriod, now: number) {
 export function slotsFor(people: Person[], period: FreqPeriod, weekday: number | null, now: number) {
   const n = 144;
   const len = D / n;
-  const days = periodDays(people, period, now).filter((d) => weekday == null || new Date(d).getDay() === weekday);
+  const days = periodDays(people, period, now).filter((d) => weekday == null || kst(d).weekday === weekday);
   const daySet = new Set(days);
   const out = Array(n).fill(0) as number[];
   for (const p of people) {
@@ -261,16 +260,23 @@ export function slotsFor(people: Person[], period: FreqPeriod, weekday: number |
       }
     }
   }
-  return { values: out.map((v) => v / Math.max(1, days.length)), days: days.length };
+  // today counts only for slots that have already started; later slots would read low otherwise
+  const today = sod(now);
+  const nowSlot = Math.floor((now - today) / len);
+  const dayCounts = out.map((_, i) => days.length - (daySet.has(today) && i > nowSlot ? 1 : 0));
+  return { values: out.map((v, i) => v / Math.max(1, dayCounts[i])), dayCounts };
 }
 
-/** Weekday x hour counts of (person, day) pairs connected in that hour, plus how often each weekday occurs. */
+/**
+ * Weekday x hour counts of (person, day) pairs connected in that hour, plus how many days each cell
+ * covers (today counts only for hours that have started).
+ */
 export function heatFor(people: Person[], period: FreqPeriod, now: number) {
   const days = periodDays(people, period, now);
   const daySet = new Set(days);
   const heat = Array.from({ length: 7 }, () => Array(24).fill(0) as number[]);
   const weekdays = Array(7).fill(0) as number[];
-  for (const d of days) weekdays[new Date(d).getDay()]++;
+  for (const d of days) weekdays[kst(d).weekday]++;
   for (const p of people) {
     const seen = new Set<string>();
     for (const s of p.sessions) {
@@ -278,15 +284,17 @@ export function heatFor(people: Person[], period: FreqPeriod, now: number) {
       for (let t = Math.floor(s.s / H) * H; t < end; t += H) {
         const day = sod(t);
         if (!daySet.has(day)) continue;
-        const d = new Date(t);
-        const key = `${day}:${d.getHours()}`;
+        const k = kst(t);
+        const key = `${day}:${k.hour}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        heat[d.getDay()][d.getHours()]++;
+        heat[k.weekday][k.hour]++;
       }
     }
   }
-  return { heat, weekdays };
+  const nowK = kst(now);
+  const cellDays = weekdays.map((count, d) => Array.from({ length: 24 }, (_, h) => count - (d === nowK.weekday && h > nowK.hour ? 1 : 0)));
+  return { heat, cellDays };
 }
 
 /** Window around the current time used for "chance to be on now". */
@@ -298,8 +306,8 @@ export const CHANCE_WINDOW = 30 * MIN;
  */
 export function chanceNow(p: Person, now: number) {
   const tod = now - sod(now);
-  const today = new Date(now).getDay();
-  const days = Array.from({ length: 30 }, (_, i) => sod(sod(now) - (i + 1) * D + 12 * H)).filter((d) => new Date(d).getDay() === today);
+  const today = kst(now).weekday;
+  const days = Array.from({ length: 30 }, (_, i) => sod(now) - (i + 1) * D).filter((d) => kst(d).weekday === today);
   let hits = 0;
   for (const day of days) {
     const a = day + tod - CHANCE_WINDOW;

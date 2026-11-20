@@ -4,7 +4,7 @@ import { useGuild } from "../context";
 import Header from "../components/Header";
 import { DAYS, DEFAULT_FREQ_FILTER, FreqCurve, FreqFilters, Grass, Heatmap, countAxis } from "../components/Charts";
 import { chanceNow, heatFor, isOnline, serverStats, slotsFor } from "../stats";
-import { MIN, fmtDur, fmtHM, sod } from "../time";
+import { MIN, fmtDur, fmtHM, kst, sod } from "../time";
 
 export default function StatsPage() {
   const { data, now, base } = useGuild();
@@ -13,12 +13,12 @@ export default function StatsPage() {
   const minute = Math.floor(now / MIN);
   const st = useMemo(() => serverStats(data.people, minute * MIN), [data.people, minute]);
   const empty = st.total === 0;
-  const today = new Date(now).getDay();
+  const today = kst(now).weekday;
   const focus = filter.weekday === "today" ? today : null;
   const freq = useMemo(() => slotsFor(data.people, filter.period, focus, minute * MIN), [data.people, filter.period, focus, minute]);
   const heat = useMemo(() => {
     const h = heatFor(data.people, filter.period, minute * MIN);
-    return h.heat.map((row, d) => row.map((v) => (h.weekdays[d] ? v / h.weekdays[d] : 0)));
+    return h.heat.map((row, d) => row.map((v, hour) => (h.cellDays[d][hour] ? v / h.cellDays[d][hour] : 0)));
   }, [data.people, filter.period, minute]);
   // people most likely to be on around now (same weekday, last 30 days); people already on stay in, in green
   const chances = useMemo(

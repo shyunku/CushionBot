@@ -1,11 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { GuildData, GuildSummary, Person, Session, Snapshot } from "./types";
-import { setChannelPalette } from "./colors";
+import { setChannelNames, setChannelPalette } from "./colors";
 
+/** GET JSON; while the bot is still starting (503) it waits and asks again for up to two minutes. */
 async function getJson<T>(url: string): Promise<T> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
-  return res.json() as Promise<T>;
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(url);
+    if (res.status === 503 && attempt < 60) {
+      await new Promise((r) => setTimeout(r, 2000));
+      continue;
+    }
+    if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+    return res.json() as Promise<T>;
+  }
 }
 
 export const fetchGuilds = () => getJson<GuildSummary[]>("/api/guilds");
@@ -60,6 +67,7 @@ export function toGuildData(snap: Snapshot): GuildData {
   for (const p of people) for (const s of p.sessions) usage.set(s.ch, (usage.get(s.ch) ?? 0) + ((s.online ? now : s.e) - s.s));
   const channels = [...usage.entries()].sort((a, b) => b[1] - a[1]).map(([c]) => c);
   setChannelPalette(channels);
+  setChannelNames(snap.channels ?? {});
   return { info: snap.guild, people, channels, clockOffset: snap.serverTime - Date.now() };
 }
 
@@ -173,10 +181,18 @@ export function useGuilds() {
 
 export function useGuildData(guildId: string) {
   const [state, setState] = useState<{ id: string; data: GuildData | null; error: string | null }>({ id: guildId, data: null, error: null });
+  // only the newest request may update the screen: switching servers quickly must not let a slow,
+  // older response overwrite the server now shown
+  const requestSeq = useRef(0);
   const load = useCallback(() => {
+    const seq = ++requestSeq.current;
     fetchSnapshot(guildId).then(
-      (snap) => setState({ id: guildId, data: toGuildData(snap), error: null }),
-      (e) => setState((prev) => ({ id: guildId, data: prev.id === guildId ? prev.data : null, error: String(e) })),
+      (snap) => {
+        if (seq === requestSeq.current) setState({ id: guildId, data: toGuildData(snap), error: null });
+      },
+      (e) => {
+        if (seq === requestSeq.current) setState((prev) => ({ id: guildId, data: prev.id === guildId ? prev.data : null, error: String(e) }));
+      },
     );
   }, [guildId]);
   useEffect(() => {

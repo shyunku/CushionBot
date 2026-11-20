@@ -3,9 +3,9 @@ import { Link, useParams } from "react-router-dom";
 import { useGuild } from "../context";
 import { ShareButton } from "../components/Header";
 import { DAYS, DEFAULT_FREQ_FILTER, DailyBars, FreqCurve, FreqFilters, Heatmap, MiniBars, PERCENT_AXIS } from "../components/Charts";
-import { solidColor } from "../colors";
+import { chName, solidColor } from "../colors";
 import { chanceNow, endOf, heatFor, isOnline, lastSession, rankOf, slotsFor, userStats } from "../stats";
-import { fmtDate, fmtDur, fmtFull } from "../time";
+import { fmtDate, fmtDur, fmtFull, kst } from "../time";
 
 export default function UserPage() {
   const { data, now, base } = useGuild();
@@ -35,7 +35,7 @@ export default function UserPage() {
   const topCh = st.channels;
   const chTotal = topCh.reduce((acc, [, v]) => acc + v, 0) || 1;
   const b = st.bounce;
-  const today = new Date(now).getDay();
+  const today = kst(now).weekday;
   const focus = filter.weekday === "today" ? today : null;
   const freq = slotsFor([p], filter.period, focus, now);
   const heat = heatFor([p], filter.period, now);
@@ -49,7 +49,7 @@ export default function UserPage() {
         <div>
           <div className="nm">
             {p.name}
-            <span className={`pill ${on ? "" : "off"}`}>{on ? `접속 중 · ${last.ch}` : "오프라인"}</span>
+            <span className={`pill ${on ? "" : "off"}`}>{on ? `접속 중 · ${chName(last.ch)}` : "오프라인"}</span>
             <ShareButton />
           </div>
           <div className="st">
@@ -87,7 +87,7 @@ export default function UserPage() {
             {topCh[0] ? (
               <>
                 <span className="chdot" style={{ background: solidColor(topCh[0][0]) }} />
-                {topCh[0][0]}
+                {chName(topCh[0][0])}
               </>
             ) : (
               "-"
@@ -120,9 +120,9 @@ export default function UserPage() {
           now={now}
           height={240}
           axis={PERCENT_AXIS}
-          format={(v) => `${Math.round(v * 100)}% (${freq.days}일 중 ${Math.round(v * freq.days)}일)`}
+          format={(v, i) => `${Math.round(v * 100)}% (${freq.dayCounts[i]}일 중 ${Math.round(v * freq.dayCounts[i])}일)`}
         />
-        <Heatmap heat={heat.heat} cellHeight={22} now={now} format={(d, _, v) => `${heat.weekdays[d]}번 중 ${v}번`} />
+        <Heatmap heat={heat.heat} cellHeight={22} now={now} format={(d, h, v) => `${heat.cellDays[d][h]}번 중 ${v}번`} />
       </div>
       <div className="grid2">
         <div className="card">
@@ -133,7 +133,7 @@ export default function UserPage() {
           <h5 style={{ marginTop: 14 }}>자주 간 채널</h5>
           {topCh.slice(0, 4).map(([c, v]) => (
             <div key={c} className="chrow">
-              <b>{c}</b>
+              <b>{chName(c)}</b>
               <div className="bx">
                 <i style={{ width: `${(v / chTotal) * 100}%`, background: solidColor(c) }} />
               </div>
@@ -152,7 +152,7 @@ export default function UserPage() {
                 <div key={s.s}>
                   <i style={{ background: solidColor(s.ch) }} />
                   <span className="t">{fmtFull(s.s)}</span>
-                  {s.ch}
+                  {chName(s.ch)}
                   <span className="d">{s.online ? "접속 중" : fmtDur(s.e - s.s)}</span>
                 </div>
               ))}

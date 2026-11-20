@@ -1,9 +1,9 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Person, Session } from "../types";
-import { barColor, solidColor } from "../colors";
+import { barColor, chName, solidColor } from "../colors";
 import { endOf, isOnline, lastActivity, timeIn } from "../stats";
 import { useMobile } from "../useMobile";
-import { D, H, MIN, SEC, fmtDur, fmtFull, fmtHM, fmtHMS, p2 } from "../time";
+import { D, H, MIN, SEC, fmtDur, fmtFull, fmtHM, fmtHMS, kst, p2, sod } from "../time";
 
 // name column width (phones show only avatars there)
 const NC_WIDE = 285;
@@ -75,31 +75,18 @@ function useLiveNow(base: number, offset: number, on: boolean) {
 function ticks(a: number, b: number, width: number) {
   const step = tickStep(a, b, width);
   const out: { t: number; label: string; major: boolean }[] = [];
-  const start = new Date(a);
-  start.setHours(0, 0, 0, 0);
-  // sub-day steps start at the first tick inside the range instead of walking from midnight
-  let t0 = start.getTime();
-  if (step < D) t0 += Math.max(0, Math.floor((a - t0) / step)) * step;
-  for (let t = t0; t <= b; ) {
-    if (t >= a) {
-      const d = new Date(t);
-      const midnight = d.getHours() === 0 && d.getMinutes() === 0;
-      out.push({
-        t,
-        label: midnight && d.getSeconds() === 0 ? `${d.getMonth() + 1}/${d.getDate()}` : step < MIN ? fmtHMS(t) : step < H ? fmtHM(t) : `${d.getHours()}시`,
-        major: midnight && d.getSeconds() === 0,
-      });
-    }
-    if (step >= D) {
-      const d = new Date(t);
-      d.setDate(d.getDate() + Math.round(step / D));
-      t = d.getTime();
-    } else {
-      const d = new Date(t);
-      const next = new Date(t + step);
-      // keep sub-day ticks on local wall-clock boundaries across DST changes
-      t = next.getDate() !== d.getDate() ? new Date(next.getFullYear(), next.getMonth(), next.getDate()).getTime() : t + step;
-    }
+  // KST has no DST, so fixed steps from the start of the (KST) day stay on clock boundaries
+  const start = sod(a);
+  const t0 = step < D ? start + Math.max(0, Math.floor((a - start) / step)) * step : start;
+  for (let t = t0; t <= b; t += step) {
+    if (t < a) continue;
+    const k = kst(t);
+    const midnight = k.hour === 0 && k.minute === 0 && k.second === 0;
+    out.push({
+      t,
+      label: midnight ? `${k.month + 1}/${k.date}` : step < MIN ? fmtHMS(t) : step < H ? fmtHM(t) : `${k.hour}시`,
+      major: midnight,
+    });
   }
   return out;
 }
@@ -380,7 +367,7 @@ export default function Timeline({ people, hidden, range, now: baseNow, clockOff
 }
 
 function SessionTip({ p, s, x, y, now, width, seconds, sheet }: { p: Person; s: Session; x: number; y: number; now: number; width: number; seconds: boolean; sheet?: boolean }) {
-  const when = (t: number) => (seconds ? `${fmtFull(t)}:${p2(new Date(t).getSeconds())}` : fmtFull(t));
+  const when = (t: number) => (seconds ? `${fmtFull(t)}:${p2(kst(t).second)}` : fmtFull(t));
   const total = p.sessions.reduce((acc, it) => acc + (endOf(it, now) - it.s), 0);
   const end = endOf(s, now);
   const flipX = x > width - 280;
@@ -393,7 +380,7 @@ function SessionTip({ p, s, x, y, now, width, seconds, sheet }: { p: Person; s: 
         {s.online && <span className="dot" style={{ marginLeft: "auto" }} />}
       </div>
       <span className="chn" style={{ background: solidColor(s.ch) }}>
-        🔊 {s.ch}
+        🔊 {chName(s.ch)}
       </span>
       <div className="ln">
         <span>입장</span>

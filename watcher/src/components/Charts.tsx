@@ -1,5 +1,5 @@
 import { useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { D, H, fmtDur, fmtHM, sod } from "../time";
+import { D, fmtDur, fmtHM, kst, sod } from "../time";
 
 export const DAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -54,7 +54,7 @@ export function countAxis(max: number): Axis {
  * Smooth area curve for a day split into equal slots on a fixed y axis, with the current time marked
  * and a hover tooltip per slot. `format` turns a slot's raw value into the tooltip text.
  */
-export function FreqCurve({ slots, now, height = 120, axis, format }: { slots: number[]; now: number; height?: number; axis: Axis; format: (v: number) => ReactNode }) {
+export function FreqCurve({ slots, now, height = 120, axis, format }: { slots: number[]; now: number; height?: number; axis: Axis; format: (v: number, slot: number) => ReactNode }) {
   const gid = useId();
   const { box, tip, show, hide, width } = useChartTip();
   const [guide, setGuide] = useState<number | null>(null);
@@ -86,7 +86,7 @@ export function FreqCurve({ slots, now, height = 120, axis, format }: { slots: n
     const i = Math.max(0, Math.min(n - 1, Math.floor((x / r.width) * n)));
     const t0 = sod(now) + i * len;
     setGuide(x);
-    show(e, `${fmtHM(t0)}~${fmtHM(t0 + len)}`, format(slots[i]), 6);
+    show(e, `${fmtHM(t0)}~${fmtHM(t0 + len)}`, format(slots[i], i), 6);
   };
 
   return (
@@ -138,7 +138,7 @@ export function FreqCurve({ slots, now, height = 120, axis, format }: { slots: n
 export function Heatmap({ heat, cellHeight = 22, now, format }: { heat: number[][]; cellHeight?: number; now: number; format: (day: number, hour: number, v: number) => ReactNode }) {
   const { box, tip, show, hide, width } = useChartTip();
   const max = Math.max(0.0001, ...heat.flat());
-  const today = new Date(now).getDay();
+  const today = kst(now).weekday;
   return (
     <div className="heatbox" ref={box} onMouseLeave={hide}>
       <div className="heat">
@@ -186,7 +186,7 @@ export function Grass({ days }: { days: GrassDay[] }) {
   }, []);
   if (days.length === 0) return null;
   const max = Math.max(1, ...days.map((x) => x.total));
-  const lead = new Date(days[0].day).getDay();
+  const lead = kst(days[0].day).weekday;
   const weeks = Math.ceil((lead + days.length) / 7);
   const cw = Math.max(1, (size.w - GAP * (weeks - 1)) / weeks);
   const ch = Math.max(1, (size.h - GAP * 6) / 7);
@@ -196,7 +196,7 @@ export function Grass({ days }: { days: GrassDay[] }) {
   const starts: { col: number; label: string }[] = [];
   let lastMonth = -1;
   days.forEach((x, i) => {
-    const m = new Date(x.day).getMonth();
+    const m = kst(x.day).month;
     if (m !== lastMonth) {
       lastMonth = m;
       starts.push({ col: Math.floor((lead + i) / 7), label: `${m + 1}월` });
@@ -232,7 +232,7 @@ export function Grass({ days }: { days: GrassDay[] }) {
           {size.w > 0 && (
             <svg className="grass" width={size.w} height={size.h}>
               {days.map((x, i) => {
-                const d = new Date(x.day);
+                const d = kst(x.day);
                 const k = lead + i;
                 return (
                   <rect
@@ -245,7 +245,7 @@ export function Grass({ days }: { days: GrassDay[] }) {
                     className={x.total ? "" : "empty"}
                     style={x.total ? { opacity: 0.2 + (x.total / max) * 0.8 } : undefined}
                     onMouseMove={(e) =>
-                      show(e, `${d.getMonth() + 1}월 ${d.getDate()}일 (${DAYS[d.getDay()]})`, x.total ? `총 ${fmtDur(x.total)} · ${x.people}명` : "접속 없음")
+                      show(e, `${d.month + 1}월 ${d.date}일 (${DAYS[d.weekday]})`, x.total ? `총 ${fmtDur(x.total)} · ${x.people}명` : "접속 없음")
                     }
                   />
                 );
@@ -274,12 +274,12 @@ export function DailyBars({ values, now, height = 90 }: { values: number[]; now:
     <div className="dailybox" ref={box} onMouseLeave={hide}>
       <div className="dbars" style={{ height }}>
         {values.map((v, i) => {
-          const d = new Date(sod(now) - (values.length - 1 - i) * D + 12 * H);
+          const d = kst(sod(now) - (values.length - 1 - i) * D);
           return (
             <div
               key={i}
               style={{ height: `${Math.max(2, (v / max) * 100)}%` }}
-              onMouseMove={(e) => show(e, `${d.getMonth() + 1}월 ${d.getDate()}일 (${DAYS[d.getDay()]})`, v ? fmtDur(v) : "접속 없음")}
+              onMouseMove={(e) => show(e, `${d.month + 1}월 ${d.date}일 (${DAYS[d.weekday]})`, v ? fmtDur(v) : "접속 없음")}
             />
           );
         })}
@@ -312,7 +312,7 @@ export function FreqFilters({ value, now, onChange }: { value: FreqFilter; now: 
         <option value="all">전체</option>
       </select>
       <select className="dd" value={value.weekday} onChange={(e) => onChange({ ...value, weekday: e.target.value as FreqFilter["weekday"] })}>
-        <option value="today">{DAYS[new Date(now).getDay()]}요일</option>
+        <option value="today">{DAYS[kst(now).weekday]}요일</option>
         <option value="all">전체 요일</option>
       </select>
     </>

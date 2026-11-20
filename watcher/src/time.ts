@@ -3,12 +3,28 @@ export const MIN = 60e3;
 export const H = 60 * MIN;
 export const D = 24 * H;
 
+/** Korea has no daylight saving time, so KST is always UTC+9. */
+const KST_OFFSET = 9 * H;
+
 export const p2 = (n: number) => String(n).padStart(2, "0");
 
+/** Calendar fields of a time in KST. */
+export function kst(t: number) {
+  const d = new Date(t + KST_OFFSET);
+  return {
+    year: d.getUTCFullYear(),
+    month: d.getUTCMonth(),
+    date: d.getUTCDate(),
+    weekday: d.getUTCDay(),
+    hour: d.getUTCHours(),
+    minute: d.getUTCMinutes(),
+    second: d.getUTCSeconds(),
+  };
+}
+
+/** Start of the KST day containing t. */
 export function sod(t: number) {
-  const d = new Date(t);
-  d.setHours(0, 0, 0, 0);
-  return d.getTime();
+  return Math.floor((t + KST_OFFSET) / D) * D - KST_OFFSET;
 }
 
 export function fmtDur(ms: number) {
@@ -19,21 +35,21 @@ export function fmtDur(ms: number) {
 }
 
 export function fmtHM(t: number) {
-  const d = new Date(t);
-  return `${p2(d.getHours())}:${p2(d.getMinutes())}`;
+  const k = kst(t);
+  return `${p2(k.hour)}:${p2(k.minute)}`;
 }
 
 export function fmtHMS(t: number) {
-  const d = new Date(t);
-  return `${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}`;
+  const k = kst(t);
+  return `${p2(k.hour)}:${p2(k.minute)}:${p2(k.second)}`;
 }
 
 export function fmtFull(t: number) {
-  const d = new Date(t);
-  return `${d.getMonth() + 1}월 ${d.getDate()}일 ${p2(d.getHours())}:${p2(d.getMinutes())}`;
+  const k = kst(t);
+  return `${k.month + 1}월 ${k.date}일 ${p2(k.hour)}:${p2(k.minute)}`;
 }
 
 export function fmtDate(t: number) {
-  const d = new Date(t);
-  return `${d.getFullYear()}.${p2(d.getMonth() + 1)}.${p2(d.getDate())}`;
+  const k = kst(t);
+  return `${k.year}.${p2(k.month + 1)}.${p2(k.date)}`;
 }

@@ -3,9 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useGuild } from "../context";
 import Header from "../components/Header";
 import Timeline, { MAX_SPAN, MIN_SPAN, SECONDS_SPAN } from "../components/Timeline";
-import { solidColor } from "../colors";
+import { chName, solidColor } from "../colors";
 import { endOf, onlineByChannel, todayStats } from "../stats";
-import { D, H, fmtDur, fmtFull, p2, sod } from "../time";
+import { D, H, fmtDur, fmtFull, kst, p2, sod } from "../time";
 
 type Preset = "24h" | "today" | "7d";
 
@@ -30,7 +30,7 @@ export default function TimelinePage() {
   const hidden = useMemo(() => new Set(hiddenByGuild[guildId] ?? []), [hiddenByGuild, guildId]);
   const range = preset ? presetRange(preset, now) : custom;
   const seconds = range[1] - range[0] < SECONDS_SPAN;
-  const fmtRange = (t: number) => (seconds ? `${fmtFull(t)}:${p2(new Date(t).getSeconds())}` : fmtFull(t));
+  const fmtRange = (t: number) => (seconds ? `${fmtFull(t)}:${p2(kst(t).second)}` : fmtFull(t));
 
   const onRangeChange = useCallback((r: [number, number]) => {
     setPreset(null);
@@ -96,7 +96,7 @@ export default function TimelinePage() {
         {online.map(([ch, list]) => (
           <div key={ch} className="chip">
             <span className="cdot" style={{ background: solidColor(ch) }} />
-            <b>{ch}</b>
+            <b>{chName(ch)}</b>
             <span className="avs">
               {list.map((x) => (
                 <img key={x.p.id} src={x.p.avatar} title={x.p.name} alt="" />
@@ -133,7 +133,7 @@ export default function TimelinePage() {
           {legend.map((ch) => (
             <span key={ch} className={`lg ${hidden.has(ch) ? "off" : ""}`} onClick={() => toggleChannel(ch)}>
               <i style={{ background: solidColor(ch) }} />
-              {ch}
+              {chName(ch)}
             </span>
           ))}
         </div>

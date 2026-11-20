@@ -6,6 +6,7 @@ export type GuildSummary = {
   online: number;
 };
 
+/** `channel` is the channel id; names come from Snapshot.channels. */
 export type RawSession = { channel: string; join: number; leave: number };
 
 export type Snapshot = {
@@ -13,6 +14,8 @@ export type Snapshot = {
   serverTime: number;
   members: Record<string, { name: string | null; avatarUrl: string | null }>;
   sessions: Record<string, RawSession[]>;
+  /** channel id -> name (null for deleted channels) */
+  channels: Record<string, string | null>;
 };
 
 /** A voice session. `e` is 0 while the person is still connected. */
