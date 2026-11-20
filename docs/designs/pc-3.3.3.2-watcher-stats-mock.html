@@ -369,7 +369,8 @@
   #app[data-gh="old"] .gcard { height: 392px; overflow: hidden; }
   #app:not([data-gh="old"]) .gcard .grasswrap { flex: 0 0 auto; }
   .chancerow { display: flex; gap: 12px; flex: 0 0 auto; }
-  .chancerow .chance { height: 356px; overflow: hidden; }
+  .chancerow { flex-wrap: wrap; }
+  .chancerow .chance { height: 358px; overflow: hidden; flex: 1 1 360px; min-width: 0; width: auto !important; }
 
   /* ---------- mock helpers: shift outlines ---------- */
   body.shift [data-click] { outline: 2px dashed #3fa9ff; outline-offset: -2px; }
@@ -421,7 +422,7 @@
 <div id="app"></div>
 <div id="note">
   <div class="top">
-    <div class="r"><h2>watcher 3.3.3.2 시안 (2차)</h2><span id="copied">복사됨</span><button id="copy">결과 복사</button></div>
+    <div class="r"><h2>watcher 3.3.3.2 시안 (확정)</h2><span id="copied">복사됨</span><button id="copy">결과 복사</button></div>
     <div class="help">항목에서 옵션을 고르면 시안이 바로 바뀌고 의견을 적을 수 있음. <b>Shift</b>를 누르면 <span class="k1">파란 점선</span>은 누를 수 있는 곳, <span class="k2">주황 점선</span>은 후보가 있는 곳(올리면 후보 툴팁).</div>
   </div>
   <div class="list" id="list"></div>
@@ -752,13 +753,13 @@ ITEMS.push(
     { id: "square", name: "칸을 정사각형으로", desc: "칸 폭에 맞춰 높이가 정해짐(넓은 화면에서 약 180px, 창을 줄이면 낮아짐)", rec: 1 },
     { id: "low", name: "낮은 고정 높이", desc: "높이를 170px로 고정하고 칸은 폭에 따라 가로로 늘어남" } ] },
 );
-const MOBILE_KEYS = new Set(["grassh"]);
+const MOBILE_KEYS = new Set();
 const state = {}; ITEMS.forEach((it) => (state[it.key] = it.opts.find((o) => o.rec)?.id ?? it.opts[0].id));
 state.font = "ox";
 // round 2: confirmed choices are fixed and hidden from the note
 const CONFIRMED = { theme: "slate", layout: "rail", rows: "fixed", ctrl: "seg", summary: "cards", now: "chips", legend: "filter", tip: "card", loading: "skeleton", share: "btn", after: "avatar", click: "page", freq: "both", ublocks: "full", shape: "smooth", bounce: "both", bwhere: "user", bui: "statmini", ntime: "range", rankwhere: "tabs", ranklayout: "boards", rankperiod: "switch", myrank: "badge", sharedview: "hide", backsize: "btn", ufill: "big", badge: "big", zoom: "10s", fcur: "tipheat", sstats: "tab", sfreq: "avgppl", grass: "both", scards: "cards", barradius: "tl", cursor: "plain", wheelease: "slow", attend: "rate", probwin: "pm30", probonline: "show", dayheat: "focus", grasstoday: "old", fontup: "mix", font: "ox", dimrow: "red", grassfit: "old", todaycolor: "calm" };
 Object.assign(state, CONFIRMED);
-Object.assign(state, { cumfmt: "all", basis: "w90", leavedef: "m30", tablew: "w420", grassmin: "old" });
+Object.assign(state, { cumfmt: "all", basis: "w90", leavedef: "m30", tablew: "w420", grassmin: "old", grassh: "square" });
 const OPEN_ITEMS = ITEMS.filter((it) => MOBILE_KEYS.has(it.key));
 const comments = {}; // key -> optId -> text
 let openComment = null; // `${key}:${optId}`
@@ -1258,6 +1259,8 @@ function drawGrass() {
   days.forEach((x, i) => { const m = new Date(x.day).getMonth(); if (m !== lastM) { lastM = m; ml.push({ col: Math.floor((lead + i) / 7), label: `${m + 1}월` }); } });
   const kept = []; for (const m of ml) { const prev = kept[kept.length - 1]; if (!prev || (m.col - prev.col) * (cw + GAP) >= 34) kept.push(m); }
   document.getElementById("gmonths").innerHTML = kept.map((m) => `<span style="left:${m.col * (cw + GAP)}px">${m.label}</span>`).join("");
+  // drawing can add the page scrollbar and narrow the grass: draw again at the new width
+  requestAnimationFrame(() => { if (area.isConnected && area.clientWidth !== W) drawGrass(); });
   document.getElementById("gspan").textContent = weeks < allWeeks ? `최근 ${weeks}주 · 칸이 좁아 오래된 주는 생략` : "최근 1년 · 진할수록 그날 총 접속 시간이 김";
 }
 function stabs() {
@@ -1573,7 +1576,7 @@ list.addEventListener("input", (e) => {
   (comments[e.target.dataset.k] ??= {})[e.target.dataset.o] = e.target.value; autosize(e.target);
 });
 document.getElementById("copy").onclick = async () => {
-  const lines = ["[watcher 3.3.3.2 시안 2차 결과]"];
+  const lines = ["[watcher 3.3.3.2 시안 확정]"];
   for (const it of OPEN_ITEMS) {
     const o = it.opts.find((x) => x.id === state[it.key]);
     const c = comments[it.key]?.[o.id]?.trim();
