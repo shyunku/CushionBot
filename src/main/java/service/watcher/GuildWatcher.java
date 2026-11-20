@@ -2,63 +2,99 @@ package service.watcher;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectWriter;
 import core.CushionBot;
-import core.InternalEventListener;
-import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.GuildVoiceState;
+import net.dv8tion.jda.api.entities.channel.middleman.AudioChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import service.watcher.handlers.SseResponse;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Voice access log: one list of sessions per (guild, user), saved to datafiles/access_logs.json.
+ * Every read and write of {@link #accessSessions} happens under the class lock.
+ */
 public class GuildWatcher {
-    private static long initializeTime;
     private static final Logger logger = LoggerFactory.getLogger(GuildWatcher.class);
-    public static Map<String, Map<String, List<AccessSession>>> accessSessions = new ConcurrentHashMap<>();
+    private static final ObjectMapper mapper = new ObjectMapper();
+    private static final long RETENTION_MS = 365L * 24 * 60 * 60 * 1000;
+    /** Saves are batched: a change is written at most this long after it happened. */
+    private static final long SAVE_DELAY_MS = 2000;
+    /** The backup copy is refreshed at most this often. */
+    private static final long BACKUP_INTERVAL_MS = 60 * 60 * 1000;
+
+    private static final Map<String, Map<String, List<AccessSession>>> accessSessions = new ConcurrentHashMap<>();
+    private static final ScheduledExecutorService saver = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread t = new Thread(r, "access-log-saver");
+        t.setDaemon(true);
+        return t;
+    });
+    private static boolean saveScheduled = false;
+    /** Last-modified time of the file the log was loaded from (0 when nothing was loaded). */
+    private static long loadedModified = 0;
+    private static volatile boolean initialized = false;
+
+    private static Path dataFile() {
+        return Path.of(System.getProperty("user.dir"), "datafiles", "access_logs.json");
+    }
+
+    private static Path backupFile() {
+        return Path.of(System.getProperty("user.dir"), "datafiles", "access_logs.json.bak");
+    }
+
+    /** True once the saved log is loaded and members already in voice are recorded. */
+    public static boolean isInitialized() {
+        return initialized;
+    }
 
     public static synchronized void addAccessLog(AccessType accessType, String guildId, String userId, String channelId) {
         long eventTime = System.currentTimeMillis();
 
         Map<String, List<AccessSession>> guildSessions = accessSessions.computeIfAbsent(guildId, k -> new HashMap<>());
+        if (accessType == AccessType.LEAVE && !guildSessions.containsKey(userId)) {
+            logger.info("Ignoring leave of {} in guild {}: no session recorded", userId, guildId);
+            return;
+        }
         List<AccessSession> sessions = guildSessions.computeIfAbsent(userId, k -> new ArrayList<>());
-        AccessSession lastSession = getLastSession(sessions);
         removeUnlastUncompleteSession(sessions);
         removeOldSessions(sessions);
-        if (lastSession != null && !lastSession.isComplete()) {
-            switch (accessType) {
-                case JOIN:
-                    sessions.add(new AccessSession(userId, channelId, eventTime));
-                    break;
-                case MOVED:
-                    lastSession.setLeaveTime(eventTime);
-                    sessions.add(new AccessSession(userId, channelId, eventTime));
-                    break;
-                case LEAVE:
-                    lastSession.setLeaveTime(eventTime);
-                    break;
-            }
-        } else {
-            switch (accessType) {
-                case JOIN:
-                    sessions.add(new AccessSession(userId, channelId, eventTime));
-                    break;
-                case MOVED:
-                case LEAVE:
-                    sessions.add(new AccessSession(userId, channelId, initializeTime, eventTime));
-                    break;
-            }
+        AccessSession lastSession = getLastSession(sessions);
+        boolean open = lastSession != null && !lastSession.isComplete();
+
+        switch (accessType) {
+            case JOIN:
+                // a join while a session is still open means the leave was missed; end the old one now
+                if (open) lastSession.setLeaveTime(eventTime);
+                sessions.add(new AccessSession(userId, channelId, eventTime));
+                break;
+            case MOVED:
+                if (open) lastSession.setLeaveTime(eventTime);
+                sessions.add(new AccessSession(userId, channelId, eventTime));
+                break;
+            case LEAVE:
+                // without an open session the join time is unknown; nothing reliable to record
+                if (open) lastSession.setLeaveTime(eventTime);
+                else logger.info("Ignoring leave of {} in guild {}: no open session", userId, guildId);
+                break;
+            default:
+                return;
         }
 
-        saveAll();
+        requestSave();
         Watcher.sendData(new SseResponse(Watcher.WATCH_TYPE_CHANGE, guildId));
     }
 
@@ -70,7 +106,7 @@ public class GuildWatcher {
 
     private static void removeOldSessions(List<AccessSession> sessions) {
         long currentTime = System.currentTimeMillis();
-        sessions.removeIf(session -> session.isComplete() && currentTime - session.getJoinTime() > 365 * 24 * 60 * 60 * 1000L);
+        sessions.removeIf(session -> session.isComplete() && currentTime - session.getJoinTime() > RETENTION_MS);
     }
 
     private static AccessSession getLastSession(List<AccessSession> sessions) {
@@ -80,135 +116,155 @@ public class GuildWatcher {
     }
 
     public static synchronized void initialize() {
-        initializeTime = System.currentTimeMillis();
-
-        // load access logs from file
-        String dirpath = System.getProperty("user.dir") + "/datafiles";
-        String filepath = dirpath + "/access_logs.json";
-        File dir = new File(dirpath);
-        if (!dir.exists()) {
-            dir.mkdir();
-            return;
+        Map<String, Map<String, List<AccessSession>>> loaded = load();
+        long lastSaved = loadedModified;
+        accessSessions.clear();
+        for (Map.Entry<String, Map<String, List<AccessSession>>> guildEntry : loaded.entrySet()) {
+            Map<String, List<AccessSession>> users = new HashMap<>();
+            guildEntry.getValue().forEach((userId, sessions) -> users.put(userId, new ArrayList<>(sessions)));
+            accessSessions.put(guildEntry.getKey(), users);
         }
 
-        File file = new File(filepath);
-        if (!file.exists()) {
-            return;
-        }
-
-        try (BufferedReader reader = new BufferedReader(new FileReader(filepath))) {
-            StringBuilder json = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                json.append(line);
-            }
-            ObjectMapper mapper = new ObjectMapper();
-            TypeReference<Map<String, Map<String, List<AccessSession>>>> typeRef = new TypeReference<Map<String, Map<String, List<AccessSession>>>>() {
-            };
-            accessSessions = mapper.readValue(json.toString(), typeRef);
-
-            // Sessions still open in the file were cut off when the bot stopped. The file is saved on every
-            // voice event, so its last-modified time is the latest moment the bot is known to have been
-            // recording; close them there. Members still in voice get a new session from now (below).
-            long lastSaved = file.lastModified();
-            int closed = 0;
-            for (Map.Entry<String, Map<String, List<AccessSession>>> guildEntry : accessSessions.entrySet()) {
-                for (Map.Entry<String, List<AccessSession>> userEntry : guildEntry.getValue().entrySet()) {
-                    List<AccessSession> sessions = userEntry.getValue();
-                    removeOldSessions(sessions);
-                    removeUnlastUncompleteSession(sessions);
-                    AccessSession lastSession = getLastSession(sessions);
-                    if (lastSession != null && !lastSession.isComplete()) {
-                        lastSession.setLeaveTime(Math.max(lastSession.getJoinTime(), lastSaved));
-                        closed++;
-                    }
+        // Sessions still open in the file were cut off when the bot stopped. The file is saved shortly after
+        // every voice event, so its last-modified time is the latest moment the bot is known to have been
+        // recording; close them there. Members still in voice get a new session from now (below).
+        int closed = 0;
+        for (Map<String, List<AccessSession>> users : accessSessions.values()) {
+            for (List<AccessSession> sessions : users.values()) {
+                removeOldSessions(sessions);
+                removeUnlastUncompleteSession(sessions);
+                AccessSession lastSession = getLastSession(sessions);
+                if (lastSession != null && !lastSession.isComplete()) {
+                    lastSession.setLeaveTime(Math.max(lastSession.getJoinTime(), lastSaved));
+                    closed++;
                 }
             }
-            if (closed > 0) {
-                logger.info("Closed {} sessions left open by the previous run at {}", closed, new Date(lastSaved));
-            }
-
-            JDA jda = CushionBot.jda;
-            List<Guild> guilds = jda.getGuilds();
-            for (Guild guild : guilds) {
-                String guildId = guild.getId();
-                if (!accessSessions.containsKey(guildId)) {
-                    accessSessions.put(guildId, new HashMap<>());
-                }
-
-                Map<String, String> joiners = new HashMap<>();
-
-                // already joined members
-                guild.getVoiceChannels().forEach(voiceChannel -> {
-                    voiceChannel.getMembers().forEach(member -> {
-                        joiners.put(member.getId(), voiceChannel.getId());
-                        List<AccessSession> userSessions = accessSessions.get(guildId).computeIfAbsent(member.getId(), k -> new ArrayList<>());
-                        AccessSession lastSession = getLastSession(userSessions);
-                        if (lastSession == null || lastSession.isComplete()) {
-                            logger.info("Member {} already joined voice channel {} in guild {}", member.getUser().getName(), voiceChannel.getName(), guild.getName());
-                            addAccessLog(AccessType.JOIN, guildId, member.getId(), voiceChannel.getId());
-                        }
-                    });
-                });
-
-                // left members
-                accessSessions.get(guildId).forEach((userId, sessions) -> {
-                    AccessSession lastSession = getLastSession(sessions);
-                    if (!joiners.containsKey(userId)) {
-                        // disconnected
-                        if (lastSession != null && !lastSession.isComplete()) {
-                            logger.info("Member {} left voice channel {} in guild {}", userId, lastSession.getChannelId(), guild.getName());
-                            addAccessLog(AccessType.LEAVE, guildId, userId, lastSession.getChannelId());
-                        }
-                    } else {
-                        // connecting
-                        String voiceChannelId = joiners.get(userId);
-                        if (lastSession == null || lastSession.isComplete()) {
-                            logger.info("Member {} joined voice channel {} in guild {}", userId, voiceChannelId, guild.getName());
-                            addAccessLog(AccessType.JOIN, guildId, userId, voiceChannelId);
-                        } else if (!lastSession.isComplete() && !lastSession.getChannelId().equals(voiceChannelId)) {
-                            logger.info("Member {} moved from voice channel {} to {} in guild {}", userId, lastSession.getChannelId(), voiceChannelId, guild.getName());
-                            addAccessLog(AccessType.MOVED, guildId, userId, voiceChannelId);
-                        }
-                    }
-                });
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
+        }
+        if (closed > 0) {
+            logger.info("Closed {} sessions left open by the previous run at {}", closed, new Date(lastSaved));
         }
 
-        // warm the dashboard member cache in the background
         for (Guild guild : CushionBot.jda.getGuilds()) {
-            Map<String, List<AccessSession>> guildSessions = accessSessions.get(guild.getId());
-            if (guildSessions != null) MemberDirectory.resolve(guild, guildSessions.keySet());
+            syncGuild(guild);
+        }
+        requestSave();
+        if (!initialized) {
+            // flush pending changes when the bot is stopped
+            Runtime.getRuntime().addShutdownHook(new Thread(GuildWatcher::saveNow, "access-log-final-save"));
+        }
+        initialized = true;
+        // dashboards that loaded while the bot was starting reload now
+        Watcher.sendData(new SseResponse(Watcher.WATCH_TYPE_RESYNC, null));
+    }
+
+    /** Record members who are in voice right now (also used when the bot joins a guild). */
+    public static synchronized void syncGuild(Guild guild) {
+        String guildId = guild.getId();
+        Map<String, List<AccessSession>> users = accessSessions.computeIfAbsent(guildId, k -> new HashMap<>());
+        Map<String, String> inVoice = new HashMap<>();
+        for (GuildVoiceState state : guild.getVoiceStates()) {
+            AudioChannel channel = state.getChannel();
+            if (channel == null) continue;
+            inVoice.put(state.getMember().getId(), channel.getId());
+        }
+        inVoice.forEach((userId, channelId) -> {
+            AccessSession last = getLastSession(users.computeIfAbsent(userId, k -> new ArrayList<>()));
+            if (last == null || last.isComplete()) {
+                addAccessLog(AccessType.JOIN, guildId, userId, channelId);
+            } else if (!last.getChannelId().equals(channelId)) {
+                addAccessLog(AccessType.MOVED, guildId, userId, channelId);
+            }
+        });
+        for (Map.Entry<String, List<AccessSession>> entry : users.entrySet()) {
+            AccessSession last = getLastSession(entry.getValue());
+            if (last != null && !last.isComplete() && !inVoice.containsKey(entry.getKey())) {
+                addAccessLog(AccessType.LEAVE, guildId, entry.getKey(), last.getChannelId());
+            }
+        }
+        MemberDirectory.resolve(guild, users.keySet());
+    }
+
+    /**
+     * Read the saved log. A file that cannot be parsed is moved aside (never overwritten) and the backup is
+     * tried next, so a crash mid-write can no longer wipe the history.
+     */
+    private static Map<String, Map<String, List<AccessSession>>> load() {
+        File dir = dataFile().getParent().toFile();
+        if (!dir.exists() && !dir.mkdirs()) {
+            logger.error("Could not create {}", dir);
+        }
+        TypeReference<Map<String, Map<String, List<AccessSession>>>> type = new TypeReference<>() {
+        };
+        for (Path path : List.of(dataFile(), backupFile())) {
+            if (!Files.exists(path)) continue;
+            try {
+                Map<String, Map<String, List<AccessSession>>> data = mapper.readValue(path.toFile(), type);
+                loadedModified = Files.getLastModifiedTime(path).toMillis();
+                if (!path.equals(dataFile())) logger.warn("Loaded access log from backup {}", path);
+                return data;
+            } catch (IOException e) {
+                Path aside = path.resolveSibling(path.getFileName() + ".broken-" + System.currentTimeMillis());
+                logger.error("Could not read {}; moving it to {}", path, aside, e);
+                try {
+                    Files.move(path, aside);
+                } catch (IOException moveError) {
+                    logger.error("Could not move {} aside", path, moveError);
+                }
+            }
+        }
+        return new HashMap<>();
+    }
+
+    private static synchronized void requestSave() {
+        if (saveScheduled) return;
+        saveScheduled = true;
+        saver.schedule(GuildWatcher::saveNow, SAVE_DELAY_MS, TimeUnit.MILLISECONDS);
+    }
+
+    /** Write the log atomically: a temp file is written and synced, then moved over the old file. */
+    public static void saveNow() {
+        byte[] json;
+        synchronized (GuildWatcher.class) {
+            saveScheduled = false;
+            try {
+                json = mapper.writeValueAsBytes(accessSessions);
+            } catch (IOException e) {
+                logger.error("Could not serialize access log", e);
+                return;
+            }
+        }
+        Path target = dataFile();
+        Path temp = target.resolveSibling(target.getFileName() + ".tmp");
+        try {
+            try (FileOutputStream out = new FileOutputStream(temp.toFile())) {
+                out.write(json);
+                out.getFD().sync();
+            }
+            Path backup = backupFile();
+            if (Files.exists(target) && (!Files.exists(backup)
+                    || System.currentTimeMillis() - Files.getLastModifiedTime(backup).toMillis() > BACKUP_INTERVAL_MS)) {
+                Files.copy(target, backup, StandardCopyOption.REPLACE_EXISTING);
+            }
+            Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        } catch (IOException e) {
+            logger.error("Could not save access log", e);
         }
     }
 
-    public static void saveAll() {
-        try {
-            ObjectMapper mapper = new ObjectMapper();
-            ObjectWriter writer = mapper.writerWithDefaultPrettyPrinter();
-            String json = writer.writeValueAsString(accessSessions);
-
-            // check if guild exists
-            for (Map.Entry<String, Map<String, List<AccessSession>>> guildEntry : accessSessions.entrySet()) {
-                Guild guild = CushionBot.jda.getGuildById(guildEntry.getKey());
-                if (guild == null) {
-                    accessSessions.remove(guildEntry.getKey());
-
-                }
+    /** Total connected time per user in a guild over the whole kept record (the dashboard's "누적"). */
+    public static synchronized Map<String, Long> totals(String guildId) {
+        Map<String, Long> result = new HashMap<>();
+        Map<String, List<AccessSession>> users = accessSessions.get(guildId);
+        if (users == null) return result;
+        users.forEach((userId, sessions) -> {
+            long total = 0;
+            for (AccessSession session : sessions) {
+                if (session.getJoinTime() == 0) continue;
+                total += session.getDuration();
             }
-
-            String dirpath = System.getProperty("user.dir") + "/datafiles";
-            String filepath = dirpath + "/access_logs.json";
-
-            // write
-            try (FileWriter fwriter = new FileWriter(filepath)) {
-                fwriter.write(json);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+            if (total > 0) result.put(userId, total);
+        });
+        return result;
     }
 
     /**
@@ -232,8 +288,8 @@ public class GuildWatcher {
     }
 
     /**
-     * Everything the dashboard needs for one guild in a single response:
-     * guild info, member display info and every recorded session (leave 0 = still connected).
+     * Everything the dashboard needs for one guild in a single response: guild info, member display info,
+     * channel names by id, and every recorded session (channel id; leave 0 = still connected).
      */
     public static synchronized Map<String, Object> snapshot(Guild guild) {
         Map<String, List<AccessSession>> guildSessions = accessSessions.getOrDefault(guild.getId(), Collections.emptyMap());
@@ -244,12 +300,13 @@ public class GuildWatcher {
             List<Map<String, Object>> list = new ArrayList<>();
             for (AccessSession session : userEntry.getValue()) {
                 if (session.getJoinTime() == 0) continue;
-                String channelName = channelNames.computeIfAbsent(session.getChannelId(), id -> {
-                    GuildChannel channel = id == null ? null : guild.getGuildChannelById(id);
-                    return channel == null ? "알 수 없는 채널" : channel.getName();
+                String channelId = session.getChannelId() == null ? "unknown" : session.getChannelId();
+                channelNames.computeIfAbsent(channelId, id -> {
+                    GuildChannel channel = guild.getGuildChannelById(id);
+                    return channel == null ? null : channel.getName();
                 });
                 Map<String, Object> item = new HashMap<>();
-                item.put("channel", channelName);
+                item.put("channel", channelId);
                 item.put("join", session.getJoinTime());
                 item.put("leave", session.getLeaveTime());
                 list.add(item);
@@ -262,6 +319,8 @@ public class GuildWatcher {
         result.put("guild", guildInfo(guild));
         result.put("serverTime", System.currentTimeMillis());
         result.put("members", MemberDirectory.resolve(guild, sessions.keySet()));
+        // deleted channels map to null; the dashboard shows them as "삭제된 채널"
+        result.put("channels", channelNames);
         result.put("sessions", sessions);
         return result;
     }

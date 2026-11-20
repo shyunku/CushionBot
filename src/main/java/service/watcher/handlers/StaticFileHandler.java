@@ -52,6 +52,11 @@ public class StaticFileHandler implements HttpHandler {
             String path = exchange.getRequestURI().getPath();
             File file = new File(root, path).getCanonicalFile();
             boolean inside = file.getPath().startsWith(root.getCanonicalPath() + File.separator);
+            if (inside && !file.isFile() && path.startsWith("/assets/")) {
+                // an old page asking for a replaced build file: 404, not the HTML page under a script URL
+                HttpUtil.sendText(exchange, 404, "Not Found");
+                return;
+            }
             if (!inside || !file.isFile()) {
                 // client-side route
                 HttpUtil.send(exchange, 200, TYPES.get("html"), Files.readAllBytes(index.toPath()), "no-cache");

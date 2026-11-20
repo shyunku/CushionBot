@@ -27,7 +27,7 @@ public class ApiHandler implements HttpHandler {
                 HttpUtil.sendText(exchange, 405, "Method Not Allowed");
                 return;
             }
-            if (CushionBot.jda == null) {
+            if (CushionBot.jda == null || !GuildWatcher.isInitialized()) {
                 HttpUtil.sendText(exchange, 503, "Bot is starting");
                 return;
             }
