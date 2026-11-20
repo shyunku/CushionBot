@@ -30,3 +30,6 @@ nohup.out
 /watcher/node_modules/
 /watcher/.env
 /watcher/dist/
+/watcher/dist-next/
+/watcher/dist-prev/
+/.cushionbot-previous.jar
