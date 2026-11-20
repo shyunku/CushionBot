@@ -364,6 +364,13 @@
   .seg.mini { display: inline-flex; padding: 1px; margin-left: 4px; }
   .seg.mini button { padding: 1px 8px; font-size: 11px; }
 
+  /* ---------- 3.3.3.2 round 2 ---------- */
+  .gcard { flex: 0 0 auto; }
+  #app[data-gh="old"] .gcard { height: 392px; overflow: hidden; }
+  #app:not([data-gh="old"]) .gcard .grasswrap { flex: 0 0 auto; }
+  .chancerow { display: flex; gap: 12px; flex: 0 0 auto; }
+  .chancerow .chance { height: 356px; overflow: hidden; }
+
   /* ---------- mock helpers: shift outlines ---------- */
   body.shift [data-click] { outline: 2px dashed #3fa9ff; outline-offset: -2px; }
   body.shift [data-cand]:not(.row) { position: relative; }
@@ -414,7 +421,7 @@
 <div id="app"></div>
 <div id="note">
   <div class="top">
-    <div class="r"><h2>watcher 3.3.3.2 시안</h2><span id="copied">복사됨</span><button id="copy">결과 복사</button></div>
+    <div class="r"><h2>watcher 3.3.3.2 시안 (2차)</h2><span id="copied">복사됨</span><button id="copy">결과 복사</button></div>
     <div class="help">항목에서 옵션을 고르면 시안이 바로 바뀌고 의견을 적을 수 있음. <b>Shift</b>를 누르면 <span class="k1">파란 점선</span>은 누를 수 있는 곳, <span class="k2">주황 점선</span>은 후보가 있는 곳(올리면 후보 툴팁).</div>
   </div>
   <div class="list" id="list"></div>
@@ -739,17 +746,24 @@ ITEMS.push(
     { id: "c10", name: "칸 폭 10px 아래면 줄임", desc: "칸이 10px보다 좁아지면 오래된 주부터 빼서 최근 몇 주만 그림", rec: 1 },
     { id: "c14", name: "칸 폭 14px 아래면 줄임", desc: "같은 방식, 칸을 더 넓게 유지(보이는 주 수가 더 적음)" } ] },
 );
-const MOBILE_KEYS = new Set(["cumfmt", "basis", "leavedef", "tablew", "grassmin"]);
+ITEMS.push(
+  { key: "grassh", title: "잔디 높이 (한 줄 전체 폭일 때)", opts: [
+    { id: "old", name: "기존", desc: "지금처럼 표 10줄 높이(약 390px)에 맞춤. 폭이 넓어져 칸이 세로로 길쭉해짐", old: 1 },
+    { id: "square", name: "칸을 정사각형으로", desc: "칸 폭에 맞춰 높이가 정해짐(넓은 화면에서 약 180px, 창을 줄이면 낮아짐)", rec: 1 },
+    { id: "low", name: "낮은 고정 높이", desc: "높이를 170px로 고정하고 칸은 폭에 따라 가로로 늘어남" } ] },
+);
+const MOBILE_KEYS = new Set(["grassh"]);
 const state = {}; ITEMS.forEach((it) => (state[it.key] = it.opts.find((o) => o.rec)?.id ?? it.opts[0].id));
 state.font = "ox";
 // round 2: confirmed choices are fixed and hidden from the note
 const CONFIRMED = { theme: "slate", layout: "rail", rows: "fixed", ctrl: "seg", summary: "cards", now: "chips", legend: "filter", tip: "card", loading: "skeleton", share: "btn", after: "avatar", click: "page", freq: "both", ublocks: "full", shape: "smooth", bounce: "both", bwhere: "user", bui: "statmini", ntime: "range", rankwhere: "tabs", ranklayout: "boards", rankperiod: "switch", myrank: "badge", sharedview: "hide", backsize: "btn", ufill: "big", badge: "big", zoom: "10s", fcur: "tipheat", sstats: "tab", sfreq: "avgppl", grass: "both", scards: "cards", barradius: "tl", cursor: "plain", wheelease: "slow", attend: "rate", probwin: "pm30", probonline: "show", dayheat: "focus", grasstoday: "old", fontup: "mix", font: "ox", dimrow: "red", grassfit: "old", todaycolor: "calm" };
 Object.assign(state, CONFIRMED);
+Object.assign(state, { cumfmt: "all", basis: "w90", leavedef: "m30", tablew: "w420", grassmin: "old" });
 const OPEN_ITEMS = ITEMS.filter((it) => MOBILE_KEYS.has(it.key));
 const comments = {}; // key -> optId -> text
 let openComment = null; // `${key}:${optId}`
 let fhover = null; // { id, x, y } hover on frequency charts
-const view = { center: null, rfull: null, shared: false, tab: "timeline", rperiod: "all", rmetric: "total", page: "server", user: null, panel: null, guild: "g1", preset: "24h", zoom: 1, hidden: new Set(), loading: false, loadP: 1, toast: null, hover: null };
+const view = { center: null, rfull: null, shared: false, tab: "stats", rperiod: "all", rmetric: "total", page: "server", user: null, panel: null, guild: "g1", preset: "24h", zoom: 1, hidden: new Set(), loading: false, loadP: 1, toast: null, hover: null };
 
 /* ================= render app ================= */
 const app = document.getElementById("app");
@@ -1084,7 +1098,7 @@ function leaveNow(u) {
 function basisLabel() {
   if (state.basis === "old") return "최근 30일";
   if (state.basis === "toggle") return `<span class="seg mini">${[["30", "최근 30일"], ["90", "최근 3개월"]].map(([k, l]) => `<button class="${basisToggle === k ? "sel" : ""}" data-click data-basis="${k}">${l}</button>`).join("")}</span>`;
-  return "최근 3개월 · 최근 30일 가중";
+  return "";
 }
 function probBasis() {
   const tod = NOW - sod(NOW);
@@ -1204,20 +1218,28 @@ function statsBody(g) {
     const row = (x, i, val) => `<div class="cr" data-click data-user="${x.u.id}"><span class="no">${i + 1}</span><img src="${x.u.avatar}"><span class="nm">${x.u.name}</span><span class="bar2"><i style="width:${val * 100}%"></i></span><span class="val">${Math.round(val * 100)}%</span></div>`;
     const enter = g.users.filter((u) => !isOnline(u)).map((u) => ({ u, ...probNow(u) })).filter((x) => x.p > 0).sort((a, b) => b.p - a.p).slice(0, 10);
     const leave = g.users.filter((u) => isOnline(u)).map((u) => ({ u, ...leaveNow(u) })).filter((x) => x.n > 0).sort((a, b) => b.p - a.p).slice(0, 10);
-    const enterCard = `<div class="card chance" data-cand="basis"><h5>지금 들어올 확률 <span>${DN[TODAY_WD]}요일 · ${basisLabel()}</span></h5>
+    const enterCard = `<div class="card chance"><h5>지금 들어올 확률 <span>${DN[TODAY_WD]}요일</span></h5>
       ${enter.map((x, i) => row(x, i, x.p)).join("") || `<div class="note">지금 시간대에 들어올 만한 사람이 없음</div>`}</div>`;
-    const leaveCard = `<div class="card chance" data-cand="leavedef" data-new><h5>지금 나갈 확률 <span>${state.leavedef === "m60" ? "1시간" : "30분"} 안 · 접속 중인 사람</span></h5>
+    const leaveCard = `<div class="card chance" data-new><h5>지금 나갈 확률 <span>${state.leavedef === "m60" ? "1시간" : "30분"} 안 · 접속 중인 사람</span></h5>
       ${leave.map((x, i) => row(x, i, x.p)).join("") || `<div class="note">지금 접속 중인 사람이 없거나 기록이 부족함</div>`}</div>`;
-    yearHtml = `<div class="grassrow" data-cand="tablew"><div class="card gcard" data-cand="grassmin" style="flex:1;min-width:0"><h5>날짜별 잔디 <span id="gspan">최근 1년 · 진할수록 그날 총 접속 시간이 김</span></h5>
+    yearHtml = `<div class="card gcard" data-cand="grassh"><h5>날짜별 잔디 <span id="gspan">최근 1년 · 진할수록 그날 총 접속 시간이 김</span></h5>
       <div class="gbody"><div class="gmonths" id="gmonths"></div><div class="grasswrap"><div class="wd" id="gwd"></div><div class="garea" id="garea"></div></div></div>
-      <div class="glegend">적음 ${[0.2, 0.4, 0.6, 0.8, 1].map((o) => `<i style="opacity:${o}"></i>`).join("")} 많음</div></div>${enterCard}${leaveCard}</div>`;
+      <div class="glegend">적음 ${[0.2, 0.4, 0.6, 0.8, 1].map((o) => `<i style="opacity:${o}"></i>`).join("")} 많음</div></div><div class="chancerow">${enterCard}${leaveCard}</div>`;
   }
   return `${cards}${curve}${yearHtml}`;
 }
 function drawGrass() {
   const area = document.getElementById("garea");
   if (!area || !FREQ.year) return;
-  const W = area.clientWidth, Hh = area.clientHeight, GAP = 3;
+  const GAP = 3;
+  const W = area.clientWidth;
+  if (state.grassh === "square") {
+    const lead0q = new Date(FREQ.year[0].day).getDay();
+    const wk = Math.ceil((lead0q + FREQ.year.length) / 7);
+    area.style.height = `${Math.round(((W - GAP * (wk - 1)) / wk) * 7 + GAP * 6)}px`;
+  } else if (state.grassh === "low") area.style.height = "170px";
+  else area.style.height = "";
+  const Hh = area.clientHeight;
   const minCell = state.grassmin === "c14" ? 14 : state.grassmin === "c10" ? 10 : 0;
   const year = FREQ.year;
   const lead0 = new Date(year[0].day).getDay();
@@ -1353,7 +1375,7 @@ function render() {
   app.dataset.theme = state.theme;
   app.dataset.radius = state.barradius;
   app.dataset.cursor = state.cursor;
-  app.dataset.font = state.fontup; app.dataset.ff = state.font; app.dataset.gfit = state.grassfit; app.dataset.tc = state.todaycolor; app.dataset.tw = state.tablew; app.dataset.today = state.grasstoday;
+  app.dataset.font = state.fontup; app.dataset.ff = state.font; app.dataset.gfit = state.grassfit; app.dataset.tc = state.todaycolor; app.dataset.tw = state.tablew; app.dataset.gh = state.grassh; app.dataset.today = state.grasstoday;
   const g = G();
   let body;
   if (view.loading && state.loading === "skeleton") body = skeleton();
@@ -1525,7 +1547,7 @@ function choose(key, opt, focus = true) {
   if (key === "cumfmt" && opt === "all") { view.page = "server"; view.tab = "timeline"; }
   else if (key === "cumfmt") { view.page = "server"; view.tab = "rank"; }
   if (["attend", "probwin", "fontup"].includes(key)) { view.page = "user"; view.user = ranked(G(), "total", "all")[0].u.id; }
-  if (["probonline", "grasstoday", "dayheat", "dimrow", "grassfit", "todaycolor", "basis", "leavedef", "tablew", "grassmin"].includes(key)) { view.page = "server"; view.tab = "stats"; }
+  if (["probonline", "grasstoday", "dayheat", "dimrow", "grassfit", "todaycolor", "basis", "leavedef", "tablew", "grassmin", "grassh"].includes(key)) { view.page = "server"; view.tab = "stats"; }
   if (key === "cursor" || key === "wheelease") { view.page = "server"; view.tab = "timeline"; }
   if (key === "barradius" && opt !== "all") { view.page = "user"; view.user = ranked(G(), "total", "all")[0].u.id; }
   if (key === "barradius" && opt === "all") { view.page = "server"; view.tab = "timeline"; view.preset = "24h"; view.zoom = 1; view.center = null; }
@@ -1551,7 +1573,7 @@ list.addEventListener("input", (e) => {
   (comments[e.target.dataset.k] ??= {})[e.target.dataset.o] = e.target.value; autosize(e.target);
 });
 document.getElementById("copy").onclick = async () => {
-  const lines = ["[watcher 3.3.3.2 시안 결과]"];
+  const lines = ["[watcher 3.3.3.2 시안 2차 결과]"];
   for (const it of OPEN_ITEMS) {
     const o = it.opts.find((x) => x.id === state[it.key]);
     const c = comments[it.key]?.[o.id]?.trim();
