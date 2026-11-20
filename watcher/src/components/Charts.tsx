@@ -167,14 +167,14 @@ export type GrassDay = { day: number; total: number; people: number };
 const GAP = 3;
 /** Room a month label ("12월") needs before the next one starts. */
 const MONTH_LABEL_PX = 34;
-/** Lowest grid height, so weekday rows stay readable when the cells get narrow. */
-const GRASS_MIN_H = 120;
+/** Smallest grass cell; when a year of weeks would be smaller, the oldest weeks are left out. */
+const GRASS_MIN_CELL = 14;
 
 /** GitHub-style daily grid (columns are weeks, rows Sunday..Saturday). */
-export function Grass({ days }: { days: GrassDay[] }) {
+export function Grass({ days: allDays }: { days: GrassDay[] }) {
   const { box, tip, show, hide, width } = useChartTip();
-  // the cells are square: the width sets the cell size and the grid height follows (at least
-  // GRASS_MIN_H, so narrow screens keep readable rows)
+  // the cells are square: the width sets the cell size and the grid height follows; when the cells
+  // would get smaller than GRASS_MIN_CELL, only the most recent weeks that fit are drawn
   const area = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 0 });
   useLayoutEffect(() => {
@@ -187,13 +187,17 @@ export function Grass({ days }: { days: GrassDay[] }) {
     update();
     return () => ro.disconnect();
   }, []);
-  if (days.length === 0) return null;
-  const max = Math.max(1, ...days.map((x) => x.total));
+  if (allDays.length === 0) return null;
+  const max = Math.max(1, ...allDays.map((x) => x.total));
+  const allLead = kst(allDays[0].day).weekday;
+  const allWeeks = Math.ceil((allLead + allDays.length) / 7);
+  const weeks = Math.max(1, Math.min(allWeeks, Math.floor((size.w + GAP) / (GRASS_MIN_CELL + GAP))));
+  // drop whole weeks from the start so the remaining columns still begin on Sunday
+  const days = allDays.slice(Math.max(0, (allWeeks - weeks) * 7 - allLead));
   const lead = kst(days[0].day).weekday;
-  const weeks = Math.ceil((lead + days.length) / 7);
   const cw = Math.max(1, (size.w - GAP * (weeks - 1)) / weeks);
-  const gridH = Math.max(GRASS_MIN_H, cw * 7 + GAP * 6);
-  const ch = (gridH - GAP * 6) / 7;
+  const ch = cw;
+  const gridH = ch * 7 + GAP * 6;
   const colX = (c: number) => c * (cw + GAP);
   const rowY = (r: number) => r * (ch + GAP);
   // month labels at the first column of each month, skipping any that would overlap the previous one

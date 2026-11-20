@@ -86,7 +86,7 @@ export default function StatsPage() {
       </div>
       <div className="card grasscard">
         <h5>
-          날짜별 잔디 <span>최근 1년 · 진할수록 그날 총 접속 시간이 김</span>
+          날짜별 잔디 <span>진할수록 그날 총 접속 시간이 김</span>
         </h5>
         <Grass days={st.grass} />
       </div>
