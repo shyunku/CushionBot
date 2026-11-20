@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>team.gg 라인 설정 시안 (pc 3.3.3.3)</title>
+<title>team.gg 라인 설정 시안 2차 (pc 3.3.3.3)</title>
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; }
@@ -49,6 +49,13 @@
   .embed tr.sel td:first-child::before { content: "▸ "; color: #3ddc97; }
   .embed .ef { color: #b5bac1; font-size: 12px; margin-top: 10px; }
   .embed .ef.ok { color: #3ddc97; }
+  .v2 { margin-top: 6px; max-width: 560px; background: #2b2d31; border: 1px solid #3f4147; border-left: 4px solid #3ddc97; border-radius: 8px; padding: 12px 16px 14px; }
+  .v2 .et { color: #f2f3f5; font-weight: 700; font-size: 16px; }
+  .v2 .ed { color: #dbdee1; font-size: 14px; margin-top: 6px; }
+  .v2 .lanes { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+  .v2 .lrow { font-size: 15px; color: #dbdee1; white-space: pre; }
+  .v2 .lrow b { color: #f2f3f5; }
+  .v2 .sep { height: 1px; background: #3f4147; margin: 12px 0 8px; }
   .comps { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; max-width: 520px; }
   .arow { display: flex; gap: 8px; flex-wrap: wrap; }
   .btn { border: 0; border-radius: 3px; padding: 0 14px; height: 32px; font: inherit; font-size: 14px; font-weight: 500; color: #fff; cursor: pointer; background: #4e5058; display: inline-flex; align-items: center; gap: 6px; }
@@ -125,7 +132,7 @@
 <div id="app"></div>
 <div id="note">
   <div class="top">
-    <div class="r"><h2>team.gg 라인 설정 시안</h2><span id="copied">복사됨</span><button id="copy">결과 복사</button></div>
+    <div class="r"><h2>team.gg 라인 설정 시안 (2차)</h2><span id="copied">복사됨</span><button id="copy">결과 복사</button></div>
     <div class="help">항목에서 옵션을 고르면 시안이 바로 바뀌고 의견을 적을 수 있음. <b>Shift</b>를 누르면 <span class="k1">파란 점선</span>은 누를 수 있는 곳, <span class="k2">주황 점선</span>은 후보가 있는 곳(올리면 후보 툴팁). 패널의 버튼·드롭다운은 실제처럼 눌러 볼 수 있음.</div>
   </div>
   <div class="list" id="list"></div>
@@ -136,29 +143,14 @@
 <script>
 /* ================= decision items ================= */
 const ITEMS = [
-  { key: "cmd", title: "명령어 모양", opts: [
-    { id: "old", name: "기존", desc: "/팀지지라인선호도 하나만 있음 (숙련도 명령 없음)", old: 1 },
-    { id: "one", name: "/팀지지라인 하나로", desc: "명령 하나로 선호도와 숙련도를 한 화면에서 같이 봄·바꿈", rec: 1 },
-    { id: "two", name: "선호도·숙련도 명령 따로", desc: "/팀지지라인선호도, /팀지지라인숙련도를 각각 실행하고 화면도 따로 뜸" } ] },
-  { key: "layout", title: "바꾸는 방식", opts: [
-    { id: "old", name: "기존", desc: "명령어 칸에 5라인 숫자를 직접 입력, 결과는 한 줄 메시지", old: 1 },
-    { id: "lane", name: "라인 골라서 바꾸기", desc: "라인 드롭다운으로 라인을 고르고, 그 라인의 선호도 버튼·숙련도 드롭다운을 누름. 위 표에서 바로 보임", rec: 1 },
-    { id: "rows", name: "라인별 한 줄", desc: "라인마다 [탑 · 좋음 · ★4] [선호−][선호+][숙련−][숙련+] 한 줄. 줄이 꽉 차서 저장 버튼 자리가 없어 누를 때마다 바로 저장" },
-    { id: "modal", name: "입력창 팝업", desc: "[선호도 바꾸기]/[숙련도 바꾸기] 버튼을 누르면 5라인 드롭다운 입력창이 뜨고, 제출하면 저장 (라이브러리 지원 확인 필요)" } ] },
-  { key: "save", title: "저장 시점 (라인 골라서 바꾸기일 때)", opts: [
-    { id: "old", name: "기존", desc: "명령을 실행하는 순간 바로 저장", old: 1 },
-    { id: "button", name: "저장 버튼", desc: "여러 라인을 고친 뒤 [저장]을 누를 때 한 번만 team.gg로 보냄. [되돌리기]로 처음 값 복구", rec: 1 },
-    { id: "instant", name: "고를 때마다 바로 저장", desc: "누를 때마다 team.gg로 보냄. 그때마다 내전 밸런스를 다시 계산하므로 '계산 중(423)'이 나기 쉬움" } ] },
-  { key: "show", title: "값 표시", opts: [
-    { id: "old", name: "기존", desc: "숫자 그대로: 선호도 -1·0·1·2, 숙련도 0~5", old: 1 },
-    { id: "word", name: "말 + 별", desc: "선호도 싫음·보통·좋음·주라인, 숙련도 ★★★☆☆ (5칸 별)", rec: 1 },
-    { id: "emoji", name: "이모지 + 막대", desc: "선호도 👎·➖·👍·🔥, 숙련도 ■■■□□" } ] },
-  { key: "init", title: "처음 열 때 값", opts: [
-    { id: "old", name: "기존", desc: "지금처럼 현재 값을 모름. 표가 ?로 시작하고 다섯 라인을 다 골라야 저장 가능", old: 1 },
-    { id: "fetch", name: "team.gg에서 지금 값 불러오기", desc: "현재 선호도·숙련도를 보여 주고 바꾼 것만 고치면 됨. team.gg에 조회 API를 새로 요청해야 함", rec: 1 },
-    { id: "zero", name: "기본값에서 시작", desc: "선호도 보통(0)·숙련도 0으로 채워 두고 시작. 저장하면 다섯 라인 전부 이 값으로 덮어씀" } ] },
+  { key: "starcolor", title: "숙련도 별 색", opts: [
+    { id: "old", name: "기존", desc: "색 없이 흰 별", old: 1 },
+    { id: "value", name: "값에 따라 한 색", desc: "채워진 별을 값의 색으로: 1 빨강 · 2 주황 · 3 노랑 · 4 초록 · 5 하늘 (3이면 별 3개 모두 노랑)", rec: 1 },
+    { id: "position", name: "자리마다 다른 색", desc: "첫째 별 빨강, 둘째 주황, 셋째 노랑, 넷째 초록, 다섯째 하늘 (값이 클수록 무지개가 길어짐)" } ] },
 ];
-const state = {}; ITEMS.forEach((it) => (state[it.key] = it.opts.find((o) => o.rec)?.id ?? it.opts[0].id));
+// decided in round 1
+const FIXED = { cmd: "one", layout: "rows", save: "button", show: "word", init: "fetch" };
+const state = { ...FIXED }; ITEMS.forEach((it) => (state[it.key] = it.opts.find((o) => o.rec)?.id ?? it.opts[0].id));
 const comments = {};
 let openComment = null;
 
@@ -176,7 +168,18 @@ reset();
 const PREF_WORD = { "-1": "싫음", "0": "보통", "1": "좋음", "2": "주라인" };
 const PREF_EMO = { "-1": "👎", "0": "➖", "1": "👍", "2": "🔥" };
 function fmtPref(v) { if (v == null) return "?"; return state.show === "word" ? PREF_WORD[v] : state.show === "emoji" ? PREF_EMO[v] : String(v); }
-function fmtMast(v) { if (v == null) return "?"; return state.show === "word" ? "★".repeat(v) + "☆".repeat(5 - v) : state.show === "emoji" ? "■".repeat(v) + "□".repeat(5 - v) : String(v); }
+const STAR_COLORS = ["#f23f43", "#f0883e", "#f0c33c", "#3ba55d", "#4fb8f0"];
+function fmtMast(v) {
+  if (v == null) return "?";
+  const filled = Array.from({ length: v }, (_, i) => {
+    const c = state.starcolor === "value" ? STAR_COLORS[v - 1] : state.starcolor === "position" ? STAR_COLORS[i] : "#f2f3f5";
+    return `<span style="color:${c}">★</span>`;
+  }).join("");
+  return `${filled}<span style="color:#5c5f66">${"★".repeat(5 - v)}</span> (${v})`;
+}
+// same width for every lane and preference word: pad with an ideographic space (U+3000), as the bot would
+const IDEO = "\u3000";
+const padTo = (t, n) => t + IDEO.repeat(Math.max(0, n - t.length));
 const now = () => { const d = new Date(); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
 
 /* ================= render ================= */
@@ -228,6 +231,18 @@ function panel(ms, idx) {
     }
     comps = rows.join("");
   } else if (state.layout === "rows") {
+    const can = complete(ms) && dirty(ms);
+    const lines = LANES.map((l, i) => `<div class="lrow" data-cand="starcolor"><b>${padTo(l, 2)}</b>${IDEO}${IDEO}${padTo(fmtPref(draft.pref[i]), 3)}${IDEO}${IDEO}${fmtMast(draft.mast[i])}</div>
+      <div class="arow">${ms.map((m) => `<button class="btn" data-click data-step="${m}" data-lane="${i}" data-d="-1" data-idx="${idx}">${m === "pref" ? "선호 −" : "숙련 −"}</button><button class="btn" data-click data-step="${m}" data-lane="${i}" data-d="1" data-idx="${idx}">${m === "pref" ? "선호 +" : "숙련 +"}</button>`).join("")}</div>`).join("");
+    return `<div class="v2" data-new>
+      <div class="et">${title} · 션 쿠</div>
+      <div class="ed">${desc}</div>
+      <div class="lanes">${lines}</div>
+      <div class="sep"></div>
+      ${saved && saved.idx === idx ? `<div class="ef ok">✓ ${saved.at} 저장됨 · 들어가 있는 내전 2개에 반영, 다음 내전부터 기본값으로 적용</div>` : `<div class="ef">team.gg에 저장된 지금 값 · 고친 뒤 [저장]을 눌러야 반영됨</div>`}
+      <div class="arow" style="margin-top:8px"><button class="btn ok ${can ? "" : "dis"}" data-click data-save="${idx}">저장</button><button class="btn ${dirty(ms) ? "" : "dis"}" data-click data-undo="${idx}">되돌리기</button></div>
+    </div>`;
+  } else if (false) {
     comps = LANES.map((l, i) => `<div class="arow"><button class="btn lab">${l} · ${ms.map((m) => m === "pref" ? fmtPref(draft.pref[i]) : fmtMast(draft.mast[i])).join(" · ")}</button>${ms.map((m) => `<button class="btn" data-click data-step="${m}" data-lane="${i}" data-d="-1" data-idx="${idx}">${ms.length === 2 ? (m === "pref" ? "선호 −" : "숙련 −") : "−"}</button><button class="btn" data-click data-step="${m}" data-lane="${i}" data-d="1" data-idx="${idx}">${ms.length === 2 ? (m === "pref" ? "선호 +" : "숙련 +") : "+"}</button>`).join("")}</div>`).join("");
   } else if (state.layout === "modal") {
     comps = `<div class="arow">${ms.map((m) => `<button class="btn pri" data-click data-modal="${m}" data-idx="${idx}">${NAME[m]} 바꾸기</button>`).join("")}</div>`;
@@ -292,7 +307,6 @@ app.addEventListener("click", (e) => {
     const m = d.step, i = +d.lane, lo = m === "pref" ? -1 : 0, hi = m === "pref" ? 2 : 5;
     const cur = draft[m][i] ?? (m === "pref" ? 0 : 0);
     draft[m][i] = Math.max(lo, Math.min(hi, cur + +d.d)); saved = null;
-    if (complete(metricsFor()[+d.idx])) doSave(+d.idx);
     render(); return;
   }
   if (d.modal) { modal = { metric: d.modal, idx: +d.idx, vals: [...draft[d.modal]] }; render(); return; }
@@ -322,7 +336,7 @@ function choose(key, opt, focus = true) {
 list.addEventListener("click", (e) => { if (e.target.tagName === "TEXTAREA") return; const o = e.target.closest(".opt"); if (!o) return; choose(o.dataset.k, o.dataset.o); });
 list.addEventListener("input", (e) => { if (e.target.tagName !== "TEXTAREA") return; (comments[e.target.dataset.k] ??= {})[e.target.dataset.o] = e.target.value; autosize(e.target); });
 document.getElementById("copy").onclick = async () => {
-  const lines = ["[team.gg 라인 설정 시안 결과]"];
+  const lines = ["[team.gg 라인 설정 시안 2차 결과]"];
   for (const it of ITEMS) {
     const o = it.opts.find((x) => x.id === state[it.key]);
     const c = comments[it.key]?.[o.id]?.trim();
