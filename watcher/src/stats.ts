@@ -299,20 +299,70 @@ export function heatFor(people: Person[], period: FreqPeriod, now: number) {
 
 /** Window around the current time used for "chance to be on now". */
 export const CHANCE_WINDOW = 30 * MIN;
+/** "Chance to leave now" counts a leave within this time. */
+export const LEAVE_WINDOW = 30 * MIN;
+/** Sessions this close are one stay (a channel move ends a session and starts the next at once). */
+const MOVE_GAP = 1000;
+/** Chances look back this many days (about three months)... */
+const CHANCE_DAYS = 91;
+/** ...and count the days within this many days twice, so recent habits weigh more. */
+const CHANCE_RECENT_DAYS = 30;
+
+/** The same weekday as today over the last CHANCE_DAYS days (today excluded), with their weights. */
+function chanceDays(now: number) {
+  const today = kst(now).weekday;
+  return Array.from({ length: CHANCE_DAYS }, (_, i) => ({ day: sod(now) - (i + 1) * D, weight: i < CHANCE_RECENT_DAYS ? 2 : 1 })).filter(
+    (x) => kst(x.day).weekday === today,
+  );
+}
 
 /**
- * Chance that a person is connected around this time: over the same weekday in the last 30 days
- * (today excluded), the share of days with a session within ±CHANCE_WINDOW of the current time of day.
+ * Chance that a person is connected around this time: over the same weekday in the last three months
+ * (today excluded, the last 30 days counted twice), the weighted share of days with a session within
+ * ±CHANCE_WINDOW of the current time of day. `days`/`hits` are plain counts.
  */
 export function chanceNow(p: Person, now: number) {
   const tod = now - sod(now);
-  const today = kst(now).weekday;
-  const days = Array.from({ length: 30 }, (_, i) => sod(now) - (i + 1) * D).filter((d) => kst(d).weekday === today);
+  let weight = 0;
+  let hitWeight = 0;
   let hits = 0;
-  for (const day of days) {
+  const days = chanceDays(now);
+  for (const { day, weight: w } of days) {
     const a = day + tod - CHANCE_WINDOW;
     const b = day + tod + CHANCE_WINDOW;
-    if (p.sessions.some((s) => s.s < b && endOf(s, now) > a)) hits++;
+    weight += w;
+    if (p.sessions.some((s) => s.s < b && endOf(s, now) > a)) {
+      hitWeight += w;
+      hits++;
+    }
   }
-  return { chance: days.length ? hits / days.length : 0, hits, days: days.length };
+  return { chance: weight ? hitWeight / weight : 0, hits, days: days.length };
+}
+
+/**
+ * Chance that a person leaves soon: over the same days as chanceNow, of the days on which the person was
+ * connected at the current time of day, the weighted share that ended within LEAVE_WINDOW.
+ * `days` is the number of such days (0 = no record to judge by).
+ */
+export function leaveChance(p: Person, now: number) {
+  const tod = now - sod(now);
+  let weight = 0;
+  let hitWeight = 0;
+  let days = 0;
+  let hits = 0;
+  for (const { day, weight: w } of chanceDays(now)) {
+    const t = day + tod;
+    const i = p.sessions.findIndex((x) => x.s <= t && endOf(x, now) > t);
+    if (i < 0) continue;
+    // a channel move ends one session and starts the next at the same moment: follow it to the real leave
+    let end = endOf(p.sessions[i], now);
+    for (let j = i + 1; j < p.sessions.length && p.sessions[j].s - end <= MOVE_GAP; j++) end = Math.max(end, endOf(p.sessions[j], now));
+    days++;
+    weight += w;
+    if (end <= t + LEAVE_WINDOW) {
+      hitWeight += w;
+      hits++;
+    }
+  }
+  return { chance: weight ? hitWeight / weight : 0, hits, days };
 }

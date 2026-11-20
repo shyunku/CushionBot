@@ -250,7 +250,8 @@ export default function Timeline({ people, hidden, range, now: baseNow, clockOff
     | { kind: "pinch"; d0: number; at: number; r0: [number, number] }
     | null
   >(null);
-  const plotX = (clientX: number) => clientX - box.current!.getBoundingClientRect().left - NC - 12;
+  // pointer x in the same coordinates as X() (inside the timeline's border)
+  const plotX = (clientX: number) => clientX - box.current!.getBoundingClientRect().left - box.current!.clientLeft - NC - 12;
   const onTouchStart = (e: React.TouchEvent) => {
     stopAnim();
     const [ra, rb] = rangeRef.current;
@@ -331,8 +332,8 @@ export default function Timeline({ people, hidden, range, now: baseNow, clockOff
         ))}
       </div>
       <div className="axis namehead" style={{ width: NC }}>
-        <span style={{ left: 34 }}>사람</span>
-        <span style={{ left: "auto", right: 10, transform: "none" }}>기간 내 접속</span>
+        <span style={{ left: 12 }}>사람</span>
+        <span style={{ left: "auto", right: 10 }}>기간 내 접속</span>
       </div>
       {tk.map((k) => (
         <div key={`g${k.t}`} className="gridline" style={{ left: X(k.t) }} />
@@ -372,7 +373,7 @@ export default function Timeline({ people, hidden, range, now: baseNow, clockOff
                 // a merged run shows the session under the pointer
                 const pick = (clientX: number) => {
                   if (run.members.length === 1) return run.members[0];
-                  const t = a + ((clientX - box.current!.getBoundingClientRect().left - NC - 12) / bw) * (b - a);
+                  const t = a + (plotX(clientX) / bw) * (b - a);
                   let best = run.members[0];
                   let bestDist = Infinity;
                   for (const m of run.members) {

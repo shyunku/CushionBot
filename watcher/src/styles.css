@@ -38,7 +38,8 @@ button { font: inherit; color: inherit; }
 
 .app { display: flex; height: 100%; overflow: hidden; }
 .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-.content { flex: 1; display: flex; flex-direction: column; padding: 18px 22px; min-height: 0; gap: 12px; position: relative; overflow-y: auto; }
+/* the gutter keeps the width steady when the scrollbar comes and goes (the grass height follows the width) */
+.content { flex: 1; display: flex; flex-direction: column; padding: 18px 22px; min-height: 0; gap: 12px; position: relative; overflow-y: auto; scrollbar-gutter: stable; }
 .fatal { margin: auto; color: var(--muted); padding: 40px; }
 .empty { color: var(--muted); padding: 24px; }
 
@@ -110,12 +111,14 @@ button { font: inherit; color: inherit; }
 .tlwrap { flex: 1; display: flex; min-height: 360px; gap: 12px; }
 .tl { flex: 1; position: relative; overflow: hidden; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; user-select: none; }
 .axis { position: absolute; left: 0; right: 0; top: 0; height: 30px; border-bottom: 1px solid var(--line); }
-.axis span { position: absolute; top: 8px; transform: translateX(-50%); font-size: 13px; color: var(--muted); white-space: nowrap; }
-.axis span.major { color: var(--accent); font-weight: 700; }
+/* labels sit in the vertical middle of the 30px header, the same as the name-column headings */
+.axis span { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; transform: translateX(-50%); font-size: 13px; color: var(--muted); white-space: nowrap; }
+.axis span.major { color: var(--accent); }
+.axis.namehead span { transform: none; }
 .axis.namehead { border-right: 1px solid var(--line); background: var(--panel); z-index: 4; }
 .gridline { position: absolute; top: 30px; bottom: 0; width: 1px; background: var(--grid); pointer-events: none; }
 .nowline { position: absolute; top: 22px; bottom: 0; width: 2px; background: var(--now); z-index: 3; pointer-events: none; }
-.nowtag { position: absolute; top: 4px; transform: translateX(-50%); background: var(--now); color: #fff; font-size: 13px; padding: 1px 6px; border-radius: 4px; z-index: 5; }
+.nowtag { position: absolute; top: 4px; transform: translateX(-50%); background: var(--now); color: #fff; font-size: 12px; padding: 1px 6px; border-radius: 4px; z-index: 5; }
 .rows { position: absolute; left: 0; right: 0; top: 30px; bottom: 0; overflow-y: auto; overflow-x: hidden; padding-top: 4px; }
 .row { position: relative; }
 .row.alt { background: rgba(127, 127, 127, 0.04); }
@@ -123,7 +126,7 @@ button { font: inherit; color: inherit; }
 .namecol img { width: 22px; height: 22px; border-radius: 11px; }
 .namecol .nm { color: var(--strong); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px; }
 .namecol:hover .nm { text-decoration: underline; }
-.namecol .sub { color: var(--muted); font-size: 13px; margin-left: auto; padding-right: 10px; white-space: nowrap; }
+.namecol .sub { color: var(--muted); font-size: 12px; margin-left: auto; padding-right: 10px; white-space: nowrap; }
 .namecol .on { width: 7px; height: 7px; border-radius: 4px; background: var(--accent); box-shadow: 0 0 6px var(--accent); flex: 0 0 auto; }
 .bar { position: absolute; }
 .tl.dragging, .tl.dragging .bar, .tl.dragging .namecol { cursor: grabbing; }
@@ -190,31 +193,29 @@ button { font: inherit; color: inherit; }
 .yax span { position: absolute; right: 3px; transform: translateY(50%); line-height: 1; }
 .dd { appearance: none; background: var(--panel2) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M1 1l4 4 4-4' stroke='%236b7686' fill='none' stroke-width='1.5'/></svg>") no-repeat right 7px center; border: 1px solid var(--line); color: var(--text); border-radius: 6px; padding: 3px 22px 3px 8px; font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
 .dd:hover { color: var(--strong); }
-/* stats: grass + chance list */
-.grassrow { display: flex; gap: 12px; align-items: stretch; flex: 0 0 auto; }
-.grasscard { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.grasscard .grassbox { flex: 1; display: flex; flex-direction: column; min-height: 0; }
-.chance { width: 600px; flex: 0 0 auto; display: flex; flex-direction: column; }
+/* stats: grass on its own row, enter/leave tables below sharing the width, at the height of ten rows */
+.grasscard { flex: 0 0 auto; }
+.chancerow { display: flex; flex-wrap: wrap; gap: 12px; flex: 0 0 auto; }
+/* side by side, each half the width; one per row when a half would be narrower than 360px */
+.chance { flex: 1 1 360px; min-width: 0; height: 358px; overflow: hidden; display: flex; flex-direction: column; }
 .chance .cr { display: flex; align-items: center; gap: 8px; padding: 4px 2px; border-radius: 6px; }
 .chance .cr:hover { background: var(--panel2); }
 .chance .no { width: 16px; text-align: center; color: var(--muted); font-weight: 800; }
 .chance img { width: 22px; height: 22px; border-radius: 11px; }
 .chance .nm { color: var(--strong); font-weight: 600; width: 85px; flex: 0 0 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.chance .nm.on { color: var(--accent); }
 .chance .bar2 { flex: 1; height: 6px; background: var(--panel2); overflow: hidden; min-width: 30px; }
 .chance .bar2 i { display: block; height: 100%; background: var(--accent2); }
 .chance .val { width: 42px; text-align: right; color: var(--strong); }
-.chance-legend { margin-top: auto; padding-top: 8px; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
-.chance-legend i { width: 8px; height: 8px; border-radius: 4px; background: var(--accent); display: inline-block; }
+.chance .note { margin-top: 0; }
 .fguide { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--strong); opacity: 0.6; pointer-events: none; }
 .fnow { position: absolute; top: -2px; transform: translateX(-50%); background: var(--now); color: #fff; font-size: 13px; padding: 1px 6px; border-radius: 4px; pointer-events: none; white-space: nowrap; }
 .ctip { position: absolute; z-index: 30; pointer-events: none; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; font-size: 13px; color: var(--text); white-space: nowrap; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); }
 .ctip b { color: var(--strong); font-size: 14px; }
 
 /* year grass */
-.gmonths { position: relative; height: 16px; margin-left: 26px; font-size: 12px; color: var(--muted); }
+.gmonths { position: relative; height: 16px; margin: 0 0 6px 26px; font-size: 12px; color: var(--muted); }
 .gmonths span { position: absolute; white-space: nowrap; }
-.grasswrap { flex: 1; display: grid; grid-template-columns: 22px 1fr; gap: 4px; min-height: 120px; font-size: 12px; color: var(--muted); }
+.grasswrap { display: grid; grid-template-columns: 22px 1fr; gap: 4px; font-size: 11px; color: var(--muted); }
 .grasswrap .wd { position: relative; }
 .grasswrap .wd span { position: absolute; left: 0; transform: translateY(-50%); line-height: 1; }
 .garea { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
@@ -293,8 +294,8 @@ button { font: inherit; color: inherit; }
   .uhead .nm { font-size: 19px; flex-wrap: wrap; }
   .uhead > img { width: 44px; height: 44px; }
   .hlabels span { white-space: nowrap; }
-  .grassrow { flex-direction: column; }
-  .chance { width: auto; }
+  .chancerow { flex-direction: column; }
+  .chance { flex: 0 0 auto; height: auto; }
   /* weekday labels would be taller than the tiny grass cells on phones */
   .grasswrap { grid-template-columns: 1fr; }
   .grasswrap .wd { display: none; }

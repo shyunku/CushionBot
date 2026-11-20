@@ -27,10 +27,12 @@ export function sod(t: number) {
   return Math.floor((t + KST_OFFSET) / D) * D - KST_OFFSET;
 }
 
+/** "N초" / "N분" / "N시간 M분", and "N일 M시간" from 24 hours on. */
 export function fmtDur(ms: number) {
   const m = Math.round(ms / MIN);
   if (m < 1) return `${Math.max(0, Math.round(ms / 1000))}초`;
   const h = Math.floor(m / 60);
+  if (h >= 24) return `${Math.floor(h / 24)}일 ${h % 24}시간`;
   return h ? `${h}시간 ${m % 60}분` : `${m}분`;
 }
 

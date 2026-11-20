@@ -167,18 +167,21 @@ export type GrassDay = { day: number; total: number; people: number };
 const GAP = 3;
 /** Room a month label ("12월") needs before the next one starts. */
 const MONTH_LABEL_PX = 34;
+/** Lowest grid height, so weekday rows stay readable when the cells get narrow. */
+const GRASS_MIN_H = 120;
 
 /** GitHub-style daily grid (columns are weeks, rows Sunday..Saturday). */
 export function Grass({ days }: { days: GrassDay[] }) {
   const { box, tip, show, hide, width } = useChartTip();
-  // the grid fills its box: the height comes from the card (matched to the table beside it) and the
-  // cells stretch horizontally with the width
+  // the cells are square: the width sets the cell size and the grid height follows (at least
+  // GRASS_MIN_H, so narrow screens keep readable rows)
   const area = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState({ w: 0, h: 0 });
+  const [size, setSize] = useState({ w: 0 });
   useLayoutEffect(() => {
     const el = area.current;
     if (!el) return;
-    const update = () => setSize({ w: el.clientWidth, h: el.clientHeight });
+    // only the width matters (the height is derived from it)
+    const update = () => setSize((s) => (s.w === el.clientWidth ? s : { w: el.clientWidth }));
     const ro = new ResizeObserver(update);
     ro.observe(el);
     update();
@@ -189,7 +192,8 @@ export function Grass({ days }: { days: GrassDay[] }) {
   const lead = kst(days[0].day).weekday;
   const weeks = Math.ceil((lead + days.length) / 7);
   const cw = Math.max(1, (size.w - GAP * (weeks - 1)) / weeks);
-  const ch = Math.max(1, (size.h - GAP * 6) / 7);
+  const gridH = Math.max(GRASS_MIN_H, cw * 7 + GAP * 6);
+  const ch = (gridH - GAP * 6) / 7;
   const colX = (c: number) => c * (cw + GAP);
   const rowY = (r: number) => r * (ch + GAP);
   // month labels at the first column of each month, skipping any that would overlap the previous one
@@ -219,18 +223,16 @@ export function Grass({ days }: { days: GrassDay[] }) {
       </div>
       <div className="grasswrap">
         <div className="wd">
-          {size.h > 0 &&
-            DAYS.map((x, i) =>
-              i % 2 ? (
-                <span key={x} style={{ top: rowY(i) + ch / 2 }}>
-                  {x}
-                </span>
-              ) : null,
-            )}
+          {size.w > 0 &&
+            DAYS.map((x, i) => (
+              <span key={x} style={{ top: rowY(i) + ch / 2 }}>
+                {x}
+              </span>
+            ))}
         </div>
-        <div className="garea" ref={area}>
+        <div className="garea" ref={area} style={size.w > 0 ? { height: gridH } : undefined}>
           {size.w > 0 && (
-            <svg className="grass" width={size.w} height={size.h}>
+            <svg className="grass" width={size.w} height={gridH}>
               {days.map((x, i) => {
                 const d = kst(x.day);
                 const k = lead + i;

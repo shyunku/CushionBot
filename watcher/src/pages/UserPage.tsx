@@ -74,7 +74,7 @@ export default function UserPage() {
           <div className="k">지금 들어올 확률</div>
           <div className="v">{Math.round(chance.chance * 100)}%</div>
           <div className="k small">
-            {DAYS[today]}요일 · 최근 30일 · {chance.days}번 중 {chance.hits}번
+            {DAYS[today]}요일 · {chance.days}번 중 {chance.hits}번
           </div>
         </div>
         <div className="stat">
@@ -149,7 +149,7 @@ export default function UserPage() {
               .reverse()
               .slice(0, 14)
               .map((s) => (
-                <div key={s.s}>
+                <div key={s.id}>
                   <i style={{ background: solidColor(s.ch) }} />
                   <span className="t">{fmtFull(s.s)}</span>
                   {chName(s.ch)}

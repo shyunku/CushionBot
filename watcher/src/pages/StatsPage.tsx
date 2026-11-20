@@ -3,7 +3,8 @@ import { Link } from "react-router-dom";
 import { useGuild } from "../context";
 import Header from "../components/Header";
 import { DAYS, DEFAULT_FREQ_FILTER, FreqCurve, FreqFilters, Grass, Heatmap, countAxis } from "../components/Charts";
-import { chanceNow, heatFor, isOnline, serverStats, slotsFor } from "../stats";
+import { chanceNow, heatFor, isOnline, leaveChance, serverStats, slotsFor } from "../stats";
+import type { Person } from "../types";
 import { MIN, fmtDur, fmtHM, kst, sod } from "../time";
 
 export default function StatsPage() {
@@ -20,16 +21,39 @@ export default function StatsPage() {
     const h = heatFor(data.people, filter.period, minute * MIN);
     return h.heat.map((row, d) => row.map((v, hour) => (h.cellDays[d][hour] ? v / h.cellDays[d][hour] : 0)));
   }, [data.people, filter.period, minute]);
-  // people most likely to be on around now (same weekday, last 30 days); people already on stay in, in green
-  const chances = useMemo(
+  // who is likely to come in (people not on now) and to leave soon (people on now)
+  const enter = useMemo(
     () =>
       data.people
+        .filter((p) => !isOnline(p))
         .map((p) => ({ p, ...chanceNow(p, minute * MIN) }))
         .filter((x) => x.chance > 0)
         .sort((a, b) => b.chance - a.chance)
         .slice(0, 10),
     [data.people, minute],
   );
+  const leave = useMemo(
+    () =>
+      data.people
+        .filter(isOnline)
+        .map((p) => ({ p, ...leaveChance(p, minute * MIN) }))
+        .filter((x) => x.days > 0)
+        .sort((a, b) => b.chance - a.chance)
+        .slice(0, 10),
+    [data.people, minute],
+  );
+  const chanceRows = (rows: { p: Person; chance: number }[]) =>
+    rows.map((x, i) => (
+      <Link key={x.p.id} className="cr" to={`${base}/users/${x.p.id}`}>
+        <span className="no">{i + 1}</span>
+        <img src={x.p.avatar} alt="" />
+        <span className="nm">{x.p.name}</span>
+        <span className="bar2">
+          <i style={{ width: `${x.chance * 100}%` }} />
+        </span>
+        <span className="val">{Math.round(x.chance * 100)}%</span>
+      </Link>
+    ));
 
   return (
     <>
@@ -60,33 +84,26 @@ export default function StatsPage() {
         <FreqCurve slots={freq.values} now={now} height={200} axis={countAxis(Math.max(...freq.values))} format={(v) => `평균 ${v.toFixed(1)}명`} />
         <Heatmap heat={heat} cellHeight={22} now={now} format={(_, __, v) => `평균 ${v.toFixed(1)}명`} />
       </div>
-      <div className="grassrow">
-        <div className="card grasscard">
+      <div className="card grasscard">
+        <h5>
+          날짜별 잔디 <span>최근 1년 · 진할수록 그날 총 접속 시간이 김</span>
+        </h5>
+        <Grass days={st.grass} />
+      </div>
+      <div className="chancerow">
+        <div className="card chance">
           <h5>
-            날짜별 잔디 <span>최근 1년 · 진할수록 그날 총 접속 시간이 김</span>
+            지금 들어올 확률 <span>{DAYS[today]}요일</span>
           </h5>
-          <Grass days={st.grass} />
+          {chanceRows(enter)}
+          {enter.length === 0 && <div className="note">이 시간대에 들어올 만한 사람이 없음</div>}
         </div>
         <div className="card chance">
           <h5>
-            지금 들어올 확률 <span>{DAYS[today]}요일 · 최근 30일</span>
+            지금 나갈 확률 <span>30분 안 · 접속 중인 사람</span>
           </h5>
-          {chances.map((x, i) => (
-            <Link key={x.p.id} className="cr" to={`${base}/users/${x.p.id}`}>
-              <span className="no">{i + 1}</span>
-              <img src={x.p.avatar} alt="" />
-              <span className={`nm ${isOnline(x.p) ? "on" : ""}`}>{x.p.name}</span>
-              <span className="bar2">
-                <i style={{ width: `${x.chance * 100}%` }} />
-              </span>
-              <span className="val">{Math.round(x.chance * 100)}%</span>
-            </Link>
-          ))}
-          {chances.length === 0 && <div className="note">이 시간대에 들어올 만한 사람이 없음</div>}
-          <div className="chance-legend">
-            <i />
-            초록 이름은 지금 접속 중
-          </div>
+          {chanceRows(leave)}
+          {leave.length === 0 && <div className="note">지금 접속 중인 사람이 없거나 기록이 부족함</div>}
         </div>
       </div>
     </>
