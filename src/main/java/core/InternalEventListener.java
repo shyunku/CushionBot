@@ -81,6 +81,8 @@ public class InternalEventListener extends ListenerAdapter {
             jda.addEventListener(new ButtonInteractionListener());
             jda.addEventListener(new SlashCommandInteractionListener());
         }
+        // emojis for the team.gg lane panel (uploads the missing ones)
+        service.teamgg.LaneEmojis.load(jda);
 
         for (Guild g : guilds) {
             try {
@@ -145,12 +147,7 @@ public class InternalEventListener extends ListenerAdapter {
                         .addOption(OptionType.STRING, "구인코드", "광고할 구인의 코드를 입력하세요.", true),
 
                 Commands.slash("팀지지등록", "team.gg에 현재 디스코드 계정을 연동합니다. (계정마다 최초 한번만 하면 되고, 닉네임이 변경되어도 추적됩니다.)"),
-                Commands.slash("팀지지라인선호도", "team.gg에 등록된 소환사의 라인 선호도를 설정합니다. -1에서 2 사이의 수로 입력해주세요. (-1은 가기 싫은 라인, 2는 자신있는/좋아하는 라인)")
-                        .addOption(OptionType.INTEGER, "탑", "탑 라인 선호도를 입력하세요. (-1,0,1,2)", true)
-                        .addOption(OptionType.INTEGER, "정글", "정글 라인 선호도를 입력하세요. (-1,0,1,2)", true)
-                        .addOption(OptionType.INTEGER, "미드", "미드 라인 선호도를 입력하세요. (-1,0,1,2)", true)
-                        .addOption(OptionType.INTEGER, "원딜", "원딜 라인 선호도를 입력하세요. (-1,0,1,2)", true)
-                        .addOption(OptionType.INTEGER, "서폿", "서폿 라인 선호도를 입력하세요. (-1,0,1,2)", true)
+                Commands.slash("팀지지라인", "team.gg 라인 선호도와 숙련도를 확인하고 바꿉니다. (나만 보임)")
         ).queue();
 
         this.logger.info("Guild {} setup completed.", guild.getName());

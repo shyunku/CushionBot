@@ -3,7 +3,6 @@ package core.command;
 import Utilities.*;
 import core.Service;
 import core.Version;
-import dtos.teamgg.SetSummonerLineFavorRequestDto;
 import exceptions.InvalidLolStartTimeException;
 import exceptions.PermissionInsufficientException;
 import net.dv8tion.jda.api.EmbedBuilder;
@@ -796,8 +795,7 @@ public class SlashCommandParser {
     /** The link lives 10 minutes; poll a little longer than that. */
     private static final int TEAMGG_POLL_LIMIT = 11 * 60 / TEAMGG_POLL_SECONDS;
 
-    /** team.gg's API host (teamgg.kr itself serves the web app and answers every path with HTML). */
-    private static final String TEAMGG_API = "https://api.teamgg.kr";
+    private static final String TEAMGG_API = service.teamgg.TeamggApi.BASE;
 
     private void pollTeamggLink(SlashCommandInteractionEvent e, String flowId, int attempt) {
         if (attempt >= TEAMGG_POLL_LIMIT) return;
@@ -836,91 +834,6 @@ public class SlashCommandParser {
             if (status == 404) return "team.gg 연동 서버가 아직 준비되지 않았습니다. 잠시 후 다시 시도해주세요.";
         }
         return "team.gg 서버에 연결하지 못했습니다. 잠시 후 다시 시도해주세요.";
-    }
-
-    public void teamggLineFavor(SlashCommandInteractionEvent e) {
-        try {
-            Guild guild = e.getGuild();
-            if (guild == null) {
-                this.sendVolatileReply(e, "이 명령어는 guild 내에서만 사용 가능합니다.", 5);
-                return;
-            }
-            String guildId = guild.getId();
-            User user = e.getUser();
-            Member member = e.getMember();
-            if (member == null) {
-                this.sendVolatileReply(e, "멤버를 식별할 수 없습니다.", 5);
-                return;
-            }
-
-            OptionMapping topFavorInput = e.getOption("탑");
-            OptionMapping jungleFavorInput = e.getOption("정글");
-            OptionMapping midFavorInput = e.getOption("미드");
-            OptionMapping adcFavorInput = e.getOption("원딜");
-            OptionMapping supportFavorInput = e.getOption("서폿");
-
-            if (topFavorInput == null || jungleFavorInput == null || midFavorInput == null || adcFavorInput == null || supportFavorInput == null) {
-                this.sendVolatileEphemeralReply(e, "누락된 선호도가 있습니다.", 5);
-                return;
-            }
-
-            int topFavor = topFavorInput.getAsInt();
-            int jungleFavor = jungleFavorInput.getAsInt();
-            int midFavor = midFavorInput.getAsInt();
-            int adcFavor = adcFavorInput.getAsInt();
-            int supportFavor = supportFavorInput.getAsInt();
-
-            ArrayList<Integer> favorIntList = new ArrayList<>();
-            favorIntList.add(topFavor);
-            favorIntList.add(jungleFavor);
-            favorIntList.add(midFavor);
-            favorIntList.add(adcFavor);
-            favorIntList.add(supportFavor);
-
-            for (int favor : favorIntList) {
-                if (favor < -1 || favor > 2) {
-                    this.sendVolatileEphemeralReply(e, "선호도는 -1, 0, 1, 2 중 하나로 입력해주세요.", 5);
-                    return;
-                }
-            }
-            if (favorIntList.size() != 5) {
-                this.sendVolatileEphemeralReply(e, "선호도가 올바른 배열의 형태가 아닙니다. (탑, 정글, 미드, 원딜, 서폿 순)", 5);
-                return;
-            }
-
-            int[] favorArray = new int[5];
-            for (int i = 0; i < 5; i++) {
-                favorArray[i] = favorIntList.get(i);
-            }
-
-            e.deferReply().queue();
-            java.util.concurrent.CompletableFuture.runAsync(() -> {
-                // check the Riot account link first, then save
-                try {
-                    ArrayList<?> results = Request.get(String.format(TEAMGG_API + "/v1/api/discordIntegrations?token=%s", user.getId()), ArrayList.class, TokenManager.TEAMGG_BOT_API_KEY);
-                    if (results == null || results.isEmpty()) {
-                        e.getHook().sendMessage("라이엇 계정이 연동되지 않았습니다. 먼저 /팀지지등록 명령어로 등록해주세요.").setEphemeral(true).queue();
-                        return;
-                    }
-                } catch (Exception err) {
-                    logger.error("team.gg link check failed", err);
-                    e.getHook().sendMessage("등록 실패: " + teamggErrorMessage(err)).setEphemeral(true).queue();
-                    return;
-                }
-                try {
-                    SetSummonerLineFavorRequestDto requestDto = new SetSummonerLineFavorRequestDto(user.getId(), favorArray);
-                    Request.post(TEAMGG_API + "/v1/api/summonerLineFavor", requestDto, String.class, TokenManager.TEAMGG_BOT_API_KEY);
-                    e.getHook().sendMessage(String.format("%s님의 라인 선호도가 탑(%d) 정글(%d) 미드(%d) 원딜(%d) 서폿(%d)로 설정되었습니다.",
-                            member.getAsMention(), favorArray[0], favorArray[1], favorArray[2], favorArray[3], favorArray[4]
-                    )).queue();
-                } catch (Exception err) {
-                    logger.error("team.gg line favor failed", err);
-                    e.getHook().sendMessage("선호도 등록 실패: 서버 오류가 발생했습니다.").setEphemeral(true).queue();
-                }
-            });
-        } catch (Exception err) {
-            this.handleError(e, err);
-        }
     }
 
     private void setRecruitChannel(TextChannel textChannel) {

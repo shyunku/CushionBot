@@ -12,14 +12,25 @@ import service.music.Core.MusicBox;
 import service.music.Core.MusicStreamer;
 import service.music.Core.TrackScheduler;
 import service.music.object.MusicPlayMode;
+import service.teamgg.LanePanel;
 
 public class ButtonInteractionListener extends ListenerAdapter {
     private static final Logger logger = org.slf4j.LoggerFactory.getLogger(ButtonInteractionListener.class);
 
     @Override
     public void onButtonInteraction(ButtonInteractionEvent e) {
-        Guild guild = e.getGuild();
         String componentId = e.getComponentId();
+        // the team.gg lane panel is personal and does not need the guild's music/LoL setup
+        if (componentId.startsWith(LanePanel.PREFIX)) {
+            try {
+                LanePanel.onButton(e);
+            } catch (Exception exception) {
+                logger.error("team.gg lane button {} failed", componentId, exception);
+                if (!e.isAcknowledged()) e.reply("처리 중 오류가 발생했습니다.").setEphemeral(true).queue();
+            }
+            return;
+        }
+        Guild guild = e.getGuild();
         if (guild == null || !Service.guildManagers.containsKey(guild.getId())) {
             logger.warn("Button {} pressed where no guild manager is set.", componentId);
             e.reply("이 서버에서는 아직 사용할 수 없습니다.").setEphemeral(true).queue();
