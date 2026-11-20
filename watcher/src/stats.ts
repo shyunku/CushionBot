@@ -344,38 +344,48 @@ export function chanceNow(p: Person, now: number) {
 
 /** Bin size for the most likely join time. */
 const JOIN_BIN = 30 * MIN;
+/** "Today" for todayChance runs from 09:00 to 09:00 the next day, so late nights count as the evening before. */
+const DAY_START = 9 * H;
 
 /**
- * Chance that a person comes in at some point today: over the same days as chanceNow, the weighted share
- * of days with a session that started that day. `joinTime` is the most likely time of day of the first
- * join (the busiest 30-minute bin by weight, then the median within it, rounded to 10 minutes), or null.
- * `joinedToday` is true when the person has been on today already.
+ * Chance that a person comes in at some point "today" (09:00 to 09:00 the next day): over the same weekday
+ * in the last three months (this day excluded, the last 30 days counted twice), the weighted share of days
+ * with a session that started in that window. `joinTime` is the most likely clock time of the first join
+ * (the busiest 30-minute bin by weight, then the median within it, rounded to 10 minutes), or null.
+ * `joinedToday` is true when the person has been on since this day's 09:00. `weekday` is this day's weekday.
  */
 export function todayChance(p: Person, now: number) {
-  const bins = new Array<number>(24 * 60 * MIN / JOIN_BIN).fill(0);
-  const firsts: { tod: number; weight: number }[] = [];
+  const start = sod(now - DAY_START) + DAY_START;
+  const weekday = kst(start).weekday;
+  const bins = new Array<number>(D / JOIN_BIN).fill(0);
+  const firsts: number[] = [];
   let weight = 0;
   let hitWeight = 0;
   let hits = 0;
-  const days = chanceDays(now);
-  for (const { day, weight: w } of days) {
+  let days = 0;
+  for (let i = 1; i <= CHANCE_DAYS; i++) {
+    const from = start - i * D;
+    if (kst(from).weekday !== weekday) continue;
+    const w = i <= CHANCE_RECENT_DAYS ? 2 : 1;
+    days++;
     weight += w;
-    const first = p.sessions.find((s) => s.s >= day && s.s < day + D);
+    const first = p.sessions.find((s) => s.s >= from && s.s < from + D);
     if (!first) continue;
     hitWeight += w;
     hits++;
-    const tod = first.s - day;
-    bins[Math.floor(tod / JOIN_BIN)] += w;
-    firsts.push({ tod, weight: w });
+    const offset = first.s - from;
+    bins[Math.floor(offset / JOIN_BIN)] += w;
+    firsts.push(offset);
   }
   let joinTime: number | null = null;
   if (firsts.length) {
     const best = bins.indexOf(Math.max(...bins));
-    const inBin = firsts.filter((x) => Math.floor(x.tod / JOIN_BIN) === best).sort((x, y) => x.tod - y.tod);
-    joinTime = (Math.round(inBin[Math.floor((inBin.length - 1) / 2)].tod / (10 * MIN)) * 10 * MIN) % D;
+    const inBin = firsts.filter((x) => Math.floor(x / JOIN_BIN) === best).sort((x, y) => x - y);
+    const offset = Math.round(inBin[Math.floor((inBin.length - 1) / 2)] / (10 * MIN)) * 10 * MIN;
+    joinTime = (DAY_START + offset) % D;
   }
-  const joinedToday = p.sessions.some((s) => endOf(s, now) > sod(now));
-  return { chance: weight ? hitWeight / weight : 0, hits, days: days.length, joinTime, joinedToday };
+  const joinedToday = p.sessions.some((s) => endOf(s, now) > start);
+  return { chance: weight ? hitWeight / weight : 0, hits, days, joinTime, joinedToday, weekday };
 }
 
 /**

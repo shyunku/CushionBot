@@ -79,7 +79,7 @@ export default function UserPage() {
           <div className="k small">
             {chance.joinedToday
               ? `평소 ${Math.round(chance.chance * 100)}%${chance.joinTime != null ? ` · ${fmtTod(chance.joinTime)}쯤 입장` : ""}`
-              : `${DAYS[today]}요일 · ${chance.days}번 중 ${chance.hits}번`}
+              : `${DAYS[chance.weekday]}요일 · ${chance.days}번 중 ${chance.hits}번`}
           </div>
         </div>
         <div className="stat">
