@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# CushionBot status and logs.
+# CushionBot status, logs and service control.
 #
 #   cushion ps                 service, version, memory, Lavalink, dashboard
 #   cushion logs [options]     bot logs (systemd journal of cushionbot.service)
@@ -8,6 +8,9 @@
 #     -s, --since TIME         from TIME, e.g. "10 min ago", "today", "2026-11-20 15:00" (server time, UTC)
 #     -e, --errors             only lines with ERROR / WARN / Exception
 #     -g, --grep PATTERN       only lines matching PATTERN (case-insensitive, extended regex)
+#   cushion start|stop|restart start, stop or restart the bot (Lavalink follows it), then show ps
+#   cushion build [-p]         build the dashboard and the bot and restart (fastbuild.sh);
+#     -p, --pull               git pull --ff-only first (= deploy what is pushed)
 #
 # On the server it runs directly. Anywhere else it runs itself on the server over ssh
 # (host from $CUSHION_HOST, default shyunku-main-2026).
@@ -17,7 +20,7 @@ APP_DIR="$HOME/workspace/CushionBot"
 UNIT="cushionbot.service"
 HOST="${CUSHION_HOST:-shyunku-main-2026}"
 
-usage() { sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; }
 
 # not on the server: forward the whole command line
 if [ ! -f "$APP_DIR/fastbuild.sh" ] || ! command -v systemctl >/dev/null 2>&1; then
@@ -96,8 +99,38 @@ cmd_logs() {
   fi
 }
 
+cmd_service() {
+  local action="$1"
+  echo "$action cushionbot..."
+  systemctl --user "$action" "$UNIT"
+  if [ "$action" != "stop" ]; then
+    # give it a moment so ps shows the new process (Discord and Lavalink take longer to be ready)
+    sleep 3
+  fi
+  cmd_ps
+}
+
+cmd_build() {
+  local pull=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      -p|--pull) pull=1 ;;
+      -h|--help) usage; return ;;
+      *) echo "unknown option: $1" >&2; usage >&2; return 2 ;;
+    esac
+    shift
+  done
+  cd "$APP_DIR"
+  if [ -n "$pull" ]; then git pull --ff-only; fi
+  sh fastbuild.sh
+  sleep 3
+  cmd_ps
+}
+
 case "${1:-}" in
   ps|status) shift; cmd_ps "$@" ;;
+  start|stop|restart) cmd_service "$1" ;;
+  build) shift; cmd_build "$@" ;;
   logs|log) shift; cmd_logs "$@" ;;
   ""|-h|--help|help) usage ;;
   *) echo "unknown command: $1" >&2; usage >&2; exit 2 ;;
