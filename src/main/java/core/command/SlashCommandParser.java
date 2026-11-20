@@ -763,6 +763,9 @@ public class SlashCommandParser {
         }
         String userId = e.getUser().getId();
         e.deferReply(true).queue();
+        // only the first follow-up inherits the deferred reply's ephemeral flag; keep the later ones
+        // (link result, errors) visible to the requester only too
+        e.getHook().setEphemeral(true);
         java.util.concurrent.CompletableFuture.runAsync(() -> {
             Map<?, ?> flow;
             try {
