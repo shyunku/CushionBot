@@ -16,6 +16,16 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
 public class Request {
+    /** A non-2xx response; {@link #status} tells callers apart (e.g. 401 vs 404). */
+    public static class HttpStatusException extends IOException {
+        public final int status;
+
+        public HttpStatusException(int status) {
+            super("Request failed with status code: " + status);
+            this.status = status;
+        }
+    }
+
     private static final Logger logger = LoggerFactory.getLogger(Request.class);
     /** Shared client; every request has a deadline so a silent server cannot hang the caller. */
     private static final HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
@@ -23,17 +33,23 @@ public class Request {
     private static final ObjectMapper mapper = new ObjectMapper();
 
     public static <ResType> ResType get(String rawUrl, Class<ResType> responseType) throws IOException, URISyntaxException, InterruptedException {
+        return get(rawUrl, responseType, null);
+    }
+
+    /** GET with an optional "Authorization: Bearer" token (null = no header). */
+    public static <ResType> ResType get(String rawUrl, Class<ResType> responseType, String bearer) throws IOException, URISyntaxException, InterruptedException {
         String url = encodeURIComponent(rawUrl);
         logger.info("[GET] {}", url);
-        HttpRequest request = HttpRequest.newBuilder()
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
                 .uri(new URI(url))
                 .timeout(REQUEST_TIMEOUT)
-                .GET()
-                .build();
+                .GET();
+        if (bearer != null) builder.header("Authorization", "Bearer " + bearer);
+        HttpRequest request = builder.build();
 
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
         if (response.statusCode() / 100 != 2) {
-            throw new IOException("Request failed with status code: " + response.statusCode());
+            throw new HttpStatusException(response.statusCode());
         }
         if (response.body() == null) {
             return null;
@@ -43,19 +59,25 @@ public class Request {
     }
 
     public static <ResType> ResType post(String rawUrl, Object reqBody, Class<ResType> responseType) throws IOException, URISyntaxException, InterruptedException {
+        return post(rawUrl, reqBody, responseType, null);
+    }
+
+    /** POST JSON with an optional "Authorization: Bearer" token (null = no header). */
+    public static <ResType> ResType post(String rawUrl, Object reqBody, Class<ResType> responseType, String bearer) throws IOException, URISyntaxException, InterruptedException {
         String url = encodeURIComponent(rawUrl);
         logger.info("[POST] {}", url);
         String json = mapper.writeValueAsString(reqBody);
-        HttpRequest request = HttpRequest.newBuilder()
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
                 .uri(new URI(url))
                 .timeout(REQUEST_TIMEOUT)
                 .POST(HttpRequest.BodyPublishers.ofString(json, StandardCharsets.UTF_8)) // POST 요청과 본문 설정
-                .header("Content-Type", "application/json") // JSON 타입 설정
-                .build();
+                .header("Content-Type", "application/json"); // JSON 타입 설정
+        if (bearer != null) builder.header("Authorization", "Bearer " + bearer);
+        HttpRequest request = builder.build();
 
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
         if (response.statusCode() / 100 != 2) {
-            throw new IOException("Request failed with status code: " + response.statusCode());
+            throw new HttpStatusException(response.statusCode());
         }
         if (response.body() == null) {
             return null;

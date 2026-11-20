@@ -41,6 +41,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class SlashCommandParser {
     private final Logger logger = LoggerFactory.getLogger(SlashCommandParser.class);
@@ -751,59 +752,77 @@ public class SlashCommandParser {
         }
     }
 
+    /**
+     * team.gg account link: team.gg issues a one-time Riot login link for this Discord user (valid 10 minutes),
+     * shown only to the requester; the result is polled and reported back in the same ephemeral thread.
+     */
     public void teamggRegister(SlashCommandInteractionEvent e) {
-        try {
-            Guild guild = e.getGuild();
-            if (guild == null) {
-                this.sendVolatileReply(e, "이 명령어는 guild 내에서만 사용 가능합니다.", 5);
-                return;
-            }
-            String guildId = guild.getId();
-            Member member = e.getMember();
-            if (member == null) {
-                this.sendVolatileReply(e, "멤버를 식별할 수 없습니다.", 5);
-                return;
-            }
-
-            User user = e.getUser();
-            String userId = user.getId();
-
-            String oauthUrl = String.format(
-                    "https://auth.riotgames.com/authorize?client_id=%s&redirect_uri=%s&response_type=code&scope=openid+offline_access&state=discord|%s",
-                    TokenManager.RSO_CLIENT_ID, TokenManager.RSO_REDIRECT_URI, userId);
-
-            e.reply(String.format("아래 URL을 통해 라이엇 계정을 인증하고 디스코드와 연동하세요.\n%s", oauthUrl)).setEphemeral(true).queue();
-
-//            String summonerName = "";
-//            String tag = "";
-//
-//            OptionMapping summonerNameInput = e.getOption("소환사명");
-//            if (summonerNameInput == null || summonerNameInput.getAsString().isEmpty()) {
-//                this.sendVolatileReply(e, "소환사명을 입력해주세요.", 5);
-//                return;
-//            } else {
-//                summonerName = summonerNameInput.getAsString().trim();
-//            }
-//
-//            OptionMapping tagInput = e.getOption("태그");
-//            if (tagInput == null || tagInput.getAsString().isEmpty()) {
-//                tag = "KR1";
-//            } else {
-//                tag = tagInput.getAsString().trim();
-//            }
-//
-//            try {
-//                String puuid = Request.get(String.format("https://teamgg.kr/v1/api/summonerPuuid?gameName=%s&tagLine=%s", summonerName, tag), String.class);
-//                RedisClient.set(GuildUtil.teamggSummonerKey(guildId, member.getId()), puuid);
-//                e.reply(String.format("%s님의 소환사가 \"%s#%s\"로 등록되었습니다.", member.getAsMention(), summonerName, tag)).queue();
-//            } catch (Exception err) {
-//                err.printStackTrace();
-//                e.reply("등록 실패: 서버 오류가 발생했습니다.").queue();
-//            }
-        } catch (Exception err) {
-            err.printStackTrace();
-            e.reply("등록 실패: 오류가 발생했습니다.").queue();
+        if (e.getGuild() == null) {
+            this.sendVolatileReply(e, "이 명령어는 guild 내에서만 사용 가능합니다.", 5);
+            return;
         }
+        String userId = e.getUser().getId();
+        e.deferReply(true).queue();
+        java.util.concurrent.CompletableFuture.runAsync(() -> {
+            Map<?, ?> flow;
+            try {
+                flow = Request.post("https://teamgg.kr/v1/auth/rso/discord/start", Map.of("discordId", userId), Map.class, TokenManager.TEAMGG_BOT_API_KEY);
+            } catch (Exception err) {
+                logger.error("team.gg link start failed", err);
+                e.getHook().sendMessage(teamggErrorMessage(err)).queue();
+                return;
+            }
+            Object url = flow == null ? null : flow.get("authorizeUrl");
+            Object flowId = flow == null ? null : flow.get("flowId");
+            if (url == null) {
+                e.getHook().sendMessage("연동 링크를 받지 못했습니다. 잠시 후 다시 시도해주세요.").queue();
+                return;
+            }
+            e.getHook().sendMessage(String.format("아래 링크로 라이엇 계정에 로그인하면 디스코드와 연동됩니다. (10분 동안 한 번만 사용 가능)\n%s", url)).queue();
+            if (flowId != null) pollTeamggLink(e, String.valueOf(flowId), 0);
+        });
+    }
+
+    private static final java.util.concurrent.ScheduledExecutorService teamggPoller =
+            java.util.concurrent.Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "teamgg-link-poll");
+                t.setDaemon(true);
+                return t;
+            });
+    private static final int TEAMGG_POLL_SECONDS = 5;
+    /** The link lives 10 minutes; poll a little longer than that. */
+    private static final int TEAMGG_POLL_LIMIT = 11 * 60 / TEAMGG_POLL_SECONDS;
+
+    private void pollTeamggLink(SlashCommandInteractionEvent e, String flowId, int attempt) {
+        if (attempt >= TEAMGG_POLL_LIMIT) return;
+        teamggPoller.schedule(() -> {
+            try {
+                Map<?, ?> status = Request.get("https://teamgg.kr/v1/auth/rso/status?flowId=" + flowId, Map.class);
+                String state = status == null ? "pending" : String.valueOf(status.get("status"));
+                if (state.equals("complete")) {
+                    Object name = status.get("riotDisplayName");
+                    e.getHook().sendMessage(String.format("연동 완료: %s 계정이 디스코드와 연동되었습니다.", name == null ? "라이엇" : name)).queue();
+                    return;
+                }
+                if (state.equals("error")) {
+                    Object message = status.get("error");
+                    e.getHook().sendMessage("연동 실패: " + (message == null ? "알 수 없는 오류" : message)).queue();
+                    return;
+                }
+            } catch (Exception err) {
+                logger.warn("team.gg link status check failed: {}", err.getMessage());
+            }
+            pollTeamggLink(e, flowId, attempt + 1);
+        }, TEAMGG_POLL_SECONDS, java.util.concurrent.TimeUnit.SECONDS);
+    }
+
+    private static String teamggErrorMessage(Exception err) {
+        if (err instanceof Request.HttpStatusException) {
+            int status = ((Request.HttpStatusException) err).status;
+            if (status == 401) return "team.gg 연동 키가 맞지 않습니다. 관리자에게 알려주세요.";
+            if (status == 404) return "team.gg 연동 서버가 아직 준비되지 않았습니다. 잠시 후 다시 시도해주세요.";
+        }
+        return "team.gg 서버에 연결하지 못했습니다. 잠시 후 다시 시도해주세요.";
     }
 
     public void teamggLineFavor(SlashCommandInteractionEvent e) {
@@ -865,19 +884,19 @@ public class SlashCommandParser {
             java.util.concurrent.CompletableFuture.runAsync(() -> {
                 // check the Riot account link first, then save
                 try {
-                    ArrayList<?> results = Request.get(String.format("https://teamgg.kr/v1/api/discordIntegrations?token=%s", user.getId()), ArrayList.class);
+                    ArrayList<?> results = Request.get(String.format("https://teamgg.kr/v1/api/discordIntegrations?token=%s", user.getId()), ArrayList.class, TokenManager.TEAMGG_BOT_API_KEY);
                     if (results == null || results.isEmpty()) {
                         e.getHook().sendMessage("라이엇 계정이 연동되지 않았습니다. 먼저 /팀지지등록 명령어로 등록해주세요.").setEphemeral(true).queue();
                         return;
                     }
                 } catch (Exception err) {
                     logger.error("team.gg link check failed", err);
-                    e.getHook().sendMessage("등록 실패: team.gg 서버에 연결하지 못했습니다.").setEphemeral(true).queue();
+                    e.getHook().sendMessage("등록 실패: " + teamggErrorMessage(err)).setEphemeral(true).queue();
                     return;
                 }
                 try {
                     SetSummonerLineFavorRequestDto requestDto = new SetSummonerLineFavorRequestDto(user.getId(), favorArray);
-                    Request.post("https://teamgg.kr/v1/api/summonerLineFavor", requestDto, String.class);
+                    Request.post("https://teamgg.kr/v1/api/summonerLineFavor", requestDto, String.class, TokenManager.TEAMGG_BOT_API_KEY);
                     e.getHook().sendMessage(String.format("%s님의 라인 선호도가 탑(%d) 정글(%d) 미드(%d) 원딜(%d) 서폿(%d)로 설정되었습니다.",
                             member.getAsMention(), favorArray[0], favorArray[1], favorArray[2], favorArray[3], favorArray[4]
                     )).queue();
