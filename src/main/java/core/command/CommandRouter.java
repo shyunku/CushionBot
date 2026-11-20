@@ -14,15 +14,10 @@ public class CommandRouter {
     public CommandRouter() {}
 
     public void parseCommand(MessageReceivedEvent e){
-        Guild guild = e.getGuild();
-        String guildId = guild.getId();
-
-        if(!Service.guildManagers.containsKey(guildId)) {
-            GuildManager newGuildManager = new GuildManager(guild);
-            Service.guildManagers.put(guildId, newGuildManager);
-        }
-
-        GuildManager guildManager = Service.guildManagers.get(guildId);
+        // DMs have no guild; only guilds set up at startup (or joined later) are handled here
+        if (!e.isFromGuild()) return;
+        GuildManager guildManager = Service.guildManagers.get(e.getGuild().getId());
+        if (guildManager == null) return;
         GuildCommandRouter guildCommandRouter = guildManager.getGuildCommandRouter();
         guildCommandRouter.route(e, guildManager);
     }

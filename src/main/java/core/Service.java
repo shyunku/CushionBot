@@ -3,61 +3,62 @@ package core;
 import exceptions.GuildManagerNotFoundException;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.events.Event;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import service.guild.core.GuildManager;
 import service.leagueoflegends.Core.LolBox;
 import service.music.Core.MusicBox;
 import service.recruit.RecruitManager;
 
-import java.util.HashMap;
-import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Service {
+    private static final Logger logger = LoggerFactory.getLogger(Service.class);
     // guild command router mapping <GuildId, GuildManager>
-    public static HashMap<String, GuildManager> guildManagers = new HashMap<>();
+    public static final Map<String, GuildManager> guildManagers = new ConcurrentHashMap<>();
 
     public static void addGuildManagerIfNotExists(Guild guild) {
-        String guildId = guild.getId();
-        if (!guildManagers.containsKey(guildId)) {
-            GuildManager newGuildManager = new GuildManager(guild);
-            guildManagers.put(guildId, newGuildManager);
-        }
+        guildManagers.computeIfAbsent(guild.getId(), id -> new GuildManager(guild));
+    }
+
+    /** The bot left the guild: stop its player and listeners and forget it. */
+    public static void removeGuildManager(String guildId) {
+        GuildManager guildManager = guildManagers.remove(guildId);
+        if (guildManager != null) guildManager.destroy();
     }
 
     public static GuildManager getGuildManager(String guildId) throws GuildManagerNotFoundException {
-        if (!guildManagers.containsKey(guildId)) throw new GuildManagerNotFoundException();
-        return guildManagers.get(guildId);
+        GuildManager guildManager = guildManagers.get(guildId);
+        if (guildManager == null) throw new GuildManagerNotFoundException();
+        return guildManager;
     }
 
     public static MusicBox GetMusicBoxByGuildId(String guildId) throws GuildManagerNotFoundException {
-        if (!guildManagers.containsKey(guildId)) throw new GuildManagerNotFoundException();
-        GuildManager guildManager = guildManagers.get(guildId);
-        return guildManager.getMusicBox();
+        return getGuildManager(guildId).getMusicBox();
     }
 
     public static LolBox GetLolBoxByGuildId(String guildId) throws GuildManagerNotFoundException {
-        if (!guildManagers.containsKey(guildId)) throw new GuildManagerNotFoundException();
-        GuildManager guildManager = guildManagers.get(guildId);
-        return guildManager.getLolBox();
+        return getGuildManager(guildId).getLolBox();
     }
 
     public static RecruitManager GetRecruitManagerByGuildId(String guildId) throws GuildManagerNotFoundException {
-        if (!guildManagers.containsKey(guildId)) throw new GuildManagerNotFoundException();
-        GuildManager guildManager = guildManagers.get(guildId);
-        return guildManager.getRecruitManager();
+        return getGuildManager(guildId).getRecruitManager();
     }
 
-    public static void finishMaintenance(Event e) {
-        // clear all music box and lol box embed
-        JDA jda = e.getJDA();
-        List<Guild> guilds = jda.getGuilds();
-        for (Guild guild : guilds) {
-            Service.addGuildManagerIfNotExists(guild);
+    /**
+     * Remove every music and LoL box (waiting for Discord to confirm each delete), then stop the process.
+     * The service manager starts it again in normal mode.
+     */
+    public static void finishMaintenance(JDA jda) {
+        for (Guild guild : jda.getGuilds()) {
+            GuildManager guildManager = guildManagers.get(guild.getId());
+            if (guildManager == null) continue;
             try {
-                GuildManager guildManager = Service.getGuildManager(guild.getId());
                 guildManager.getMusicBox().clearEmbed();
                 guildManager.getLolBox().clearEmbed();
-            } catch (GuildManagerNotFoundException ex) {
+            } catch (Exception ex) {
+                logger.warn("Could not clear boxes in {}: {}", guild.getName(), ex.getMessage());
             }
         }
         System.exit(0);

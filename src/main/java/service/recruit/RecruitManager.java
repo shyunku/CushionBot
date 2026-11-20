@@ -2,9 +2,9 @@ package service.recruit;
 
 import core.CushionBot;
 import exceptions.RecruitPublishException;
+import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
@@ -16,38 +16,43 @@ import org.slf4j.LoggerFactory;
 import service.guild.core.GuildUtil;
 import service.inmemory.RedisClient;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class RecruitManager extends ListenerAdapter {
     private static final Logger logger = LoggerFactory.getLogger(RecruitManager.class);
-    private final Guild guild;
-    private final Map<String, Map<String, Recruit>> recruits = new HashMap<>();
-    public TextChannel recruitChannel;
+    /** How far back to look for this bot's leftover recruit posts after a restart. */
+    private static final int CLEANUP_HISTORY = 200;
+    private static final Emoji CHECK = Emoji.fromUnicode("✅");
+
+    private final String guildId;
+    /** registerer user id -> recruit key -> recruit */
+    private final Map<String, Map<String, Recruit>> recruits = new ConcurrentHashMap<>();
+    public volatile TextChannel recruitChannel;
 
     public RecruitManager(Guild guild) {
-        this.guild = guild;
+        this.guildId = guild.getId();
 
         // get recruit channel from database
         String recruitChannelKey = GuildUtil.recruitChannelKey(guild.getId());
         if (RedisClient.has(recruitChannelKey)) {
             String channelId = RedisClient.get(recruitChannelKey);
-            TextChannel channel = guild.getTextChannelById(channelId);
-            if (channel != null) {
-                recruitChannel = channel;
+            recruitChannel = guild.getTextChannelById(channelId);
+            if (recruitChannel == null) {
+                logger.info("Recruit channel not found. Clearing recruit channel from database.");
+                RedisClient.del(recruitChannelKey);
             }
         }
 
-        if (recruitChannel != null && CushionBot.jda.getTextChannelById(recruitChannel.getId()) == null) {
-            recruitChannel = null;
-            logger.info("Recruit channel not found. Clearing recruit channel from database.");
-            RedisClient.del(recruitChannelKey);
-        }
-
         if (recruitChannel != null) {
-            // purge all recruit messages
-            recruitChannel.getIterableHistory().forEach(message -> {
-                message.delete().queue();
+            // recruits do not survive a restart: remove this bot's own leftover posts, never other messages
+            String selfId = guild.getSelfMember().getId();
+            recruitChannel.getIterableHistory().takeAsync(CLEANUP_HISTORY).thenAccept(messages -> messages.stream()
+                    .filter(message -> message.getAuthor().getId().equals(selfId))
+                    .forEach(message -> message.delete().queue(null, failure -> {
+                    }))).exceptionally(err -> {
+                logger.warn("Could not clean up recruit channel: {}", err.getMessage());
+                return null;
             });
         }
 
@@ -55,54 +60,38 @@ public class RecruitManager extends ListenerAdapter {
     }
 
     public void registerRecruit(Member registerer, Recruit recruit) throws RecruitPublishException {
-        if (recruits.containsKey(registerer.getId())) {
-            // update recruit
-            Map<String, Recruit> recruitMap = recruits.get(registerer.getId());
-            recruitMap.put(recruit.getKey(), recruit);
-        } else {
-            // create new recruit
-            Map<String, Recruit> newRecruitMap = new HashMap<>();
-            newRecruitMap.put(recruit.getKey(), recruit);
-            recruits.put(registerer.getId(), newRecruitMap);
-        }
+        TextChannel channel = recruitChannel;
+        boolean mentionEveryone = channel != null && registerer.hasPermission(channel, Permission.MESSAGE_MENTION_EVERYONE);
+        recruit.setOnDead(this::forget);
+        // only keep recruits that were actually posted
+        recruit.publish(channel, registerer, mentionEveryone);
+        recruits.computeIfAbsent(registerer.getId(), k -> new ConcurrentHashMap<>()).put(recruit.getKey(), recruit);
+    }
 
-        recruit.publish(recruitChannel, registerer);
-
-        // remove expired recruits
-        for (Map<String, Recruit> recruitMap : recruits.values()) {
-            for (Recruit r : recruitMap.values()) {
-                if (r.isDead) {
-                    recruitMap.remove(r.getKey());
-                    logger.info("Recruit removed");
-                }
-            }
+    private void forget(Recruit recruit) {
+        for (Map<String, Recruit> userRecruits : recruits.values()) {
+            userRecruits.remove(recruit.getKey(), recruit);
         }
+        recruits.values().removeIf(Map::isEmpty);
     }
 
     public boolean unregisterRecruit(Member registerer, String key) {
-        if (!recruits.containsKey(registerer.getId())) {
+        Map<String, Recruit> userRecruits = recruits.get(registerer.getId());
+        if (userRecruits == null || userRecruits.isEmpty()) {
             return false;
         }
 
-        Map<String, Recruit> userRecruits = recruits.get(registerer.getId());
         if (key == null) {
-            for (Recruit recruit : userRecruits.values()) {
+            for (Recruit recruit : userRecruits.values().toArray(new Recruit[0])) {
                 recruit.destroy();
             }
-            recruits.remove(registerer.getId());
         } else {
             Recruit recruit = userRecruits.get(key);
-            if (recruit != null) {
-                recruit.destroy();
-                userRecruits.remove(key);
-            } else {
+            if (recruit == null) {
                 logger.warn("Recruit not found for key: {}", key);
                 return false;
             }
-
-            if (userRecruits.isEmpty()) {
-                recruits.remove(registerer.getId());
-            }
+            recruit.destroy();
         }
         return true;
     }
@@ -110,7 +99,7 @@ public class RecruitManager extends ListenerAdapter {
     public Recruit getRecruit(String key) {
         for (Map<String, Recruit> recruitMap : recruits.values()) {
             Recruit recruit = recruitMap.get(key);
-            if (recruit != null) {
+            if (recruit != null && !recruit.isDead) {
                 return recruit;
             }
         }
@@ -118,80 +107,67 @@ public class RecruitManager extends ListenerAdapter {
     }
 
     public boolean changeRecruitTime(Member registerer, String key, long newRecruitAt) {
-        if (!recruits.containsKey(registerer.getId())) {
-            return false;
-        }
-
-        Map<String, Recruit> userRecruits = recruits.get(registerer.getId());
-        Recruit recruit = userRecruits.get(key);
-        if (recruit != null) {
-            recruit.setRecruitAt(newRecruitAt);
-            return true;
-        } else {
-            logger.warn("Recruit not found for key: {}", key);
-            return false;
-        }
+        Recruit recruit = ownRecruit(registerer, key);
+        if (recruit == null) return false;
+        recruit.setRecruitAt(newRecruitAt);
+        return true;
     }
 
     public boolean changeRecruitNum(Member registerer, String key, int newRecruitNum) {
-        if (!recruits.containsKey(registerer.getId())) {
-            return false;
-        }
+        Recruit recruit = ownRecruit(registerer, key);
+        if (recruit == null) return false;
+        recruit.setRecruitNum(newRecruitNum);
+        return true;
+    }
 
+    private Recruit ownRecruit(Member registerer, String key) {
         Map<String, Recruit> userRecruits = recruits.get(registerer.getId());
-        Recruit recruit = userRecruits.get(key);
-        if (recruit != null) {
-            recruit.setRecruitNum(newRecruitNum);
-            return true;
-        } else {
+        Recruit recruit = userRecruits == null ? null : userRecruits.get(key);
+        if (recruit == null || recruit.isDead) {
             logger.warn("Recruit not found for key: {}", key);
-            return false;
+            return null;
         }
+        return recruit;
+    }
+
+    private Recruit findByMessage(String messageId) {
+        for (Map<String, Recruit> recruitMap : recruits.values()) {
+            for (Recruit recruit : recruitMap.values()) {
+                if (messageId.equals(recruit.getMessageId())) return recruit;
+            }
+        }
+        return null;
     }
 
     @Override
-    public void onMessageReactionAdd(MessageReactionAddEvent event) {
-        User user = event.getUser();
-        if (user == null || user.isBot()) return;
-        Guild guild = event.getGuild();
-        if (guild != this.guild) return;
-        if (!event.getEmoji().equals(Emoji.fromUnicode("✅"))) return;
+    public void onMessageReactionAdd(@NotNull MessageReactionAddEvent event) {
+        if (!event.isFromGuild() || !event.getGuild().getId().equals(guildId)) return;
+        if (!event.getEmoji().equals(CHECK)) return;
+        String userId = event.getUserId();
+        if (userId.equals(event.getJDA().getSelfUser().getId())) return;
+        if (event.getMember() != null && event.getMember().getUser().isBot()) return;
 
-        // loop through all recruits
-        for (Map<String, Recruit> recruitMap : recruits.values()) {
-            for (Recruit recruit : recruitMap.values()) {
-                if (recruit.getMessageId().equals(event.getMessageId())) {
-                    boolean accepted = recruit.addParticipant(event.getMember());
-                    if (!accepted) {
-                        // remove reaction
-                        event.getReaction().removeReaction(user).queue();
-                        logger.info("Reaction add blocked for {} by {}", recruit.getKey(), user.getEffectiveName());
-                    } else {
-                        logger.info("Reaction added to {} by {}", recruit.getKey(), user.getEffectiveName());
-                    }
-                    return;
-                }
-            }
+        Recruit recruit = findByMessage(event.getMessageId());
+        if (recruit == null) return;
+        if (!recruit.addParticipant(userId)) {
+            event.retrieveUser().flatMap(user -> event.getReaction().removeReaction(user)).queue(null, failure -> {
+            });
+            logger.info("Reaction add blocked for {} by {}", recruit.getKey(), userId);
+        } else {
+            logger.info("Reaction added to {} by {}", recruit.getKey(), userId);
         }
     }
 
     @Override
     public void onMessageReactionRemove(@NotNull MessageReactionRemoveEvent event) {
-        User user = event.getUser();
-        if (user == null || user.isBot()) return;
-        Guild guild = event.getGuild();
-        if (guild != this.guild) return;
-        if (!event.getEmoji().equals(Emoji.fromUnicode("✅"))) return;
+        if (!event.isFromGuild() || !event.getGuild().getId().equals(guildId)) return;
+        if (!event.getEmoji().equals(CHECK)) return;
+        String userId = event.getUserId();
+        if (userId.equals(event.getJDA().getSelfUser().getId())) return;
 
-        // loop through all recruits
-        for (Map<String, Recruit> recruitMap : recruits.values()) {
-            for (Recruit recruit : recruitMap.values()) {
-                if (recruit.getMessageId().equals(event.getMessageId())) {
-                    recruit.removeParticipant(event.getMember());
-                    logger.info("Reaction removed from {} by {}", recruit.getKey(), user.getEffectiveName());
-                    return;
-                }
-            }
-        }
+        Recruit recruit = findByMessage(event.getMessageId());
+        if (recruit == null) return;
+        recruit.removeParticipant(userId);
+        logger.info("Reaction removed from {} by {}", recruit.getKey(), userId);
     }
 }

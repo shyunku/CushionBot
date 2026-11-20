@@ -3,7 +3,6 @@ package listeners;
 import core.Service;
 import exceptions.GuildManagerNotFoundException;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.slf4j.Logger;
@@ -20,18 +19,22 @@ public class ButtonInteractionListener extends ListenerAdapter {
     @Override
     public void onButtonInteraction(ButtonInteractionEvent e) {
         Guild guild = e.getGuild();
-        String guildId = guild.getId();
         String componentId = e.getComponentId();
-
-        if (!Service.guildManagers.containsKey(guildId)) {
-            logger.warn("GuildManager is not set in this guild.");
+        if (guild == null || !Service.guildManagers.containsKey(guild.getId())) {
+            logger.warn("Button {} pressed where no guild manager is set.", componentId);
+            e.reply("이 서버에서는 아직 사용할 수 없습니다.").setEphemeral(true).queue();
             return;
         }
+        String guildId = guild.getId();
 
         if (componentId.startsWith("music")) {
             try {
                 MusicBox musicBox = Service.GetMusicBoxByGuildId(guildId);
                 MusicStreamer musicStreamer = musicBox.getStreamer();
+                if (musicStreamer == null) {
+                    e.reply("음악 채널이 아직 설정되지 않았습니다. /음악채널 명령어로 먼저 설정해주세요.").setEphemeral(true).queue();
+                    return;
+                }
                 TrackScheduler trackScheduler = musicStreamer.getScheduler();
 
                 switch (componentId) {
@@ -61,29 +64,35 @@ public class ButtonInteractionListener extends ListenerAdapter {
                 e.deferEdit().queue();
                 musicBox.updateEmbed();
             } catch (GuildManagerNotFoundException exception) {
-                e.reply("음악 채널이 아직 설정되지 않았습니다. /music 명령어로 먼저 설정해주세요.").queue();
+                e.reply("음악 채널이 아직 설정되지 않았습니다. /음악채널 명령어로 먼저 설정해주세요.").setEphemeral(true).queue();
+            } catch (Exception exception) {
+                logger.error("Music button {} failed", componentId, exception);
+                if (!e.isAcknowledged()) e.reply("음악 서버 요청이 실패했습니다. 잠시 후 다시 시도해주세요.").setEphemeral(true).queue();
             }
         } else if (componentId.startsWith("lol")) {
             try {
                 LolBox lolBox = Service.GetLolBoxByGuildId(guildId);
-                Member sender = e.getMember();
+                String userId = e.getUser().getId();
 
                 switch (componentId) {
                     case "lolJoin":
-                        lolBox.addMemberAnswer(sender, true);
+                        lolBox.addMemberAnswer(userId, true);
                         break;
                     case "lolNotJoin":
-                        lolBox.addMemberAnswer(sender, false);
+                        lolBox.addMemberAnswer(userId, false);
                         break;
                     case "lolDontKnow":
-                        lolBox.removeMemberAnswer(sender);
+                        lolBox.removeMemberAnswer(userId);
                         break;
                 }
 
                 e.deferEdit().queue();
                 lolBox.updateEmbed();
             } catch (GuildManagerNotFoundException exception) {
-                e.reply("내전 채널이 아직 설정되지 않았습니다. /내전채널 명령어로 먼저 설정해주세요.").queue();
+                e.reply("내전 채널이 아직 설정되지 않았습니다. /내전채널 명령어로 먼저 설정해주세요.").setEphemeral(true).queue();
+            } catch (Exception exception) {
+                logger.error("LoL button {} failed", componentId, exception);
+                if (!e.isAcknowledged()) e.reply("처리 중 오류가 발생했습니다.").setEphemeral(true).queue();
             }
         }
     }

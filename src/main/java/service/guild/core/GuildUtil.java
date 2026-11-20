@@ -17,6 +17,10 @@ public class GuildUtil {
         return "guildLolBoxMessage-" + guildId;
     }
 
+    public static String lolStateKey(String guildId) {
+        return "guildLolState-" + guildId;
+    }
+
     public static String lolChannelKey(String guildId) {
         return "guildLolChannel-" + guildId;
     }

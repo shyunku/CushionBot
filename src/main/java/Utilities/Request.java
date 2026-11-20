@@ -13,17 +13,21 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 
 public class Request {
     private static final Logger logger = LoggerFactory.getLogger(Request.class);
+    /** Shared client; every request has a deadline so a silent server cannot hang the caller. */
+    private static final HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
+    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(10);
+    private static final ObjectMapper mapper = new ObjectMapper();
 
     public static <ResType> ResType get(String rawUrl, Class<ResType> responseType) throws IOException, URISyntaxException, InterruptedException {
         String url = encodeURIComponent(rawUrl);
         logger.info("[GET] {}", url);
-        ObjectMapper mapper = new ObjectMapper();
-        HttpClient client = HttpClient.newHttpClient();
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(new URI(url))
+                .timeout(REQUEST_TIMEOUT)
                 .GET()
                 .build();
 
@@ -34,18 +38,17 @@ public class Request {
         if (response.body() == null) {
             return null;
         }
-        logger.info("[RESPONSE] {}", response.body());
+        logger.debug("[RESPONSE] {}", response.body());
         return mapper.readValue(response.body(), responseType);
     }
 
     public static <ResType> ResType post(String rawUrl, Object reqBody, Class<ResType> responseType) throws IOException, URISyntaxException, InterruptedException {
         String url = encodeURIComponent(rawUrl);
         logger.info("[POST] {}", url);
-        ObjectMapper mapper = new ObjectMapper();
         String json = mapper.writeValueAsString(reqBody);
-        HttpClient client = HttpClient.newHttpClient();
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(new URI(url))
+                .timeout(REQUEST_TIMEOUT)
                 .POST(HttpRequest.BodyPublishers.ofString(json, StandardCharsets.UTF_8)) // POST 요청과 본문 설정
                 .header("Content-Type", "application/json") // JSON 타입 설정
                 .build();
@@ -57,7 +60,7 @@ public class Request {
         if (response.body() == null) {
             return null;
         }
-        logger.info("[RESPONSE] {}", response.body());
+        logger.debug("[RESPONSE] {}", response.body());
         return mapper.readValue(response.body(), responseType);
     }
 

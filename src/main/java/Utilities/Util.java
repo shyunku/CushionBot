@@ -135,23 +135,22 @@ public class Util {
         return "1분 미만";
     }
 
+    /**
+     * "오늘" / "새벽"(the next day) / "M월 d일" for a time, comparing calendar days in KST.
+     */
     public static String dirtyRelativeDay(long milli) {
-        Calendar cal = Calendar.getInstance();
-        cal.setTimeZone(TimeZone.getTimeZone("Asia/Seoul"));
+        Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("Asia/Seoul"));
         cal.setTimeInMillis(milli);
-        int year = cal.get(Calendar.YEAR);
-        int day = cal.get(Calendar.DAY_OF_YEAR);
-        int curYear = Calendar.getInstance().get(Calendar.YEAR);
-        int curDay = Calendar.getInstance().get(Calendar.DAY_OF_YEAR);
+        Calendar today = Calendar.getInstance(TimeZone.getTimeZone("Asia/Seoul"));
+        Calendar tomorrow = Calendar.getInstance(TimeZone.getTimeZone("Asia/Seoul"));
+        tomorrow.add(Calendar.DATE, 1);
+        if (sameDay(cal, today)) return "오늘";
+        if (sameDay(cal, tomorrow)) return "새벽";
+        return String.format("%d월 %d일", cal.get(Calendar.MONTH) + 1, cal.get(Calendar.DAY_OF_MONTH));
+    }
 
-        if (year == curYear) {
-            if (day == curDay) {
-                return "오늘";
-            } else if (day == curDay + 1) {
-                return "새벽";
-            }
-        }
-        return null;
+    private static boolean sameDay(Calendar a, Calendar b) {
+        return a.get(Calendar.YEAR) == b.get(Calendar.YEAR) && a.get(Calendar.DAY_OF_YEAR) == b.get(Calendar.DAY_OF_YEAR);
     }
 
     public static String unescapeHTML(String original) {

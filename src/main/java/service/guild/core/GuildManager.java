@@ -23,6 +23,16 @@ public class GuildManager {
         this.recruitManager = new RecruitManager(guild);
     }
 
+    /** Stop the music player and recruit listener of a guild the bot has left. */
+    public void destroy() {
+        try {
+            if (musicBox.getStreamer() != null) musicBox.getStreamer().destroy();
+        } catch (Exception e) {
+            logger.warn("Could not stop music in {}: {}", guild.getName(), e.getMessage());
+        }
+        guild.getJDA().removeEventListener(recruitManager);
+    }
+
     public GuildCommandRouter getGuildCommandRouter() {
         return guildCommandRouter;
     }

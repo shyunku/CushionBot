@@ -9,7 +9,9 @@ import exceptions.PermissionInsufficientException;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.channel.ChannelType;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.components.actionrow.ActionRow;
@@ -31,7 +33,6 @@ import service.music.Core.MusicBox;
 import service.music.Core.MusicStreamer;
 import service.recruit.Recruit;
 import service.recruit.RecruitManager;
-import service.watcher.AccessSession;
 import service.watcher.GuildWatcher;
 
 import java.awt.*;
@@ -39,9 +40,7 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.List;
-import java.util.Map;
 
 public class SlashCommandParser {
     private final Logger logger = LoggerFactory.getLogger(SlashCommandParser.class);
@@ -55,12 +54,18 @@ public class SlashCommandParser {
     }
 
     public void finishMaintenance(SlashCommandInteractionEvent e) {
-        try {
-            Service.finishMaintenance(e);
-            this.sendVolatileReply(e, "점검 완료 처리되었습니다.", 5);
-        } catch (Exception err) {
-            err.printStackTrace();
-        }
+        e.deferReply(true).queue();
+        e.getJDA().retrieveApplicationInfo().queue(info -> {
+            boolean owner = info.getOwner().getId().equals(e.getUser().getId())
+                    || (info.getTeam() != null && info.getTeam().isMember(e.getUser()));
+            if (!owner) {
+                e.getHook().sendMessage("봇 주인만 사용할 수 있는 명령어입니다.").queue();
+                return;
+            }
+            // answer first: the process exits once the boxes are removed
+            e.getHook().sendMessage("점검 완료 처리합니다. 봇이 다시 시작됩니다.").complete();
+            Service.finishMaintenance(e.getJDA());
+        }, failure -> e.getHook().sendMessage("봇 정보를 확인하지 못했습니다.").queue());
     }
 
     public void serverRanking(SlashCommandInteractionEvent e) {
@@ -72,34 +77,24 @@ public class SlashCommandParser {
                 return;
             }
 
-            Map<String, Map<String, List<AccessSession>>> accessSessions = GuildWatcher.accessSessions;
-            Map<String, List<AccessSession>> guildSessions = accessSessions.get(guild.getId());
+            // same totals as the dashboard's 누적 ranking (whole kept record)
             List<Pair<String, Long>> guildRanking = new ArrayList<>();
-            if (guildSessions == null || guildSessions.isEmpty()) {
+            GuildWatcher.totals(guild.getId()).forEach((userId, total) -> guildRanking.add(Pair.of(userId, total)));
+            if (guildRanking.isEmpty()) {
                 this.sendReply(e, "서버 랭킹 정보가 없습니다.");
                 return;
             }
 
-            for (Map.Entry<String, List<AccessSession>> entry : guildSessions.entrySet()) {
-                String userId = entry.getKey();
-                List<AccessSession> sessions = entry.getValue();
-                long totalDuration = 0;
-                for (AccessSession session : sessions) {
-                    totalDuration += session.getDuration();
-                }
-                guildRanking.add(Pair.of(userId, totalDuration));
-            }
-
             guildRanking.sort((a, b) -> Long.compare(b.getRight(), a.getRight()));
-            guildRanking = guildRanking.subList(0, Math.min(5, guildRanking.size()));
+            List<Pair<String, Long>> top = guildRanking.subList(0, Math.min(5, guildRanking.size()));
 
             EmbedBuilder embedBuilder = new EmbedBuilder();
             embedBuilder.setTitle("서버 랭킹");
             embedBuilder.setDescription("최근 1년간 서버 내 음성채널에 연결한 총 시간을 기준으로 정렬됩니다.");
             embedBuilder.setColor(new Color(104, 53, 255));
 
-            for (int i = 0; i < guildRanking.size(); i++) {
-                Pair<String, Long> pair = guildRanking.get(i);
+            for (int i = 0; i < top.size(); i++) {
+                Pair<String, Long> pair = top.get(i);
                 String userId = pair.getLeft();
                 long totalDuration = pair.getRight();
                 String durationStr = Util.getDurationString(totalDuration);
@@ -109,8 +104,7 @@ public class SlashCommandParser {
             MessageEmbed embed = embedBuilder.build();
             e.replyEmbeds(embed).queue();
         } catch (Exception err) {
-            err.printStackTrace();
-            e.reply(String.format("오류: %s", err.getMessage())).queue();
+            this.handleError(e, err);
         }
     }
 
@@ -123,25 +117,15 @@ public class SlashCommandParser {
                 return;
             }
 
-            Map<String, Map<String, List<AccessSession>>> accessSessions = GuildWatcher.accessSessions;
-            Map<String, List<AccessSession>> guildSessions = accessSessions.get(guild.getId());
+            // same totals as the dashboard's 누적 ranking (whole kept record)
             List<Pair<String, Long>> guildRanking = new ArrayList<>();
-            if (guildSessions == null || guildSessions.isEmpty()) {
+            GuildWatcher.totals(guild.getId()).forEach((userId, total) -> guildRanking.add(Pair.of(userId, total)));
+            if (guildRanking.isEmpty()) {
                 this.sendReply(e, "서버 랭킹 정보가 없습니다.");
                 return;
             }
 
-            for (Map.Entry<String, List<AccessSession>> entry : guildSessions.entrySet()) {
-                String userId = entry.getKey();
-                List<AccessSession> sessions = entry.getValue();
-                long totalDuration = 0;
-                for (AccessSession session : sessions) {
-                    totalDuration += session.getDuration();
-                }
-                guildRanking.add(Pair.of(userId, totalDuration));
-            }
-
-            guildRanking.sort((a, b) -> (int) (b.getRight() - a.getRight()));
+            guildRanking.sort((a, b) -> Long.compare(b.getRight(), a.getRight()));
             Integer ranking = null;
             long totalDuration = 0;
             for (int i = 0; i < guildRanking.size(); i++) {
@@ -165,51 +149,44 @@ public class SlashCommandParser {
             MessageEmbed embed = embedBuilder.build();
             e.replyEmbeds(embed).queue();
         } catch (Exception err) {
-            err.printStackTrace();
-            e.reply(String.format("오류: %s", err.getMessage())).queue();
+            this.handleError(e, err);
         }
     }
 
     public void clear(SlashCommandInteractionEvent e) {
-        TextChannel textChannel = e.getChannel().asTextChannel();
-        try {
-            OptionMapping amountOpt = e.getOption("message_count");
-            int amount = amountOpt == null ? 1 : Math.min(amountOpt.getAsInt(), 500);
-            Member author = e.getMember();
-            if (author == null) {
-                this.sendVolatileReply(e, "메시지 삭제 권한이 없습니다.", 5);
-                return;
-            }
-
-            MessageHistory messageHistory = textChannel.getHistory();
-            messageHistory.retrievePast(amount).queue(messageList -> {
-                try {
-                    textChannel.purgeMessages(messageList);
-                    String boldStr = TextStyler.Bold("최근 메시지 " + amount + "개가 " + TextStyler.member(author) + "에 의해 삭제 요청되었습니다.");
-                    e.reply(boldStr).queue();
-//                    textChannel.deleteMessages(messageList).queue(
-//                            success -> {
-//                                if (author == null) return;
-//                                String boldStr = TextStyler.Bold("최근 메시지 " + amount + "개가 " + TextStyler.Block(author.getEffectiveName()) + "에 의해 삭제되었습니다.");
-//                                e.reply(boldStr).queue();
-//                            },
-//                            failure -> {
-//                                if (author == null) return;
-//                                logger.error("Failed to delete messages by {}", author.getEffectiveName());
-//                            }
-//                    );
-                } catch (Exception err) {
-                    if (err.getMessage().contains("older than")) {
-                        e.reply("14일 이상된 메시지는 삭제할 수 없습니다.").queue();
-                        return;
-                    }
-                    err.printStackTrace();
-                    e.reply("메시지 삭제 중 오류가 발생했습니다.").queue();
-                }
-            });
-        } catch (NumberFormatException exception) {
-            textChannel.sendMessage("잘못된 인자: clear 명령이 취소되었습니다.").queue();
+        Member author = e.getMember();
+        if (author == null || !this.isManager(author)) {
+            this.sendVolatileEphemeralReply(e, "관리자만 메시지를 삭제할 수 있습니다.", 5);
+            return;
         }
+        OptionMapping amountOpt = e.getOption("message_count");
+        int amount = Math.max(1, Math.min(300, amountOpt == null ? 1 : amountOpt.getAsInt()));
+        MessageChannel channel = e.getChannel();
+
+        e.deferReply().queue();
+        // Discord returns at most 100 messages per request
+        MessageHistory history = channel.getHistory();
+        List<Message> collected = new ArrayList<>();
+        retrievePages(history, amount, collected, () -> {
+            channel.purgeMessages(collected);
+            String boldStr = TextStyler.Bold("최근 메시지 " + collected.size() + "개가 " + TextStyler.member(author) + "에 의해 삭제 요청되었습니다.");
+            e.getHook().sendMessage(boldStr).queue();
+        }, failure -> {
+            logger.error("Could not read messages to clear", failure);
+            e.getHook().sendMessage("메시지를 불러오지 못했습니다.").queue();
+        });
+    }
+
+    private void retrievePages(MessageHistory history, int remaining, List<Message> collected, Runnable done, java.util.function.Consumer<Throwable> failed) {
+        if (remaining <= 0) {
+            done.run();
+            return;
+        }
+        history.retrievePast(Math.min(100, remaining)).queue(page -> {
+            collected.addAll(page);
+            if (page.isEmpty()) done.run();
+            else retrievePages(history, remaining - page.size(), collected, done, failed);
+        }, failed);
     }
 
     public void music(SlashCommandInteractionEvent e) {
@@ -220,17 +197,29 @@ public class SlashCommandParser {
                 return;
             }
             String guildId = guild.getId();
+            if (!this.isManager(e.getMember())) {
+                this.sendVolatileEphemeralReply(e, "관리자만 음악 채널을 지정할 수 있습니다.", 5);
+                return;
+            }
+            if (e.getChannel().getType() != ChannelType.TEXT) {
+                this.sendVolatileEphemeralReply(e, "일반 텍스트 채널에서만 지정할 수 있습니다.", 5);
+                return;
+            }
             TextChannel textChannel = e.getChannel().asTextChannel();
             Service.addGuildManagerIfNotExists(guild);
             MusicBox musicBox = Service.GetMusicBoxByGuildId(guildId);
             musicBox.setMusicChannel(textChannel);
 
             MessageEmbed embed = musicBox.getInitialSettingEmbed();
+            if (embed == null) {
+                this.sendVolatileEphemeralReply(e, "음악 서버에 연결하지 못해 음악 채널을 지정하지 못했습니다.", 8);
+                return;
+            }
             e.replyEmbeds(embed).queue(interactionHook -> {
                 interactionHook.retrieveOriginal().queue(musicBox::setMusicBoxMessage);
             });
         } catch (Exception err) {
-            err.printStackTrace();
+            this.handleError(e, err);
         }
     }
 
@@ -245,11 +234,15 @@ public class SlashCommandParser {
             Service.addGuildManagerIfNotExists(guild);
             MusicBox musicBox = Service.GetMusicBoxByGuildId(guildId);
             MusicStreamer musicStreamer = musicBox.getStreamer();
+            if (musicStreamer == null) {
+                this.sendVolatileEphemeralReply(e, "음악 채널이 설정되지 않았습니다. /음악채널 명령어로 설정해주세요.", 5);
+                return;
+            }
             musicStreamer.shuffleTracksOnQueue();
             musicBox.updateEmbed();
             this.sendVolatileReply(e, "음악이 셔플되었습니다.", 5);
         } catch (Exception err) {
-            err.printStackTrace();
+            this.handleError(e, err);
         }
     }
 
@@ -264,17 +257,20 @@ public class SlashCommandParser {
             Service.addGuildManagerIfNotExists(guild);
             MusicBox musicBox = Service.GetMusicBoxByGuildId(guildId);
             MusicStreamer musicStreamer = musicBox.getStreamer();
+            if (musicStreamer == null) {
+                this.sendVolatileEphemeralReply(e, "음악 채널이 설정되지 않았습니다. /음악채널 명령어로 설정해주세요.", 5);
+                return;
+            }
             OptionMapping volumeOpt = e.getOption("볼륨");
             if (volumeOpt == null) {
                 this.sendVolatileReply(e, "볼륨을 입력해주세요.", 5);
                 return;
             }
-            int volume = volumeOpt.getAsInt();
-            musicStreamer.setVolume(volume);
+            int volume = musicStreamer.setVolume(volumeOpt.getAsInt());
             musicBox.updateEmbed();
             this.sendVolatileReply(e, String.format("볼륨이 %d%%로 설정되었습니다. 몇 초내에 적용됩니다.", volume), 5);
         } catch (Exception err) {
-            err.printStackTrace();
+            this.handleError(e, err);
         }
     }
 
@@ -286,6 +282,14 @@ public class SlashCommandParser {
                 return;
             }
             String guildId = guild.getId();
+            if (!this.isManager(e.getMember())) {
+                this.sendVolatileEphemeralReply(e, "관리자만 내전 채널을 지정할 수 있습니다.", 5);
+                return;
+            }
+            if (e.getChannel().getType() != ChannelType.TEXT) {
+                this.sendVolatileEphemeralReply(e, "일반 텍스트 채널에서만 지정할 수 있습니다.", 5);
+                return;
+            }
             TextChannel textChannel = e.getChannel().asTextChannel();
             Service.addGuildManagerIfNotExists(guild);
             LolBox lolBox = Service.GetLolBoxByGuildId(guildId);
@@ -300,7 +304,7 @@ public class SlashCommandParser {
                 interactionHook.retrieveOriginal().queue(lolBox::setLolBoxMessage);
             });
         } catch (Exception err) {
-            err.printStackTrace();
+            this.handleError(e, err);
         }
     }
 
@@ -348,7 +352,7 @@ public class SlashCommandParser {
         } catch (PermissionInsufficientException exception) {
             this.sendVolatileReply(e, "내전을 등록/취소할 권한이 없습니다.", 8);
         } catch (Exception err) {
-            err.printStackTrace();
+            this.handleError(e, err);
         }
     }
 
@@ -401,7 +405,7 @@ public class SlashCommandParser {
         } catch (PermissionInsufficientException exception) {
             this.sendVolatileReply(e, "내전 시간을 변경할 권한이 없습니다.", 8);
         } catch (Exception err) {
-            err.printStackTrace();
+            this.handleError(e, err);
         }
     }
 
@@ -441,7 +445,7 @@ public class SlashCommandParser {
             }
             e.reply(sb.toString()).queue();
         } catch (Exception err) {
-            err.printStackTrace();
+            this.handleError(e, err);
         }
     }
 
@@ -469,7 +473,7 @@ public class SlashCommandParser {
             }
 
             long startTime = lolBox.getStartTime();
-            ArrayList<Member> joiners = lolBox.getJoiners();
+            List<String> joiners = lolBox.getJoiners();
             String remainTime = Util.getRelativeTime(startTime);
             StringBuilder sb = new StringBuilder();
 
@@ -478,15 +482,14 @@ public class SlashCommandParser {
             } else {
                 sb.append("내전 일정에 등록된 시간이 되었습니다. 태그되는 참여자 분들은 준비해주세요.\n");
             }
-            for (Member m : joiners) {
-                sb.append(m.getAsMention());
-                sb.append(" ");
+            for (String userId : joiners) {
+                sb.append("<@").append(userId).append("> ");
             }
             e.reply(sb.toString()).queue();
         } catch (PermissionInsufficientException exception) {
-            this.sendVolatileReply(e, "내전 시간을 변경할 권한이 없습니다.", 8);
+            this.sendVolatileReply(e, "내전 참여자를 호출할 권한이 없습니다.", 8);
         } catch (Exception err) {
-            err.printStackTrace();
+            this.handleError(e, err);
         }
     }
 
@@ -507,13 +510,18 @@ public class SlashCommandParser {
             OptionMapping channelOpt = e.getOption("채널");
             if (channelOpt == null) {
                 // create new channel
+                e.deferReply().queue();
                 guild.createTextChannel("구인채널").queue(textChannel -> {
                     RedisClient.set(recruitChannelKey, textChannel.getId());
                     recruitManager.recruitChannel = textChannel;
                     this.setRecruitChannel(textChannel);
-                    e.reply(String.format("구인 채널이 지정되었습니다. 이제 %s 채널에서 구인 정보를 확인하실 수 있습니다.", textChannel.getAsMention())).queue();
-                });
+                    e.getHook().sendMessage(String.format("구인 채널이 지정되었습니다. 이제 %s 채널에서 구인 정보를 확인하실 수 있습니다.", textChannel.getAsMention())).queue();
+                }, failure -> e.getHook().sendMessage("구인 채널을 만들지 못했습니다. 봇의 채널 관리 권한을 확인해주세요.").queue());
             } else {
+                if (channelOpt.getChannelType() != ChannelType.TEXT) {
+                    this.sendVolatileEphemeralReply(e, "일반 텍스트 채널만 구인 채널로 지정할 수 있습니다.", 5);
+                    return;
+                }
                 TextChannel textChannel = channelOpt.getAsChannel().asTextChannel();
 
                 // save channel
@@ -522,8 +530,10 @@ public class SlashCommandParser {
                 this.setRecruitChannel(textChannel);
                 e.reply(String.format("구인 채널이 지정되었습니다. 이제 %s 채널에서 구인 정보를 확인하실 수 있습니다.", textChannel.getAsMention())).queue();
             }
+        } catch (PermissionInsufficientException exception) {
+            this.sendVolatileEphemeralReply(e, "관리자만 구인 채널을 지정할 수 있습니다.", 5);
         } catch (Exception err) {
-            err.printStackTrace();
+            this.handleError(e, err);
         }
     }
 
@@ -574,7 +584,7 @@ public class SlashCommandParser {
 
             e.replyModal(modal).queue();
         } catch (Exception err) {
-            err.printStackTrace();
+            this.handleError(e, err);
         }
     }
 
@@ -601,7 +611,10 @@ public class SlashCommandParser {
 
             OptionMapping recruitKeyInput = e.getOption("구인코드");
             if (recruitKeyInput == null || recruitKeyInput.getAsString().isEmpty()) {
-                recruitManager.unregisterRecruit(member, null);
+                if (!recruitManager.unregisterRecruit(member, null)) {
+                    this.sendVolatileReply(e, "취소할 구인이 없습니다.", 5);
+                    return;
+                }
             } else {
                 String recruitKey = recruitKeyInput.getAsString();
                 boolean success = recruitManager.unregisterRecruit(member, recruitKey);
@@ -613,7 +626,7 @@ public class SlashCommandParser {
 
             this.sendVolatileReply(e, "구인이 취소되었습니다.", 5);
         } catch (Exception err) {
-            err.printStackTrace();
+            this.handleError(e, err);
         }
     }
 
@@ -655,23 +668,18 @@ public class SlashCommandParser {
             }
 
             if (timeGiven) {
-                DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
-                int hour, minute;
+                long recruitAt;
                 try {
-                    LocalTime time = LocalTime.parse(timeInput.getAsString(), timeFormatter);
-                    hour = time.getHour();
-                    minute = time.getMinute();
+                    LocalTime time = LocalTime.parse(timeInput.getAsString().trim(), DateTimeFormatter.ofPattern("H:mm"));
+                    // same rule as registration: a time that has already passed today means tomorrow
+                    recruitAt = Recruit.nextKstTime(time.getHour(), time.getMinute());
                 } catch (DateTimeParseException e2) {
-                    throw new IllegalArgumentException("시간 형식이 올바르지 않습니다: (e.g., 21:30).");
+                    this.sendVolatileEphemeralReply(e, "시간 형식이 올바르지 않습니다. (ex. 21:30)", 5);
+                    return;
                 }
 
-                Calendar recruitAt = TimeUtil.getKstCalendar();
-                recruitAt.set(Calendar.HOUR_OF_DAY, hour);
-                recruitAt.set(Calendar.MINUTE, minute);
-                recruitAt.set(Calendar.SECOND, 0);
-
                 String recruitKey = recruitKeyInput.getAsString();
-                boolean success = recruitManager.changeRecruitTime(member, recruitKey, recruitAt.getTimeInMillis());
+                boolean success = recruitManager.changeRecruitTime(member, recruitKey, recruitAt);
                 if (!success) {
                     this.sendVolatileReply(e, "구인 정보를 찾을 수 없습니다.", 5);
                     return;
@@ -690,7 +698,7 @@ public class SlashCommandParser {
 
             this.sendVolatileReply(e, "구인 정보가 변경되었습니다.", 5);
         } catch (Exception err) {
-            err.printStackTrace();
+            this.handleError(e, err);
         }
     }
 
@@ -734,9 +742,12 @@ public class SlashCommandParser {
             eb.setColor(0x3D99FF);
             eb.addField("구인코드", TextStyler.Block(recruitKey), true);
             eb.addField("참여하기", String.format("%s 채널에서 확인하세요.", recruitManager.recruitChannel.getAsMention()), false);
-            e.reply("@everyone").setEmbeds(eb.build()).queue();
+            boolean mayMentionEveryone = e.getGuildChannel() != null
+                    && member.hasPermission(e.getGuildChannel(), Permission.MESSAGE_MENTION_EVERYONE);
+            if (mayMentionEveryone) e.reply("@everyone").setEmbeds(eb.build()).queue();
+            else e.replyEmbeds(eb.build()).queue();
         } catch (Exception err) {
-            err.printStackTrace();
+            this.handleError(e, err);
         }
     }
 
@@ -810,18 +821,6 @@ public class SlashCommandParser {
                 return;
             }
 
-            // Check if the user has linked their Riot account
-            try {
-                ArrayList<Object> results = Request.get(String.format("https://teamgg.kr/v1/api/discordIntegrations?token=%s", user.getId()), ArrayList.class);
-                if (results == null || results.isEmpty()) {
-                    this.sendVolatileEphemeralReply(e, "라이엇 계정이 연동되지 않았습니다. 먼저 /팀지지등록 명령어로 등록해주세요.", 5);
-                    return;
-                }
-            } catch (Exception err) {
-                err.printStackTrace();
-                e.reply("등록 실패: 서버 오류가 발생했습니다.").queue();
-            }
-
             OptionMapping topFavorInput = e.getOption("탑");
             OptionMapping jungleFavorInput = e.getOption("정글");
             OptionMapping midFavorInput = e.getOption("미드");
@@ -862,18 +861,33 @@ public class SlashCommandParser {
                 favorArray[i] = favorIntList.get(i);
             }
 
-            try {
-                SetSummonerLineFavorRequestDto requestDto = new SetSummonerLineFavorRequestDto(user.getId(), favorArray);
-                String response = Request.post("https://teamgg.kr/v1/api/summonerLineFavor", requestDto, String.class);
-                e.reply(String.format("%s님의 라인 선호도가 탑(%d) 정글(%d) 미드(%d) 원딜(%d) 서폿(%d)로 설정되었습니다.",
-                        member.getAsMention(), favorArray[0], favorArray[1], favorArray[2], favorArray[3], favorArray[4]
-                )).queue();
-            } catch (Exception err) {
-                err.printStackTrace();
-                e.reply("선호도 등록 실패: 서버 오류가 발생했습니다.").setEphemeral(true).queue();
-            }
+            e.deferReply().queue();
+            java.util.concurrent.CompletableFuture.runAsync(() -> {
+                // check the Riot account link first, then save
+                try {
+                    ArrayList<?> results = Request.get(String.format("https://teamgg.kr/v1/api/discordIntegrations?token=%s", user.getId()), ArrayList.class);
+                    if (results == null || results.isEmpty()) {
+                        e.getHook().sendMessage("라이엇 계정이 연동되지 않았습니다. 먼저 /팀지지등록 명령어로 등록해주세요.").setEphemeral(true).queue();
+                        return;
+                    }
+                } catch (Exception err) {
+                    logger.error("team.gg link check failed", err);
+                    e.getHook().sendMessage("등록 실패: team.gg 서버에 연결하지 못했습니다.").setEphemeral(true).queue();
+                    return;
+                }
+                try {
+                    SetSummonerLineFavorRequestDto requestDto = new SetSummonerLineFavorRequestDto(user.getId(), favorArray);
+                    Request.post("https://teamgg.kr/v1/api/summonerLineFavor", requestDto, String.class);
+                    e.getHook().sendMessage(String.format("%s님의 라인 선호도가 탑(%d) 정글(%d) 미드(%d) 원딜(%d) 서폿(%d)로 설정되었습니다.",
+                            member.getAsMention(), favorArray[0], favorArray[1], favorArray[2], favorArray[3], favorArray[4]
+                    )).queue();
+                } catch (Exception err) {
+                    logger.error("team.gg line favor failed", err);
+                    e.getHook().sendMessage("선호도 등록 실패: 서버 오류가 발생했습니다.").setEphemeral(true).queue();
+                }
+            });
         } catch (Exception err) {
-            err.printStackTrace();
+            this.handleError(e, err);
         }
     }
 
@@ -922,6 +936,14 @@ public class SlashCommandParser {
     }
 
     private boolean isManager(Member member) {
-        return member.isOwner() || member.hasPermission(Permission.ADMINISTRATOR);
+        return member != null && (member.isOwner() || member.hasPermission(Permission.ADMINISTRATOR));
+    }
+
+    /** Log and tell the user, unless the interaction was already answered. */
+    private void handleError(SlashCommandInteractionEvent e, Exception err) {
+        logger.error("Command /{} failed", e.getName(), err);
+        String message = "명령을 처리하는 중 오류가 발생했습니다.";
+        if (!e.isAcknowledged()) e.reply(message).setEphemeral(true).queue();
+        else e.getHook().sendMessage(message).setEphemeral(true).queue();
     }
 }

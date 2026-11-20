@@ -21,7 +21,11 @@ import net.dv8tion.jda.api.events.interaction.component.GenericSelectMenuInterac
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.session.ReadyEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.entities.channel.ChannelType;
+import net.dv8tion.jda.api.interactions.commands.DefaultMemberPermissions;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
+import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
 import net.dv8tion.jda.api.managers.Presence;
 import org.jetbrains.annotations.NotNull;
@@ -30,7 +34,6 @@ import org.slf4j.LoggerFactory;
 import service.discord.JdaUtil;
 import service.music.Core.MusicBox;
 import service.music.Core.MusicStreamer;
-import service.music.Core.TrackScheduler;
 import service.watcher.AccessType;
 import service.watcher.GuildWatcher;
 
@@ -40,6 +43,9 @@ import java.util.List;
 public class InternalEventListener extends ListenerAdapter {
     private final Logger logger = LoggerFactory.getLogger(InternalEventListener.class);
     private final CommandRouter commandRouter = new CommandRouter();
+    private boolean listenersRegistered = false;
+    /** Commands that change channels or delete messages: only members with the administrator permission. */
+    private static final DefaultMemberPermissions ADMIN_ONLY = DefaultMemberPermissions.enabledFor(Permission.ADMINISTRATOR);
 
 
     public InternalEventListener() {
@@ -67,22 +73,28 @@ public class InternalEventListener extends ListenerAdapter {
 
         logger.info("=====================================================================");
 
-        for (Guild g : guilds) {
-            setupGuild(g);
+        // listeners first: a guild that fails to set up below must not leave the whole bot unresponsive
+        if (!listenersRegistered) {
+            listenersRegistered = true;
+            jda.addEventListener(new AutoCompleteListener());
+            jda.addEventListener(new ModalInteractionListener());
+            jda.addEventListener(new ButtonInteractionListener());
+            jda.addEventListener(new SlashCommandInteractionListener());
         }
 
-        GuildWatcher.initialize();
+        for (Guild g : guilds) {
+            try {
+                setupGuild(g);
+            } catch (Exception ex) {
+                logger.error("Guild {} ({}) setup failed; other guilds continue", g.getName(), g.getId(), ex);
+            }
+        }
 
-        // leave all audio channels
-//        for(Guild g : guilds) {
-//            g.getAudioManager().closeAudioConnection();
-//        }
-
-        // set up listeners
-        jda.addEventListener(new AutoCompleteListener());
-        jda.addEventListener(new ModalInteractionListener());
-        jda.addEventListener(new ButtonInteractionListener());
-        jda.addEventListener(new SlashCommandInteractionListener());
+        try {
+            GuildWatcher.initialize();
+        } catch (Exception ex) {
+            logger.error("Voice watcher initialization failed", ex);
+        }
 
         this.logger.info("All setup completed. Ready to go!");
     }
@@ -93,17 +105,21 @@ public class InternalEventListener extends ListenerAdapter {
         }
         guild.updateCommands().addCommands(
                 Commands.slash("test", "test description"),
-                Commands.slash("clear", "최근 메시지들을 삭제합니다.")
-                        .addOption(OptionType.INTEGER, "message_count", "삭제할 메시지 수를 입력하세요. (1~300)", true),
-                Commands.slash("점검완료", "점검 완료 후 봇을 정상 운영합니다."),
+                Commands.slash("clear", "최근 메시지들을 삭제합니다. (관리자)")
+                        .addOptions(new OptionData(OptionType.INTEGER, "message_count", "삭제할 메시지 수를 입력하세요. (1~300)", true).setRequiredRange(1, 300))
+                        .setDefaultPermissions(ADMIN_ONLY),
+                Commands.slash("점검완료", "점검 완료 후 봇을 정상 운영합니다. (봇 주인)")
+                        .setDefaultPermissions(ADMIN_ONLY),
                 Commands.slash("서버랭킹", "서버 참여 랭킹을 출력합니다."),
                 Commands.slash("내랭킹", "내 랭킹을 출력합니다."),
-                Commands.slash("음악채널", "이 텍스트 채널을 음악 채널로 지정합니다."),
+                Commands.slash("음악채널", "이 텍스트 채널을 음악 채널로 지정합니다. (관리자)")
+                        .setDefaultPermissions(ADMIN_ONLY),
                 Commands.slash("음악셔플", "재생목록을 셔플합니다."),
                 Commands.slash("음악볼륨", "볼륨을 조절합니다.")
-                        .addOption(OptionType.INTEGER, "볼륨", "볼륨을 입력하세요. (0~100)", true),
+                        .addOptions(new OptionData(OptionType.INTEGER, "볼륨", "볼륨을 입력하세요. (0~200)", true).setRequiredRange(0, MusicStreamer.MAX_VOLUME)),
 
-                Commands.slash("내전채널", "이 텍스트 채널을 내전 채널로 지정합니다."),
+                Commands.slash("내전채널", "이 텍스트 채널을 내전 채널로 지정합니다. (관리자)")
+                        .setDefaultPermissions(ADMIN_ONLY),
                 Commands.slash("내전모으기", "내전 일정을 생성합니다.")
                         .addOption(OptionType.INTEGER, "시간", "모집 시간을 입력하세요. (0~47) 24 이상은 내일을 나타냅니다.", true)
                         .addOption(OptionType.INTEGER, "분", "모집 시간을 입력하세요. (0~59)", true),
@@ -115,8 +131,9 @@ public class InternalEventListener extends ListenerAdapter {
                 Commands.slash("내전종료", "내전 인원 모집을 종료합니다."),
                 Commands.slash("내전취소", "내전을 취소합니다."),
 
-                Commands.slash("구인채널생성", "구인 채널을 생성합니다.")
-                        .addOption(OptionType.CHANNEL, "채널", "(이미 있는 경우) 구인 채널을 입력하세요.", false),
+                Commands.slash("구인채널생성", "구인 채널을 생성합니다. (관리자)")
+                        .addOptions(new OptionData(OptionType.CHANNEL, "채널", "(이미 있는 경우) 구인 채널을 입력하세요.", false).setChannelTypes(ChannelType.TEXT))
+                        .setDefaultPermissions(ADMIN_ONLY),
                 Commands.slash("구인", "게임이나 활동을 함께할 사람들을 구합니다."),
                 Commands.slash("구인취소", "본인이 업로드한 모든 구인을 취소하거나 특정 구인을 취소합니다.")
                         .addOption(OptionType.STRING, "구인코드", "취소할 구인의 코드를 입력하세요.", false),
@@ -144,7 +161,12 @@ public class InternalEventListener extends ListenerAdapter {
         super.onGuildJoin(event);
 
         Guild guild = event.getGuild();
-        setupGuild(guild);
+        try {
+            setupGuild(guild);
+        } catch (Exception ex) {
+            logger.error("Guild {} setup failed", guild.getName(), ex);
+        }
+        if (GuildWatcher.isInitialized()) GuildWatcher.syncGuild(guild);
     }
 
     @Override
@@ -152,6 +174,7 @@ public class InternalEventListener extends ListenerAdapter {
         super.onGuildLeave(event);
 
         this.logger.info("Guild {} left.", event.getGuild().getName());
+        Service.removeGuildManager(event.getGuild().getId());
     }
 
     @Override
@@ -170,6 +193,23 @@ public class InternalEventListener extends ListenerAdapter {
 
         AudioChannel audioChannel = e.getChannelLeft();
         if (audioChannel == null) return;
+
+        // the bot itself was disconnected (kicked or moved out by someone): stop and clear the queue
+        if (e.getMember().getId().equals(e.getJDA().getSelfUser().getId())) {
+            if (e.getChannelJoined() == null) {
+                try {
+                    MusicBox musicBox = Service.GetMusicBoxByGuildId(guild.getId());
+                    MusicStreamer streamer = musicBox.getStreamer();
+                    if (streamer != null) {
+                        streamer.clearTracksOfQueue();
+                        musicBox.updateEmbed();
+                    }
+                } catch (Exception ex) {
+                    logger.warn("Could not reset music after the bot was disconnected: {}", ex.getMessage());
+                }
+            }
+            return;
+        }
         List<Member> participants = audioChannel.getMembers();
 
         int leftParticipants = 0;
@@ -185,6 +225,7 @@ public class InternalEventListener extends ListenerAdapter {
                 this.logger.info("All participants left the voice channel. Clearing the queue.");
                 MusicBox musicBox = Service.GetMusicBoxByGuildId(guild.getId());
                 MusicStreamer streamer = musicBox.getStreamer();
+                if (streamer == null) return;
 
                 GuildVoiceState voiceState = guild.getSelfMember().getVoiceState();
                 if (voiceState != null) {
@@ -213,25 +254,38 @@ public class InternalEventListener extends ListenerAdapter {
 
     @Override
     public void onGenericSelectMenuInteraction(@NotNull GenericSelectMenuInteractionEvent e) {
+        if (!e.getComponentId().equals("musicAction:musicTrackSelector")) return;
         Guild guild = e.getGuild();
-        String guildId = guild.getId();
-        if (e.getValues().isEmpty()) return;
-        String value = (String) e.getValues().get(0);
-
-        try {
-            MusicBox musicBox = Service.GetMusicBoxByGuildId(guildId);
-            MusicStreamer musicStreamer = musicBox.getStreamer();
-            TrackScheduler trackScheduler = musicStreamer.getScheduler();
-            if (value.startsWith("track-")) {
-                String trackId = value.replace("track-", "");
-                trackScheduler.skipUntilTrack(trackId);
-
-                e.deferEdit().queue();
-                musicBox.updateEmbed();
-            }
-        } catch (Exception exception) {
-            e.reply("음악 채널이 아직 설정되지 않았습니다. /music 명령어로 먼저 설정해주세요.").queue();
+        if (guild == null || e.getValues().isEmpty()) {
+            e.deferEdit().queue();
+            return;
         }
+        String value = String.valueOf(e.getValues().get(0));
+
+        MusicBox musicBox;
+        MusicStreamer musicStreamer;
+        try {
+            musicBox = Service.GetMusicBoxByGuildId(guild.getId());
+            musicStreamer = musicBox.getStreamer();
+        } catch (GuildManagerNotFoundException ex) {
+            musicBox = null;
+            musicStreamer = null;
+        }
+        if (musicStreamer == null) {
+            e.reply("음악 채널이 아직 설정되지 않았습니다. /음악채널 명령어로 먼저 설정해주세요.").setEphemeral(true).queue();
+            return;
+        }
+
+        // option values are "track-<queue index>-<video id>"
+        e.deferEdit().queue();
+        try {
+            String[] parts = value.split("-", 3);
+            int index = Integer.parseInt(parts[1]);
+            musicStreamer.getScheduler().skipToIndex(index);
+        } catch (Exception ex) {
+            logger.error("Could not jump to selected track {}", value, ex);
+        }
+        musicBox.updateEmbed();
     }
 
     private static @NotNull AccessType getAccessType(@NotNull GuildVoiceUpdateEvent e) {
