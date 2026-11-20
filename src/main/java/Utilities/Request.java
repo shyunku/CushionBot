@@ -51,7 +51,8 @@ public class Request {
         if (response.statusCode() / 100 != 2) {
             throw new HttpStatusException(response.statusCode());
         }
-        if (response.body() == null) {
+        // an empty body or a JSON null (e.g. team.gg's "no link") both come back as null
+        if (response.body() == null || response.body().isBlank()) {
             return null;
         }
         logger.debug("[RESPONSE] {}", response.body());
@@ -79,7 +80,8 @@ public class Request {
         if (response.statusCode() / 100 != 2) {
             throw new HttpStatusException(response.statusCode());
         }
-        if (response.body() == null) {
+        // an empty body or a JSON null (e.g. team.gg's "no link") both come back as null
+        if (response.body() == null || response.body().isBlank()) {
             return null;
         }
         logger.debug("[RESPONSE] {}", response.body());
