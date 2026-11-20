@@ -766,7 +766,7 @@ public class SlashCommandParser {
         java.util.concurrent.CompletableFuture.runAsync(() -> {
             Map<?, ?> flow;
             try {
-                flow = Request.post("https://teamgg.kr/v1/auth/rso/discord/start", Map.of("discordId", userId), Map.class, TokenManager.TEAMGG_BOT_API_KEY);
+                flow = Request.post(TEAMGG_API + "/v1/auth/rso/discord/start", Map.of("discordId", userId), Map.class, TokenManager.TEAMGG_BOT_API_KEY);
             } catch (Exception err) {
                 logger.error("team.gg link start failed", err);
                 e.getHook().sendMessage(teamggErrorMessage(err)).queue();
@@ -793,11 +793,14 @@ public class SlashCommandParser {
     /** The link lives 10 minutes; poll a little longer than that. */
     private static final int TEAMGG_POLL_LIMIT = 11 * 60 / TEAMGG_POLL_SECONDS;
 
+    /** team.gg's API host (teamgg.kr itself serves the web app and answers every path with HTML). */
+    private static final String TEAMGG_API = "https://api.teamgg.kr";
+
     private void pollTeamggLink(SlashCommandInteractionEvent e, String flowId, int attempt) {
         if (attempt >= TEAMGG_POLL_LIMIT) return;
         teamggPoller.schedule(() -> {
             try {
-                Map<?, ?> status = Request.get("https://teamgg.kr/v1/auth/rso/status?flowId=" + flowId, Map.class);
+                Map<?, ?> status = Request.get(TEAMGG_API + "/v1/auth/rso/status?flowId=" + flowId, Map.class);
                 String state = status == null ? "pending" : String.valueOf(status.get("status"));
                 if (state.equals("complete")) {
                     Object name = status.get("riotDisplayName");
@@ -809,6 +812,13 @@ public class SlashCommandParser {
                     e.getHook().sendMessage("연동 실패: " + (message == null ? "알 수 없는 오류" : message)).queue();
                     return;
                 }
+            } catch (Request.HttpStatusException err) {
+                // team.gg answers 404 once the login link has expired
+                if (err.status == 404) {
+                    e.getHook().sendMessage("연동 링크가 만료되었습니다. /팀지지등록 으로 다시 시도해주세요.").queue();
+                    return;
+                }
+                logger.warn("team.gg link status check failed: {}", err.getMessage());
             } catch (Exception err) {
                 logger.warn("team.gg link status check failed: {}", err.getMessage());
             }
@@ -884,7 +894,7 @@ public class SlashCommandParser {
             java.util.concurrent.CompletableFuture.runAsync(() -> {
                 // check the Riot account link first, then save
                 try {
-                    ArrayList<?> results = Request.get(String.format("https://teamgg.kr/v1/api/discordIntegrations?token=%s", user.getId()), ArrayList.class, TokenManager.TEAMGG_BOT_API_KEY);
+                    ArrayList<?> results = Request.get(String.format(TEAMGG_API + "/v1/api/discordIntegrations?token=%s", user.getId()), ArrayList.class, TokenManager.TEAMGG_BOT_API_KEY);
                     if (results == null || results.isEmpty()) {
                         e.getHook().sendMessage("라이엇 계정이 연동되지 않았습니다. 먼저 /팀지지등록 명령어로 등록해주세요.").setEphemeral(true).queue();
                         return;
@@ -896,7 +906,7 @@ public class SlashCommandParser {
                 }
                 try {
                     SetSummonerLineFavorRequestDto requestDto = new SetSummonerLineFavorRequestDto(user.getId(), favorArray);
-                    Request.post("https://teamgg.kr/v1/api/summonerLineFavor", requestDto, String.class, TokenManager.TEAMGG_BOT_API_KEY);
+                    Request.post(TEAMGG_API + "/v1/api/summonerLineFavor", requestDto, String.class, TokenManager.TEAMGG_BOT_API_KEY);
                     e.getHook().sendMessage(String.format("%s님의 라인 선호도가 탑(%d) 정글(%d) 미드(%d) 원딜(%d) 서폿(%d)로 설정되었습니다.",
                             member.getAsMention(), favorArray[0], favorArray[1], favorArray[2], favorArray[3], favorArray[4]
                     )).queue();
