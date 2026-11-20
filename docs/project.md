@@ -14,7 +14,7 @@
 | 내전 | 내전 채널 지정, 일정 생성·변경, 참여/불참/미정 버튼, 호출, 종료·취소 | `src/main/java/service/leagueoflegends/` |
 | 구인 | 구인 채널 생성, 모달 입력으로 구인 등록, 수정·취소·광고, 반응으로 참여 | `src/main/java/service/recruit/` |
 | team.gg 연동 | Riot RSO 로그인으로 디스코드 계정 연동, 라인 선호도 설정 (`teamgg.kr` API 호출) | `src/main/java/core/command/SlashCommandParser.java` |
-| 접속 기록 | 음성 채널 입장·퇴장·이동을 기록하고 서버/개인 랭킹을 출력한다. 기록은 `datafiles/access_logs.json`에 저장한다. | `src/main/java/service/watcher/GuildWatcher.java` |
+| 접속 기록 | 음성 채널 입장·퇴장·이동을 기록하고 서버/개인 랭킹을 출력한다. 기록은 `datafiles/access_logs.json`에 저장한다(변경 후 2초 안에 임시 파일을 거쳐 원자적으로 교체, 1시간마다 `.bak` 백업, 읽지 못한 파일은 `.broken-*`으로 옮기고 백업을 읽음). | `src/main/java/service/watcher/GuildWatcher.java` |
 | watcher 대시보드 | 서버별 접속 타임라인(10초까지 확대), 오늘 요약, 지금 접속 중, 랭킹(리더보드 6종), 서버 통계(평균 동시 접속자 곡선, 요일×시간 히트맵, 1년 날짜 잔디, 지금 들어올 확률 Top 10), 사람별 대시보드(시간대 빈도, 들낙 등). 봇 HTTP 서버(7918)가 빌드된 화면과 API·SSE를 함께 내려준다. 공유 링크(`/channel/{서버}`)로 열면 그 서버만 보인다. 폭 700px 이하(폰)에서는 서버 이름 드롭다운, 아래 탭 막대, 핀치 확대로 바뀐다. | `watcher/`, `src/main/java/service/watcher/` |
 
 슬래시 명령은 `src/main/java/core/InternalEventListener.java`에서 등록하고 `src/main/java/listeners/SlashCommandInteractionListener.java`에서 분기한다. 명령 이름은 한국어다(예: `음악채널`, `내전모으기`, `구인`, `팀지지등록`).
@@ -52,7 +52,7 @@ CushionBot/
 
 | 포트 | 용도 |
 | --- | --- |
-| 2333 | Lavalink (localhost) |
+| 2333 | Lavalink (127.0.0.1. 포트·비밀번호는 봇이 `application.yml`에서 읽음) |
 | 7918 | 봇 HTTP 서버: 대시보드 화면(`watcher/dist`), `/api/guilds`, `/api/guilds/{id}/snapshot`, `/sse` |
 | 6379 | Redis (localhost) |
 
@@ -69,7 +69,7 @@ CushionBot/
 
 - 빌드: `./gradlew build` → `build/libs/CushionBot-1.0-SNAPSHOT.jar` (의존성 포함 fat jar)
 - 실행 전제: 작업 디렉터리에 `Lavalink.jar`, `application.yml`, `src/main/resources/credentials.yaml`이 있고 Redis가 떠 있어야 한다. 대시보드를 보려면 `watcher/`에서 `pnpm install && pnpm build`로 `watcher/dist`를 만들어 둬야 한다(없으면 7918이 빌드 안내 문구를 응답한다).
-- 서버 운영: `run.sh`, `restart.sh`, `stop.sh`는 `systemctl --user`로 `cushionbot.service`를 제어한다. `fastbuild.sh`는 watcher 빌드와 gradle 빌드 후 재시작한다. 서비스 유닛 파일은 저장소에 없다(서버의 `deploy/`, git 제외) — 확인 필요.
+- 서버 운영: `run.sh`, `restart.sh`, `stop.sh`는 `systemctl --user`로 `cushionbot.service`를 제어한다. `fastbuild.sh`는 watcher를 `dist-next`에 빌드해 교체하고, gradle 빌드가 실패하면 이전 jar를 되돌린 뒤 재시작하지 않는다. 서비스 유닛 파일은 저장소에 없다(서버의 `deploy/`, git 제외) — 확인 필요.
 - 테스트: 테스트 코드가 없다.
 - watcher 개발: `watcher/`에서 `pnpm dev`. API는 `WATCHER_API`(기본 `http://localhost:7918`)로 프록시한다.
 - 접속 기록은 1년이 지난 세션을 지운다(`GuildWatcher.removeOldSessions`). 대시보드의 "누적"은 이 보관 기간 안의 합계다.
