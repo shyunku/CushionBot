@@ -43,7 +43,8 @@ CushionBot/
 ├─ watcher/                         대시보드 웹 (Vite + React, src/ → dist/)
 ├─ application.sample.yml           Lavalink 설정 샘플 (실제 application.yml은 git 제외)
 ├─ build.gradle, settings.gradle
-└─ run.sh, restart.sh, stop.sh, fastbuild.sh   서버 운영 스크립트
+├─ scripts/cushion, cushion.cmd    상태·로그·시작/중지/재시작·빌드 명령 (서버 밖에서는 ssh로 서버에서 실행)
+└─ fastbuild.sh                    서버 빌드·재시작
 ```
 
 봇 시작 순서 (`core/CushionBot.java`): Redis 연결 → 대시보드 HTTP 서버(7918) → Lavalink 하위 프로세스 → Lavalink 클라이언트 연결 → JDA 로그인.
@@ -69,7 +70,7 @@ CushionBot/
 
 - 빌드: `./gradlew build` → `build/libs/CushionBot-1.0-SNAPSHOT.jar` (의존성 포함 fat jar)
 - 실행 전제: 작업 디렉터리에 `Lavalink.jar`, `application.yml`, `src/main/resources/credentials.yaml`이 있고 Redis가 떠 있어야 한다. 대시보드를 보려면 `watcher/`에서 `pnpm install && pnpm build`로 `watcher/dist`를 만들어 둬야 한다(없으면 7918이 빌드 안내 문구를 응답한다).
-- 서버 운영: `run.sh`, `restart.sh`, `stop.sh`는 `systemctl --user`로 `cushionbot.service`를 제어한다. `fastbuild.sh`는 watcher를 `dist-next`에 빌드해 교체하고, gradle 빌드가 실패하면 이전 jar를 되돌린 뒤 재시작하지 않는다. 서비스 유닛 파일은 저장소에 없다(서버의 `deploy/`, git 제외) — 확인 필요.
+- 서버 운영: `cushion start|stop|restart`는 `systemctl --user`로 `cushionbot.service`를 제어하고, `cushion ps`·`cushion logs`로 상태와 로그(journal)를 본다. `cushion build [-p]`는 `fastbuild.sh`를 실행한다. `fastbuild.sh`는 watcher를 `dist-next`에 빌드해 교체하고, gradle 빌드가 실패하면 이전 jar를 되돌린 뒤 재시작하지 않는다. 서비스 유닛 파일은 저장소에 없다(서버의 `deploy/`, git 제외) — 확인 필요.
 - 테스트: 테스트 코드가 없다.
 - watcher 개발: `watcher/`에서 `pnpm dev`. API는 `WATCHER_API`(기본 `http://localhost:7918`)로 프록시한다.
 - 접속 기록은 1년이 지난 세션을 지운다(`GuildWatcher.removeOldSessions`). 대시보드의 "누적"은 이 보관 기간 안의 합계다.

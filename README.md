@@ -86,26 +86,14 @@ CushionBot은 Java와 JDA 라이브러리를 기반으로 제작된 다기능 Di
 
 ### 실행
 
-프로젝트 루트 디렉토리에서 제공되는 셸 스크립트를 사용하여 봇을 실행할 수 있습니다.
+봇은 서버에서 `systemctl --user`의 `cushionbot.service`로 실행됩니다. `scripts/cushion` 명령으로 상태 확인, 로그 조회, 시작·중지·재시작, 빌드를 할 수 있습니다. 서버가 아닌 곳에서 실행하면 ssh로 서버에서 같은 명령을 실행합니다.
 
-- **시작**:
-
-  ```bash
-  ./run.sh
-  ```
-
-  이 스크립트는 `nohup`을 사용하여 봇을 백그라운드에서 실행하고 로그를 `nohup.out`에 기록합니다.
-
-- **중지**:
-
-  ```bash
-  ./stop.sh
-  ```
-
-- **재시작**:
-  ```bash
-  ./restart.sh
-  ```
+```bash
+cushion ps              # 상태
+cushion logs -f         # 로그 (실시간)
+cushion start | stop | restart
+cushion build -p        # git pull 후 빌드·재시작 (fastbuild.sh)
+```
 
 ## 📖 명령어 목록 (예시)
 
