@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>team.gg 라인 설정 시안 (pc 3.3.3.3)</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: #1a1b1e; font-family: "gg sans", "Noto Sans KR", "Malgun Gothic", sans-serif; display: flex; gap: 16px; padding: 16px; overflow: hidden; }
+
+  /* ---------- discord-like app ---------- */
+  #app { flex: 1; min-width: 0; height: calc(100vh - 32px); display: flex; border-radius: 10px; overflow: hidden; background: #313338; color: #dbdee1; font-size: 15px; }
+  .guilds { width: 72px; background: #1e1f22; flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 8px; padding-top: 12px; }
+  .guilds i { width: 48px; height: 48px; border-radius: 16px; background: #5865f2; display: flex; align-items: center; justify-content: center; color: #fff; font-style: normal; font-weight: 800; }
+  .guilds i.o { background: #313338; border-radius: 24px; color: #dbdee1; }
+  .chans { width: 240px; background: #2b2d31; flex: 0 0 auto; padding: 12px 8px; }
+  .chans .sv { color: #f2f3f5; font-weight: 700; padding: 4px 8px 14px; border-bottom: 1px solid #1f2023; margin-bottom: 10px; }
+  .chans .c { padding: 6px 8px; border-radius: 4px; color: #949ba4; font-size: 15px; }
+  .chans .c.sel { background: #404249; color: #f2f3f5; }
+  .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .chead { height: 48px; flex: 0 0 auto; border-bottom: 1px solid #26272b; display: flex; align-items: center; padding: 0 16px; color: #f2f3f5; font-weight: 700; gap: 6px; }
+  .chead span { color: #80848e; font-weight: 400; font-size: 20px; }
+  .msgs { flex: 1; overflow-y: auto; padding: 16px 0 8px; }
+  .msg { display: flex; gap: 16px; padding: 4px 16px 4px 16px; margin-top: 14px; position: relative; }
+  .msg:hover { background: #2e3035; }
+  .msg .av { width: 40px; height: 40px; border-radius: 20px; flex: 0 0 auto; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; }
+  .msg .body { min-width: 0; flex: 1; }
+  .msg .who { display: flex; align-items: baseline; gap: 8px; }
+  .msg .who b { color: #f2f3f5; font-weight: 600; }
+  .msg .who .bot { background: #5865f2; color: #fff; font-size: 10px; font-weight: 700; padding: 1px 4px; border-radius: 3px; position: relative; top: -1px; }
+  .msg .who .t { color: #949ba4; font-size: 12px; }
+  .msg .txt { line-height: 1.375; margin-top: 2px; }
+  .reply { display: flex; align-items: center; gap: 6px; color: #b5bac1; font-size: 13px; margin: 0 0 2px 56px; padding-left: 16px; position: relative; }
+  .reply::before { content: ""; position: absolute; left: -2px; top: 9px; width: 30px; height: 10px; border-left: 2px solid #4e5058; border-top: 2px solid #4e5058; border-top-left-radius: 6px; margin-left: -18px; }
+  .reply .mini { width: 16px; height: 16px; border-radius: 8px; display: inline-block; }
+  .reply code { color: #00a8fc; background: none; font-family: inherit; }
+  .mention { background: rgba(88,101,242,.3); color: #c9cdfb; border-radius: 3px; padding: 0 2px; }
+  .eph { color: #949ba4; font-size: 12px; margin-top: 6px; display: flex; align-items: center; gap: 4px; }
+  .eph a { color: #00a8fc; }
+
+  .embed { margin-top: 6px; max-width: 520px; background: #2b2d31; border-left: 4px solid #3ddc97; border-radius: 4px; padding: 10px 16px 14px 12px; }
+  .embed .et { color: #f2f3f5; font-weight: 700; font-size: 16px; }
+  .embed .ed { color: #dbdee1; font-size: 14px; margin-top: 6px; line-height: 1.375; }
+  .embed table { border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+  .embed th { color: #f2f3f5; font-weight: 700; text-align: left; padding: 2px 18px 4px 0; font-size: 13px; }
+  .embed td { padding: 3px 18px 3px 0; white-space: nowrap; }
+  .embed tr.sel td { color: #f2f3f5; font-weight: 700; }
+  .embed tr.sel td:first-child::before { content: "▸ "; color: #3ddc97; }
+  .embed .ef { color: #b5bac1; font-size: 12px; margin-top: 10px; }
+  .embed .ef.ok { color: #3ddc97; }
+  .comps { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; max-width: 520px; }
+  .arow { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn { border: 0; border-radius: 3px; padding: 0 14px; height: 32px; font: inherit; font-size: 14px; font-weight: 500; color: #fff; cursor: pointer; background: #4e5058; display: inline-flex; align-items: center; gap: 6px; }
+  .btn:hover { filter: brightness(1.1); }
+  .btn.pri { background: #5865f2; }
+  .btn.ok { background: #248046; }
+  .btn.dis { opacity: .5; cursor: not-allowed; filter: none; }
+  .btn.lab { background: #2b2d31; box-shadow: inset 0 0 0 1px #3f4147; cursor: default; min-width: 170px; justify-content: flex-start; }
+  .sel { position: relative; width: 100%; max-width: 400px; }
+  .sel .box { height: 40px; background: #1e1f22; border: 1px solid #1e1f22; border-radius: 4px; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; cursor: pointer; color: #dbdee1; font-size: 14px; }
+  .sel .box:after { content: "⌄"; color: #b5bac1; font-size: 18px; margin-top: -6px; }
+  .sel .list { position: absolute; left: 0; right: 0; bottom: 44px; background: #2b2d31; border: 1px solid #1e1f22; border-radius: 4px; z-index: 20; box-shadow: 0 8px 16px rgba(0,0,0,.35); max-height: 260px; overflow: auto; }
+  .sel .it { padding: 9px 12px; cursor: pointer; font-size: 14px; }
+  .sel .it:hover { background: #35373c; }
+  .sel .it .d { color: #949ba4; font-size: 12px; }
+  .sel .it.cur { background: #404249; }
+
+  .composer { margin: 0 16px 20px; background: #383a40; border-radius: 8px; height: 44px; display: flex; align-items: center; padding: 0 16px; color: #6d6f78; font-size: 15px; flex: 0 0 auto; }
+
+  /* modal */
+  .modalback { position: absolute; inset: 0; background: rgba(0,0,0,.7); display: flex; align-items: center; justify-content: center; z-index: 50; }
+  .modal { width: 440px; background: #313338; border-radius: 8px; overflow: hidden; }
+  .modal .mh { padding: 16px; color: #f2f3f5; font-weight: 700; font-size: 20px; display: flex; align-items: center; gap: 8px; }
+  .modal .mb { padding: 0 16px 8px; display: flex; flex-direction: column; gap: 14px; }
+  .modal label { color: #b5bac1; font-size: 12px; font-weight: 700; text-transform: uppercase; display: block; margin-bottom: 6px; }
+  .modal .sel { max-width: none; }
+  .modal .sel .list { bottom: auto; top: 44px; }
+  .modal .mf { background: #2b2d31; padding: 16px; display: flex; justify-content: flex-end; gap: 8px; }
+  .modal .mf .btn.link { background: none; }
+
+  /* ---------- mock helpers: shift outlines ---------- */
+  body.shift [data-click] { outline: 2px dashed #3fa9ff; outline-offset: -2px; }
+  body.shift [data-cand] { position: relative; }
+  body.shift [data-cand]::after { content: ""; position: absolute; inset: -3px; border: 2px dashed #ff9f1a; pointer-events: none; z-index: 40; border-radius: 4px; }
+  body.shownew [data-new] { position: relative; box-shadow: 0 0 0 2px #e040fb; border-radius: 6px; }
+  body.shownew [data-new]::before { content: "NEW"; position: absolute; top: -9px; right: 6px; background: #e040fb; color: #fff; font-size: 10px; font-weight: 800; padding: 1px 5px; border-radius: 4px; z-index: 45; }
+
+  #ctip { position: fixed; z-index: 1000; width: 300px; background: #fff; color: #222; border-radius: 10px; box-shadow: 0 14px 40px rgba(0,0,0,.45); padding: 10px; font-size: 12px; display: none; }
+  #ctip .t { font-weight: 800; font-size: 13px; margin: 2px 4px 8px; }
+  #ctip .o { padding: 7px 8px; border-radius: 7px; cursor: pointer; }
+  #ctip .o:hover { background: #f1f3f6; }
+  #ctip .o.cur { background: #e6f0ff; }
+  #ctip .o .n { font-weight: 700; display: flex; align-items: center; gap: 6px; }
+  #ctip .o .d { color: #666; margin-top: 2px; }
+
+  /* ---------- side note ---------- */
+  #note { width: 400px; flex: 0 0 auto; height: calc(100vh - 32px); background: #fff; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,.35); font-family: "Noto Sans KR", "Malgun Gothic", sans-serif; }
+  #note .top { padding: 14px 16px 10px; border-bottom: 1px solid #eceef1; }
+  #note .top .r { display: flex; align-items: center; gap: 8px; }
+  #note .top h2 { font-size: 15px; margin: 0; flex: 1; }
+  #copy { background: #1f6feb; color: #fff; border: 0; border-radius: 8px; padding: 7px 12px; font-weight: 700; cursor: pointer; }
+  #note .help { color: #666; font-size: 12px; margin-top: 8px; line-height: 1.5; }
+  #note .help .k1 { color: #3fa9ff; font-weight: 700; } #note .help .k2 { color: #e08600; font-weight: 700; }
+  #note .list { flex: 1; overflow: auto; padding: 12px 14px; }
+  .item { border: 1px solid #e3e6ea; border-radius: 10px; padding: 10px; margin-bottom: 12px; }
+  .item .itt { font-weight: 800; font-size: 13px; margin: 0 2px 6px; }
+  .opt { border-radius: 8px; padding: 7px 8px; cursor: pointer; }
+  .opt:hover { background: #f5f6f8; }
+  .opt.cur { background: #e6f0ff; box-shadow: inset 0 0 0 1px #9cc2ff; }
+  .opt .n { font-weight: 700; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+  .opt .d { color: #666; font-size: 12px; margin-top: 2px; line-height: 1.4; }
+  .badge { font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 4px; }
+  .badge.old { background: #eceff3; color: #555; }
+  .badge.rec { background: #dff7ea; color: #0b7a4b; }
+  .opt textarea { width: 100%; margin-top: 7px; border: 1px solid #c9d3e0; border-radius: 6px; padding: 6px 8px; font: inherit; font-size: 12px; resize: none; overflow: hidden; min-height: 32px; }
+  #note .bottom { border-top: 1px solid #eceef1; padding: 10px 16px; display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .switch { width: 38px; height: 22px; border-radius: 11px; background: #cfd5dd; position: relative; cursor: pointer; flex: 0 0 auto; }
+  .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 8px; background: #fff; transition: left .15s; }
+  .switch.on { background: #e040fb; } .switch.on::after { left: 19px; }
+  #copied { color: #0b7a4b; font-size: 12px; display: none; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="note">
+  <div class="top">
+    <div class="r"><h2>team.gg 라인 설정 시안</h2><span id="copied">복사됨</span><button id="copy">결과 복사</button></div>
+    <div class="help">항목에서 옵션을 고르면 시안이 바로 바뀌고 의견을 적을 수 있음. <b>Shift</b>를 누르면 <span class="k1">파란 점선</span>은 누를 수 있는 곳, <span class="k2">주황 점선</span>은 후보가 있는 곳(올리면 후보 툴팁). 패널의 버튼·드롭다운은 실제처럼 눌러 볼 수 있음.</div>
+  </div>
+  <div class="list" id="list"></div>
+  <div class="bottom"><div class="switch" id="newsw"></div><span>새로 생기는 부분 표시</span></div>
+</div>
+<div id="ctip"></div>
+
+<script>
+/* ================= decision items ================= */
+const ITEMS = [
+  { key: "cmd", title: "명령어 모양", opts: [
+    { id: "old", name: "기존", desc: "/팀지지라인선호도 하나만 있음 (숙련도 명령 없음)", old: 1 },
+    { id: "one", name: "/팀지지라인 하나로", desc: "명령 하나로 선호도와 숙련도를 한 화면에서 같이 봄·바꿈", rec: 1 },
+    { id: "two", name: "선호도·숙련도 명령 따로", desc: "/팀지지라인선호도, /팀지지라인숙련도를 각각 실행하고 화면도 따로 뜸" } ] },
+  { key: "layout", title: "바꾸는 방식", opts: [
+    { id: "old", name: "기존", desc: "명령어 칸에 5라인 숫자를 직접 입력, 결과는 한 줄 메시지", old: 1 },
+    { id: "lane", name: "라인 골라서 바꾸기", desc: "라인 드롭다운으로 라인을 고르고, 그 라인의 선호도 버튼·숙련도 드롭다운을 누름. 위 표에서 바로 보임", rec: 1 },
+    { id: "rows", name: "라인별 한 줄", desc: "라인마다 [탑 · 좋음 · ★4] [선호−][선호+][숙련−][숙련+] 한 줄. 줄이 꽉 차서 저장 버튼 자리가 없어 누를 때마다 바로 저장" },
+    { id: "modal", name: "입력창 팝업", desc: "[선호도 바꾸기]/[숙련도 바꾸기] 버튼을 누르면 5라인 드롭다운 입력창이 뜨고, 제출하면 저장 (라이브러리 지원 확인 필요)" } ] },
+  { key: "save", title: "저장 시점 (라인 골라서 바꾸기일 때)", opts: [
+    { id: "old", name: "기존", desc: "명령을 실행하는 순간 바로 저장", old: 1 },
+    { id: "button", name: "저장 버튼", desc: "여러 라인을 고친 뒤 [저장]을 누를 때 한 번만 team.gg로 보냄. [되돌리기]로 처음 값 복구", rec: 1 },
+    { id: "instant", name: "고를 때마다 바로 저장", desc: "누를 때마다 team.gg로 보냄. 그때마다 내전 밸런스를 다시 계산하므로 '계산 중(423)'이 나기 쉬움" } ] },
+  { key: "show", title: "값 표시", opts: [
+    { id: "old", name: "기존", desc: "숫자 그대로: 선호도 -1·0·1·2, 숙련도 0~5", old: 1 },
+    { id: "word", name: "말 + 별", desc: "선호도 싫음·보통·좋음·주라인, 숙련도 ★★★☆☆ (5칸 별)", rec: 1 },
+    { id: "emoji", name: "이모지 + 막대", desc: "선호도 👎·➖·👍·🔥, 숙련도 ■■■□□" } ] },
+  { key: "init", title: "처음 열 때 값", opts: [
+    { id: "old", name: "기존", desc: "지금처럼 현재 값을 모름. 표가 ?로 시작하고 다섯 라인을 다 골라야 저장 가능", old: 1 },
+    { id: "fetch", name: "team.gg에서 지금 값 불러오기", desc: "현재 선호도·숙련도를 보여 주고 바꾼 것만 고치면 됨. team.gg에 조회 API를 새로 요청해야 함", rec: 1 },
+    { id: "zero", name: "기본값에서 시작", desc: "선호도 보통(0)·숙련도 0으로 채워 두고 시작. 저장하면 다섯 라인 전부 이 값으로 덮어씀" } ] },
+];
+const state = {}; ITEMS.forEach((it) => (state[it.key] = it.opts.find((o) => o.rec)?.id ?? it.opts[0].id));
+const comments = {};
+let openComment = null;
+
+/* ================= mock data ================= */
+const LANES = ["탑", "정글", "미드", "원딜", "서폿"];
+const CUR = { pref: [2, -1, 1, 0, 0], mast: [4, 1, 3, 2, 2] }; // what team.gg holds now
+let draft, lane, saved, openSel, modal;
+function reset() {
+  const start = state.init === "fetch" ? CUR : state.init === "zero" ? { pref: [0, 0, 0, 0, 0], mast: [0, 0, 0, 0, 0] } : { pref: [null, null, null, null, null], mast: [null, null, null, null, null] };
+  draft = { pref: [...start.pref], mast: [...start.mast] };
+  lane = 0; saved = null; openSel = null; modal = null;
+}
+reset();
+
+const PREF_WORD = { "-1": "싫음", "0": "보통", "1": "좋음", "2": "주라인" };
+const PREF_EMO = { "-1": "👎", "0": "➖", "1": "👍", "2": "🔥" };
+function fmtPref(v) { if (v == null) return "?"; return state.show === "word" ? PREF_WORD[v] : state.show === "emoji" ? PREF_EMO[v] : String(v); }
+function fmtMast(v) { if (v == null) return "?"; return state.show === "word" ? "★".repeat(v) + "☆".repeat(5 - v) : state.show === "emoji" ? "■".repeat(v) + "□".repeat(5 - v) : String(v); }
+const now = () => { const d = new Date(); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
+
+/* ================= render ================= */
+const app = document.getElementById("app");
+function metricsFor() { return state.cmd === "one" ? [["pref", "mast"]] : state.cmd === "two" ? [["pref"], ["mast"]] : [["pref"]]; }
+const NAME = { pref: "선호도", mast: "숙련도" };
+const CMD = (ms) => state.cmd === "one" ? "/팀지지라인" : ms[0] === "pref" ? "/팀지지라인선호도" : "/팀지지라인숙련도";
+
+function oldFlow() {
+  // the command with five numbers, then a one-line answer
+  const blocks = metricsFor().map((ms) => {
+    const m = ms[0];
+    const cmd = state.cmd === "one" ? `/팀지지라인 종류:${NAME[m]}` : CMD(ms);
+    const vals = m === "pref" ? CUR.pref : CUR.mast;
+    const args = LANES.map((l, i) => `${l}:${vals[i]}`).join(" ");
+    return `<div class="reply" data-cand="cmd"><span class="mini" style="background:#c23b7a"></span><b style="color:#f2f3f5">션 쿠</b> 님이 <code>${cmd}</code> 사용 <span style="color:#6d6f78">${args}</span></div>
+      <div class="msg" style="margin-top:0"><div class="av" style="background:#3ddc97">C</div><div class="body"><div class="who"><b>CushionBot</b><span class="bot">앱</span><span class="t">오늘 오후 3:42</span></div>
+      <div class="txt" data-cand="layout"><span class="mention">@션 쿠</span>님의 라인 ${NAME[m]}가 ${LANES.map((l, i) => `${l === "원딜" ? "원딜" : l}(${vals[i]})`).join(" ")}로 설정되었습니다.</div></div></div>`;
+  });
+  return blocks.join("");
+}
+
+function panelTable(ms) {
+  return `<table data-cand="show"><tr><th>라인</th>${ms.map((m) => `<th>${NAME[m]}</th>`).join("")}</tr>${LANES.map((l, i) => `<tr class="${state.layout === "lane" && i === lane ? "sel" : ""}"><td>${l}</td>${ms.map((m) => `<td>${m === "pref" ? fmtPref(draft.pref[i]) : fmtMast(draft.mast[i])}</td>`).join("")}</tr>`).join("")}</table>`;
+}
+function complete(ms) { return ms.every((m) => draft[m].every((v) => v != null)); }
+function dirty(ms) { return ms.some((m) => draft[m].some((v, i) => v !== CUR[m][i])); }
+function select(id, label, items) {
+  return `<div class="sel" data-sel="${id}"><div class="box" data-click data-open="${id}">${label}</div>${openSel === id ? `<div class="list">${items.map((x) => `<div class="it ${x.cur ? "cur" : ""}" data-click data-pick="${id}" data-v="${x.v}">${x.label}${x.d ? `<div class="d">${x.d}</div>` : ""}</div>`).join("")}</div>` : ""}</div>`;
+}
+function footer(ms, idx) {
+  const instant = state.layout === "rows" || (state.layout === "lane" && state.save !== "button");
+  if (saved && saved.idx === idx) return `<div class="ef ok">✓ ${saved.at} 저장됨 · 들어가 있는 내전 2개에 반영, 다음 내전부터 기본값으로 적용</div>`;
+  const src = state.init === "fetch" ? "team.gg에 저장된 지금 값" : state.init === "zero" ? "기본값에서 시작 (저장하면 다섯 라인 전부 덮어씀)" : "현재 값을 몰라 ?로 시작 (다섯 라인을 다 골라야 저장됨)";
+  const how = state.layout === "modal" ? "버튼을 눌러 입력창에서 바꿈" : instant ? "누를 때마다 바로 저장됨" : "고친 뒤 [저장]을 눌러야 반영됨";
+  return `<div class="ef" data-cand="init">${src} · ${how}</div>`;
+}
+function panel(ms, idx) {
+  const title = ms.length === 2 ? "라인 선호도 · 숙련도" : `라인 ${NAME[ms[0]]}`;
+  const desc = ms.length === 2 ? "선호도는 가고 싶은 정도(싫음~주라인), 숙련도는 잘하는 정도(0~5)." : ms[0] === "pref" ? "가고 싶은 정도: 싫음 · 보통 · 좋음 · 주라인" : "잘하는 정도: 0 ~ 5";
+  let comps = "";
+  if (state.layout === "lane") {
+    const rows = [select(`lane${idx}`, `라인: ${LANES[lane]}`, LANES.map((l, i) => ({ v: i, label: l, cur: i === lane, d: ms.map((m) => `${NAME[m]} ${m === "pref" ? fmtPref(draft.pref[i]) : fmtMast(draft.mast[i])}`).join(" · ") })))];
+    if (ms.includes("pref")) rows.push(`<div class="arow">${[-1, 0, 1, 2].map((v) => `<button class="btn ${draft.pref[lane] === v ? "pri" : ""}" data-click data-pref="${v}" data-idx="${idx}">${state.show === "old" ? v : `${PREF_EMO[v] && state.show === "emoji" ? PREF_EMO[v] + " " : ""}${PREF_WORD[v]}${state.show === "word" ? "" : ""}`}</button>`).join("")}</div>`);
+    if (ms.includes("mast")) rows.push(`<div ${ms.length === 2 ? "data-new" : ""}>${select(`mast${idx}`, `숙련도: ${draft.mast[lane] == null ? "선택" : fmtMast(draft.mast[lane]) + (state.show === "old" ? "" : ` (${draft.mast[lane]})`)}`, [0, 1, 2, 3, 4, 5].map((v) => ({ v, label: `${fmtMast(v)}${state.show === "old" ? "" : ` (${v})`}`, cur: draft.mast[lane] === v, d: ["안 해 봄", "거의 못 함", "조금 함", "보통", "잘함", "자신 있음"][v] })))}</div>`);
+    if (state.save === "button") {
+      const can = complete(ms) && dirty(ms);
+      rows.push(`<div class="arow" data-cand="save"><button class="btn ok ${can ? "" : "dis"}" data-click data-save="${idx}">저장</button><button class="btn ${dirty(ms) ? "" : "dis"}" data-click data-undo="${idx}">되돌리기</button></div>`);
+    }
+    comps = rows.join("");
+  } else if (state.layout === "rows") {
+    comps = LANES.map((l, i) => `<div class="arow"><button class="btn lab">${l} · ${ms.map((m) => m === "pref" ? fmtPref(draft.pref[i]) : fmtMast(draft.mast[i])).join(" · ")}</button>${ms.map((m) => `<button class="btn" data-click data-step="${m}" data-lane="${i}" data-d="-1" data-idx="${idx}">${ms.length === 2 ? (m === "pref" ? "선호 −" : "숙련 −") : "−"}</button><button class="btn" data-click data-step="${m}" data-lane="${i}" data-d="1" data-idx="${idx}">${ms.length === 2 ? (m === "pref" ? "선호 +" : "숙련 +") : "+"}</button>`).join("")}</div>`).join("");
+  } else if (state.layout === "modal") {
+    comps = `<div class="arow">${ms.map((m) => `<button class="btn pri" data-click data-modal="${m}" data-idx="${idx}">${NAME[m]} 바꾸기</button>`).join("")}</div>`;
+  }
+  return `<div class="embed" data-new>
+      <div class="et">${title} · 션 쿠</div>
+      <div class="ed">${desc}</div>
+      ${panelTable(ms)}
+      ${footer(ms, idx)}
+    </div>
+    <div class="comps" data-cand="layout" data-new>${comps}</div>`;
+}
+
+function render() {
+  let chat = `<div class="msg"><div class="av" style="background:#e67e22">박</div><div class="body"><div class="who"><b>박공장장</b><span class="t">오늘 오후 3:38</span></div><div class="txt">오늘 내전 9시 ㄱ?</div></div></div>`;
+  if (state.layout === "old") chat += oldFlow();
+  else {
+    chat += metricsFor().map((ms, idx) => `
+      <div class="reply" style="margin-top:14px" data-cand="cmd"><span class="mini" style="background:#c23b7a"></span><b style="color:#f2f3f5">션 쿠</b> 님이 <code>${CMD(ms)}</code> 사용</div>
+      <div class="msg" style="margin-top:0"><div class="av" style="background:#3ddc97">C</div><div class="body">
+        <div class="who"><b>CushionBot</b><span class="bot">앱</span><span class="t">오늘 오후 3:42</span></div>
+        ${panel(ms, idx)}
+        <div class="eph">👁 나만 볼 수 있어요 · <a>메시지 닫기</a></div>
+      </div></div>`).join("");
+  }
+  let modalHtml = "";
+  if (modal) {
+    const m = modal.metric;
+    modalHtml = `<div class="modalback"><div class="modal" data-new><div class="mh">라인 ${NAME[m]}</div><div class="mb">${LANES.map((l, i) => {
+      const id = `md${i}`; const v = modal.vals[i];
+      const opts = (m === "pref" ? [-1, 0, 1, 2] : [0, 1, 2, 3, 4, 5]).map((x) => ({ v: x, label: m === "pref" ? fmtPref(x) : fmtMast(x) + (state.show === "old" ? "" : ` (${x})`), cur: v === x }));
+      return `<div><label>${l}</label>${select(id, v == null ? "선택" : (m === "pref" ? fmtPref(v) : fmtMast(v)), opts)}</div>`;
+    }).join("")}</div><div class="mf"><button class="btn link" data-click data-mclose>취소</button><button class="btn pri ${modal.vals.every((x) => x != null) ? "" : "dis"}" data-click data-msubmit>제출</button></div></div></div>`;
+  }
+  app.innerHTML = `<div class="guilds"><i>편</i><i class="o">평</i><i class="o">E</i></div>
+    <div class="chans"><div class="sv">편들 2026</div><div class="c"># 일반</div><div class="c sel"># 내전</div><div class="c"># 음악</div><div class="c">🔊 롤 내전 1</div><div class="c">🔊 롤 내전 2</div></div>
+    <div class="main" style="position:relative"><div class="chead"><span>#</span>내전</div><div class="msgs">${chat}</div>
+    <div class="composer">#내전에 메시지 보내기</div>${modalHtml}</div>`;
+  app.querySelectorAll("[data-cand]").forEach((el) => { if (!ITEMS.some((it) => it.key === el.dataset.cand)) el.removeAttribute("data-cand"); });
+}
+
+/* panel interactions */
+function doSave(idx) {
+  saved = { idx, at: now() };
+  const ms = metricsFor()[idx]; ms.forEach((m) => (CUR[m] = [...draft[m]]));
+}
+app.addEventListener("click", (e) => {
+  const el = e.target.closest("[data-click]"); if (!el || el.classList.contains("dis")) { if (!e.target.closest(".sel")) { openSel = null; render(); } return; }
+  const d = el.dataset; const instant = state.layout === "lane" && state.save !== "button";
+  if (d.open) { openSel = openSel === d.open ? null : d.open; render(); return; }
+  if (d.pick) {
+    const v = +d.v; openSel = null; saved = null;
+    if (d.pick.startsWith("lane")) lane = v;
+    else if (d.pick.startsWith("mast")) { draft.mast[lane] = v; if (instant) doSave(+d.pick.slice(4)); }
+    else if (d.pick.startsWith("md")) modal.vals[+d.pick.slice(2)] = v;
+    render(); return;
+  }
+  if (d.pref != null) { draft.pref[lane] = +d.pref; saved = null; if (instant) doSave(+d.idx); render(); return; }
+  if (d.save != null) { doSave(+d.save); render(); return; }
+  if (d.undo != null) { reset(); render(); return; }
+  if (d.step) {
+    const m = d.step, i = +d.lane, lo = m === "pref" ? -1 : 0, hi = m === "pref" ? 2 : 5;
+    const cur = draft[m][i] ?? (m === "pref" ? 0 : 0);
+    draft[m][i] = Math.max(lo, Math.min(hi, cur + +d.d)); saved = null;
+    if (complete(metricsFor()[+d.idx])) doSave(+d.idx);
+    render(); return;
+  }
+  if (d.modal) { modal = { metric: d.modal, idx: +d.idx, vals: [...draft[d.modal]] }; render(); return; }
+  if (d.mclose != null) { modal = null; openSel = null; render(); return; }
+  if (d.msubmit != null) { draft[modal.metric] = [...modal.vals]; const idx = modal.idx; modal = null; doSave(idx); render(); return; }
+});
+
+/* ================= note ================= */
+const list = document.getElementById("list");
+function renderNote() {
+  list.innerHTML = ITEMS.map((it) => `<div class="item"><div class="itt">${it.title}</div>${it.opts.map((o) => {
+    const k = `${it.key}:${o.id}`; const cur = state[it.key] === o.id;
+    return `<div class="opt ${cur ? "cur" : ""}" data-k="${it.key}" data-o="${o.id}"><div class="n">${o.name}${o.old && o.name !== "기존" ? `<span class="badge old">기존</span>` : ""}${o.rec ? `<span class="badge rec">추천</span>` : ""}</div><div class="d">${o.desc}</div>
+      ${cur && openComment === k ? `<textarea rows="1" data-k="${it.key}" data-o="${o.id}" placeholder="추가 의견 (선택)">${(comments[it.key]?.[o.id] ?? "").replace(/</g, "&lt;")}</textarea>` : ""}</div>`;
+  }).join("")}</div>`).join("");
+  const ta = list.querySelector("textarea"); if (ta) autosize(ta);
+}
+function autosize(ta) { ta.style.height = "auto"; ta.style.height = ta.scrollHeight + "px"; }
+function choose(key, opt, focus = true) {
+  state[key] = opt; openComment = `${key}:${opt}`;
+  if (key === "save" && state.layout !== "lane") state.layout = "lane";
+  if (["init", "cmd", "layout", "save"].includes(key)) reset();
+  renderNote(); render();
+  const ta = list.querySelector("textarea");
+  if (ta && focus) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); ta.closest(".opt").scrollIntoView({ block: "nearest" }); }
+}
+list.addEventListener("click", (e) => { if (e.target.tagName === "TEXTAREA") return; const o = e.target.closest(".opt"); if (!o) return; choose(o.dataset.k, o.dataset.o); });
+list.addEventListener("input", (e) => { if (e.target.tagName !== "TEXTAREA") return; (comments[e.target.dataset.k] ??= {})[e.target.dataset.o] = e.target.value; autosize(e.target); });
+document.getElementById("copy").onclick = async () => {
+  const lines = ["[team.gg 라인 설정 시안 결과]"];
+  for (const it of ITEMS) {
+    const o = it.opts.find((x) => x.id === state[it.key]);
+    const c = comments[it.key]?.[o.id]?.trim();
+    lines.push(`- ${it.title}: ${o.name}${c ? ` — 의견: ${c.replace(/\n/g, " / ")}` : ""}`);
+  }
+  const text = lines.join("\n");
+  try { await navigator.clipboard.writeText(text); } catch { const t = document.createElement("textarea"); t.value = text; document.body.appendChild(t); t.select(); document.execCommand("copy"); t.remove(); }
+  const c = document.getElementById("copied"); c.style.display = "inline"; setTimeout(() => (c.style.display = "none"), 1500);
+};
+const sw = document.getElementById("newsw");
+sw.onclick = () => { sw.classList.toggle("on"); document.body.classList.toggle("shownew", sw.classList.contains("on")); };
+
+/* ================= shift + candidate tooltip ================= */
+const ctip = document.getElementById("ctip");
+let ctipKey = null;
+document.addEventListener("keydown", (e) => { if (e.key === "Shift") document.body.classList.add("shift"); if (e.key === "Escape") closeTip(); });
+document.addEventListener("keyup", (e) => { if (e.key === "Shift") document.body.classList.remove("shift"); });
+window.addEventListener("blur", () => document.body.classList.remove("shift"));
+function closeTip() { ctip.style.display = "none"; ctipKey = null; }
+function openTip(key, x, y) {
+  const it = ITEMS.find((i) => i.key === key);
+  ctipKey = key;
+  ctip.innerHTML = `<div class="t">${it.title}</div>${it.opts.map((o) => `<div class="o ${state[key] === o.id ? "cur" : ""}" data-o="${o.id}"><div class="n">${o.name}${o.old && o.name !== "기존" ? `<span class="badge old">기존</span>` : ""}${o.rec ? `<span class="badge rec">추천</span>` : ""}</div><div class="d">${o.desc}</div></div>`).join("")}`;
+  ctip.style.display = "block";
+  const w = 300, h = ctip.offsetHeight;
+  ctip.style.left = Math.min(x + 6, innerWidth - w - 8) + "px";
+  ctip.style.top = Math.min(y + 6, innerHeight - h - 8) + "px";
+}
+document.addEventListener("mousemove", (e) => {
+  if (!e.shiftKey) return;
+  if (ctip.contains(e.target)) return;
+  const c = e.target.closest("[data-cand]"); if (!c) return;
+  if (c.dataset.cand !== ctipKey) openTip(c.dataset.cand, e.clientX, e.clientY);
+});
+ctip.addEventListener("click", (e) => {
+  const o = e.target.closest(".o"); if (!o) return;
+  choose(ctipKey, o.dataset.o, false);
+  openTip(ctipKey, parseFloat(ctip.style.left) - 6, parseFloat(ctip.style.top) - 6);
+});
+document.addEventListener("mousedown", (e) => { if (ctip.style.display === "block" && !ctip.contains(e.target) && !e.shiftKey) closeTip(); });
+
+renderNote();
+render();
+</script>
+</body>
+</html>
