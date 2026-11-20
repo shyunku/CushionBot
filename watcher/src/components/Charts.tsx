@@ -40,6 +40,9 @@ function useChartTip() {
 
 export type Axis = { top: number; ticks: number[]; label: (v: number) => string };
 
+/** Room below 0 and above the axis top, as a share of the top. */
+const CURVE_PAD = 0.05;
+
 /** 0..100% axis for shares. */
 export const PERCENT_AXIS: Axis = { top: 1, ticks: [0, 0.2, 0.4, 0.6, 0.8, 1], label: (v) => `${Math.round(v * 100)}` };
 
@@ -66,7 +69,11 @@ export function FreqCurve({ slots, now, height = 120, axis, format }: { slots: n
   });
   const W = 1000;
   const Hh = 100;
-  const yOf = (v: number) => Hh - Math.min(1, v / axis.top) * Hh;
+  // the y range runs 5% past 0 and the top so the smoothed curve's overshoot stays inside the chart
+  const lo = -axis.top * CURVE_PAD;
+  const hi = axis.top * (1 + CURVE_PAD);
+  const frac = (v: number) => (Math.min(axis.top, v) - lo) / (hi - lo);
+  const yOf = (v: number) => Hh - frac(v) * Hh;
   const pts = smooth.map((v, i) => [(i / (n - 1)) * W, yOf(v)]);
   let d = `M${pts[0][0]},${pts[0][1]}`;
   for (let i = 0; i < pts.length - 1; i++) {
@@ -93,7 +100,7 @@ export function FreqCurve({ slots, now, height = 120, axis, format }: { slots: n
     <div className="ychart">
       <div className="yax" style={{ height }}>
         {axis.ticks.map((v) => (
-          <span key={v} style={{ bottom: `${(v / axis.top) * 100}%` }}>
+          <span key={v} style={{ bottom: `${frac(v) * 100}%` }}>
             {axis.label(v)}
           </span>
         ))}
@@ -118,7 +125,7 @@ export function FreqCurve({ slots, now, height = 120, axis, format }: { slots: n
           {axis.ticks.map((v) => (
             <line key={v} x1={0} x2={W} y1={yOf(v)} y2={yOf(v)} stroke="var(--grid)" vectorEffect="non-scaling-stroke" />
           ))}
-          <path d={`${d} L${W},${Hh} L0,${Hh} Z`} fill={`url(#${gid})`} />
+          <path d={`${d} L${W},${yOf(0)} L0,${yOf(0)} Z`} fill={`url(#${gid})`} />
           <path d={d} fill="none" stroke="var(--accent)" strokeWidth={2} vectorEffect="non-scaling-stroke" />
           <line x1={nx} x2={nx} y1={0} y2={Hh} stroke="var(--now)" strokeWidth={2} vectorEffect="non-scaling-stroke" />
         </svg>
@@ -307,8 +314,8 @@ export function MiniBars({ values }: { values: number[] }) {
   );
 }
 
-export type FreqFilter = { period: "30d" | "all"; weekday: "today" | "all" };
-export const DEFAULT_FREQ_FILTER: FreqFilter = { period: "30d", weekday: "today" };
+export type FreqFilter = { period: "30d" | "90d" | "all"; weekday: "today" | "all" };
+export const DEFAULT_FREQ_FILTER: FreqFilter = { period: "90d", weekday: "today" };
 
 /** Period and weekday dropdowns shown next to a frequency chart title. */
 export function FreqFilters({ value, now, onChange }: { value: FreqFilter; now: number; onChange: (v: FreqFilter) => void }) {
@@ -316,6 +323,7 @@ export function FreqFilters({ value, now, onChange }: { value: FreqFilter; now: 
     <>
       <select className="dd" value={value.period} onChange={(e) => onChange({ ...value, period: e.target.value as FreqFilter["period"] })}>
         <option value="30d">최근 30일</option>
+        <option value="90d">최근 3개월</option>
         <option value="all">전체</option>
       </select>
       <select className="dd" value={value.weekday} onChange={(e) => onChange({ ...value, weekday: e.target.value as FreqFilter["weekday"] })}>

@@ -222,14 +222,17 @@ export function serverStats(people: Person[], now: number, days = 30) {
   return { slots, heat, weekdays: wc, grass, total, avgPeople, peakSlot, peakDay, active: active.length };
 }
 
-export type FreqPeriod = "30d" | "all";
+export type FreqPeriod = "30d" | "90d" | "all";
 
-/** Day starts covered by a period: the last 30 days, or every day since the first record (records keep a year). */
+/**
+ * Day starts covered by a period: the last 30 days, the last 90 days, or every day since the first record
+ * (records keep a year). The 90-day and full periods do not reach back before the first record.
+ */
 export function periodDays(people: Person[], period: FreqPeriod, now: number) {
   let count = 30;
-  if (period === "all") {
+  if (period !== "30d") {
     const first = Math.min(now, ...people.map((p) => p.sessions[0]?.s ?? now));
-    count = Math.min(365, Math.round((sod(now) - sod(first)) / D) + 1);
+    count = Math.min(period === "90d" ? 90 : 365, Math.round((sod(now) - sod(first)) / D) + 1);
   }
   return Array.from({ length: count }, (_, i) => sod(now) - i * D);
 }
