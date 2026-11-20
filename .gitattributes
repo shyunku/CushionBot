@@ -1,0 +1,2 @@
+scripts/cushion text eol=lf
+scripts/cushion.cmd text eol=crlf

@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+# CushionBot status and logs.
+#
+#   cushion ps                 service, version, memory, Lavalink, dashboard
+#   cushion logs [options]     bot logs (systemd journal of cushionbot.service)
+#     -f, --follow             keep printing new lines (Ctrl+C to stop)
+#     -n, --lines N            last N lines (default 100)
+#     -s, --since TIME         from TIME, e.g. "10 min ago", "today", "2026-11-20 15:00" (server time, UTC)
+#     -e, --errors             only lines with ERROR / WARN / Exception
+#     -g, --grep PATTERN       only lines matching PATTERN (case-insensitive, extended regex)
+#
+# On the server it runs directly. Anywhere else it runs itself on the server over ssh
+# (host from $CUSHION_HOST, default shyunku-main-2026).
+set -euo pipefail
+
+APP_DIR="$HOME/workspace/CushionBot"
+UNIT="cushionbot.service"
+HOST="${CUSHION_HOST:-shyunku-main-2026}"
+
+usage() { sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; }
+
+# not on the server: forward the whole command line
+if [ ! -f "$APP_DIR/fastbuild.sh" ] || ! command -v systemctl >/dev/null 2>&1; then
+  args=""
+  for a in "$@"; do args+=" $(printf '%q' "$a")"; done
+  if [ -t 1 ]; then exec ssh -t -o LogLevel=ERROR "$HOST" "~/.local/bin/cushion$args"; fi
+  exec ssh -o LogLevel=ERROR "$HOST" "~/.local/bin/cushion$args"
+fi
+
+kst() { TZ=Asia/Seoul date -d "$1" '+%Y-%m-%d %H:%M:%S KST'; }
+
+cmd_ps() {
+  local state sub since pid mem started now up version commit
+  state=$(systemctl --user show "$UNIT" -p ActiveState --value)
+  sub=$(systemctl --user show "$UNIT" -p SubState --value)
+  since=$(systemctl --user show "$UNIT" -p ActiveEnterTimestamp --value)
+  pid=$(systemctl --user show "$UNIT" -p MainPID --value)
+  mem=$(systemctl --user show "$UNIT" -p MemoryCurrent --value)
+  version=$(grep -o 'CURRENT = "[^"]*"' "$APP_DIR/src/main/java/core/Version.java" | cut -d'"' -f2)
+  commit=$(git -C "$APP_DIR" log -1 --format='%h %s' 2>/dev/null || echo "?")
+
+  printf '%-11s %s (%s)' "cushionbot" "$state" "$sub"
+  if [ -n "$since" ] && [ "$state" = "active" ]; then
+    started=$(date -d "$since" +%s); now=$(date +%s); up=$((now - started))
+    printf '  since %s (up %dd %dh %dm)' "$(kst "$since")" $((up / 86400)) $((up % 86400 / 3600)) $((up % 3600 / 60))
+  fi
+  echo
+  printf '%-11s %s  (%s)\n' "version" "${version:-?}" "$commit"
+  if [ "${pid:-0}" != "0" ]; then
+    if [[ "$mem" =~ ^[0-9]+$ ]]; then
+      printf '%-11s pid %s, memory %s MB (bot + Lavalink)\n' "process" "$pid" "$((mem / 1024 / 1024))"
+    else
+      printf '%-11s pid %s\n' "process" "$pid"
+    fi
+  fi
+  local lpid
+  lpid=$(pgrep -f 'Lavalink.jar' | head -1 || true)
+  if [ -n "$lpid" ]; then
+    if ss -ltn 2>/dev/null | grep -q ':2333 '; then
+      printf '%-11s running (pid %s), listening on 2333\n' "lavalink" "$lpid"
+    else
+      printf '%-11s running (pid %s), not listening yet\n' "lavalink" "$lpid"
+    fi
+  else
+    printf '%-11s not running\n' "lavalink"
+  fi
+  local code
+  code=$(curl -s -o /dev/null -m 5 -w '%{http_code}' http://127.0.0.1:7918/ || true)
+  printf '%-11s http://127.0.0.1:7918 -> %s\n' "dashboard" "${code:-no answer}"
+  local errs
+  errs=$(journalctl --user -u "$UNIT" --since "1 hour ago" -o cat --no-pager 2>/dev/null | grep -ciE ' ERROR |Exception' || true)
+  printf '%-11s %s in the last hour (cushion logs -e -s "1 hour ago")\n' "errors" "${errs:-0}"
+}
+
+cmd_logs() {
+  local follow="" lines=100 since="" filter=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      -f|--follow) follow=1 ;;
+      -n|--lines) lines="$2"; shift ;;
+      -s|--since) since="$2"; shift ;;
+      -e|--errors) filter=' ERROR | WARN |Exception' ;;
+      -g|--grep) filter="$2"; shift ;;
+      -h|--help) usage; return ;;
+      *) echo "unknown option: $1" >&2; usage >&2; return 2 ;;
+    esac
+    shift
+  done
+  local args=(--user -u "$UNIT" -o cat --no-pager)
+  if [ -n "$since" ]; then args+=(--since "$since"); else args+=(-n "$lines"); fi
+  [ -n "$follow" ] && args+=(-f)
+  if [ -n "$filter" ]; then
+    journalctl "${args[@]}" | grep --line-buffered -iE -- "$filter"
+  else
+    journalctl "${args[@]}"
+  fi
+}
+
+case "${1:-}" in
+  ps|status) shift; cmd_ps "$@" ;;
+  logs|log) shift; cmd_logs "$@" ;;
+  ""|-h|--help|help) usage ;;
+  *) echo "unknown command: $1" >&2; usage >&2; exit 2 ;;
+esac
