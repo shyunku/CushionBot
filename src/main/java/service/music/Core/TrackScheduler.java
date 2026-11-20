@@ -5,6 +5,7 @@ import dev.arbjerg.lavalink.client.event.TrackExceptionEvent;
 import dev.arbjerg.lavalink.client.event.TrackStartEvent;
 import dev.arbjerg.lavalink.client.event.TrackStuckEvent;
 import dev.arbjerg.lavalink.client.player.LavalinkPlayer;
+import dev.arbjerg.lavalink.protocol.v4.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import service.music.object.MusicPlayMode;
@@ -13,13 +14,16 @@ import service.music.object.MusicTrack;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
-import java.util.Queue;
 
+/**
+ * Queue and play mode of one guild. Load results, Lavalink events and button/command handlers arrive on
+ * different threads, so every method that reads or changes the queue is synchronized.
+ */
 public class TrackScheduler {
     private final Logger logger = LoggerFactory.getLogger(TrackScheduler.class);
     private final LavalinkPlayer player;
     private MusicTrack currentTrack;
-    private final Queue<MusicTrack> trackQueue = new LinkedList<>();
+    private final LinkedList<MusicTrack> trackQueue = new LinkedList<>();
     private MusicPlayMode musicPlayMode = MusicPlayMode.NORMAL;
     private final MusicBoxUpdateHandler musicBoxUpdateHandler;
 
@@ -29,11 +33,17 @@ public class TrackScheduler {
     }
 
     private void playTrack(MusicTrack musicTrack) {
-        player.setTrack(musicTrack.track).block();
+        // claim the slot first so a second track loaded at the same moment queues instead of replacing it
         this.currentTrack = musicTrack;
+        try {
+            player.setTrack(musicTrack.track).block();
+        } catch (RuntimeException e) {
+            this.currentTrack = null;
+            throw e;
+        }
     }
 
-    public void addMusicTrack(MusicTrack musicTrack) {
+    public synchronized void addMusicTrack(MusicTrack musicTrack) {
         if (currentTrack == null) {
             this.playTrack(musicTrack);
         } else {
@@ -41,38 +51,41 @@ public class TrackScheduler {
         }
     }
 
-    public void nextTrack() {
-        if (musicPlayMode == MusicPlayMode.REPEAT_ALL) {
+    public synchronized void nextTrack() {
+        if (musicPlayMode == MusicPlayMode.REPEAT_ALL && currentTrack != null) {
             trackQueue.offer(currentTrack.copy());
         }
         if (trackQueue.isEmpty()) {
-            this.player.stopTrack().block();
             this.currentTrack = null;
+            this.player.stopTrack().block();
             return;
         }
         this.playTrack(trackQueue.poll());
     }
 
-    public void skipUntilTrack(String trackId) {
-        MusicTrack polled = null;
-        while (!trackQueue.isEmpty()) {
-            polled = trackQueue.poll();
-            if (polled.getIdentifier().equals(trackId)) break;
+    /** Jump to the queued track at {@code index} (0 = next), dropping the ones before it. */
+    public synchronized void skipToIndex(int index) {
+        if (index < 0 || index >= trackQueue.size()) {
+            logger.warn("Track index {} out of range ({})", index, trackQueue.size());
+            return;
         }
-        if (polled != null) {
-            this.playTrack(polled);
-        } else {
-            logger.error("Track not found");
-        }
+        for (int i = 0; i < index; i++) trackQueue.poll();
+        this.playTrack(trackQueue.poll());
     }
 
-    public void clearTracks() {
+    public synchronized void clearTracks() {
         trackQueue.clear();
+        this.currentTrack = null;
         player.stopTrack().block();
+    }
+
+    /** Forget the playing track without talking to Lavalink (its player is gone after a node restart). */
+    public synchronized void reset() {
+        trackQueue.clear();
         this.currentTrack = null;
     }
 
-    public void shuffleTracks() {
+    public synchronized void shuffleTracks() {
         if (trackQueue.isEmpty()) return;
         ArrayList<MusicTrack> tracks = new ArrayList<>(trackQueue);
         Collections.shuffle(tracks);
@@ -80,82 +93,60 @@ public class TrackScheduler {
         trackQueue.addAll(tracks);
     }
 
-    public MusicTrack getMusicTrackByAudioTrack(MusicTrack track) {
-        for (MusicTrack musicTrack : trackQueue) {
-            if (musicTrack.getIdentifier().equals(track.getIdentifier())) {
-                return musicTrack;
-            }
-        }
-        return null;
-    }
-
-    public MusicPlayMode getNextMusicPlayMode() {
+    public synchronized MusicPlayMode getNextMusicPlayMode() {
         switch (musicPlayMode) {
             case NORMAL:
                 return MusicPlayMode.REPEAT_ALL;
             case REPEAT_ALL:
                 return MusicPlayMode.REPEAT_SINGLE;
-            case REPEAT_SINGLE:
+            default:
                 return MusicPlayMode.NORMAL;
         }
-        return MusicPlayMode.NORMAL;
     }
 
-    public void removeCurrentTrack() {
-        if (currentTrack != null) {
-            currentTrack = null;
-        }
-    }
-
-    public MusicTrack getCurrentTrack() {
+    public synchronized MusicTrack getCurrentTrack() {
         return this.currentTrack;
     }
 
-    public MusicPlayMode getMusicPlayMode() {
+    public synchronized MusicPlayMode getMusicPlayMode() {
         return musicPlayMode;
     }
 
-    public void setMusicPlayMode(MusicPlayMode musicPlayMode) {
+    public synchronized void setMusicPlayMode(MusicPlayMode musicPlayMode) {
         this.musicPlayMode = musicPlayMode;
     }
 
-
-    public ArrayList<MusicTrack> getCurrentMusicTracks() {
+    public synchronized ArrayList<MusicTrack> getCurrentMusicTracks() {
         return new ArrayList<>(trackQueue);
     }
 
     public void onTrackStart(TrackStartEvent e) {
-        logger.info(String.format("Track Start: %s", e.getTrack().getInfo().getTitle()));
+        logger.info("Track Start: {}", e.getTrack().getInfo().getTitle());
     }
 
     public void onTrackEnd(TrackEndEvent e) {
-        logger.info(String.format("Track End: %s", e.getTrack().getInfo().getTitle()));
-
-        if (e.getEndReason().getMayStartNext()) {
-            switch (musicPlayMode) {
-                case NORMAL:
+        logger.info("Track End: {} ({})", e.getTrack().getInfo().getTitle(), e.getEndReason());
+        synchronized (this) {
+            if (e.getEndReason().getMayStartNext()) {
+                if (musicPlayMode == MusicPlayMode.REPEAT_SINGLE && currentTrack != null
+                        && e.getEndReason() != Message.EmittedEvent.TrackEndEvent.AudioTrackEndReason.LOAD_FAILED) {
+                    this.playTrack(currentTrack.copy());
+                } else {
+                    // NORMAL and REPEAT_ALL (nextTrack re-queues the finished track); a track that failed to
+                    // load is skipped even in single repeat instead of being retried forever
                     nextTrack();
-                    break;
-                case REPEAT_ALL:
-                    MusicTrack clone = getCurrentTrack().copy();
-                    nextTrack();
-                    this.addMusicTrack(clone);
-                    break;
-                case REPEAT_SINGLE:
-                    clone = getCurrentTrack().copy();
-                    this.playTrack(clone);
-                    break;
+                }
             }
         }
         musicBoxUpdateHandler.onActionEnd();
     }
 
     public void onTrackException(TrackExceptionEvent e) {
-        logger.error(String.format("Track exception occurred while playing %s: %s", e.getTrack().getInfo().getTitle(), e.getException().getMessage()));
+        logger.error("Track exception occurred while playing {}: {}", e.getTrack().getInfo().getTitle(), e.getException().getMessage());
     }
 
     public void onTrackStuck(TrackStuckEvent e) {
-        logger.error(String.format("Track stuck while playing %s", e.getTrack().getInfo().getTitle()));
+        logger.error("Track stuck while playing {}", e.getTrack().getInfo().getTitle());
     }
 
     public MusicBoxUpdateHandler getMusicBoxUpdateHandler() {

@@ -5,6 +5,8 @@ import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.components.actionrow.ActionRow;
 import net.dv8tion.jda.api.components.buttons.Button;
+import net.dv8tion.jda.api.components.selections.SelectMenu;
+import net.dv8tion.jda.api.components.selections.SelectOption;
 import net.dv8tion.jda.api.components.selections.StringSelectMenu;
 import service.discord.MessageEmbedProps;
 import service.music.object.MusicBoxComponents;
@@ -52,9 +54,11 @@ public class MusicActionEmbedBuilder {
             String duration = musicTrack.getDurationString();
             String requester = musicTrack.requester.getEffectiveName();
 
-            String label = String.format("%d. %s", i, musicTrack.getTitle());
+            // select option label and description are limited to 100 characters
+            String label = fit(String.format("%d. %s", i, musicTrack.getTitle()), SelectOption.LABEL_MAX_LENGTH);
+            // the value starts with the queue index; InternalEventListener parses it to jump there
             String optionId = String.format("track-%d-%s", i, musicTrack.getIdentifier());
-            String description = String.format("[%s] %s (%s)", requester, musicTrack.getChannelTitle(), duration);
+            String description = fit(String.format("[%s] %s (%s)", requester, musicTrack.getChannelTitle(), duration), SelectOption.DESCRIPTION_MAX_LENGTH);
 
             trackMenuBuilder.addOption(label, optionId, description);
         }
@@ -81,11 +85,19 @@ public class MusicActionEmbedBuilder {
 
             if (tracks.size() > 0) {
                 MusicTrack nextTrack = tracks.get(0);
-                trackMenuBuilder.setPlaceholder(String.format("다음: %s", nextTrack.getTitle()));
+                trackMenuBuilder.setPlaceholder(fit(String.format("다음: %s", nextTrack.getTitle()), SelectMenu.PLACEHOLDER_MAX_LENGTH));
             }
         }
 
         return this;
+    }
+
+    /** Cut to at most {@code max} UTF-16 units (what Discord counts), ending with "…" when cut. */
+    static String fit(String text, int max) {
+        if (text.length() <= max) return text;
+        int end = max - 1;
+        if (Character.isHighSurrogate(text.charAt(end - 1))) end--;
+        return text.substring(0, end) + "…";
     }
 
     public MusicActionEmbedBuilder setControlButtons(boolean paused, MusicPlayMode playMode) {

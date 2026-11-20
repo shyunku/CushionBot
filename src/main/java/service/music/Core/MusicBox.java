@@ -33,7 +33,9 @@ public class MusicBox implements ControlBox {
     private final Logger logger = LoggerFactory.getLogger(MusicBox.class);
     private AudioManager audioManager;
     private Guild guild;
-    private Message musicBoxMessage;
+    private volatile Message musicBoxMessage;
+    private boolean postingBox = false;
+    private boolean updateAfterPost = false;
     //    private MusicStreamer streamer;
     private MusicStreamer streamer;
 
@@ -55,20 +57,13 @@ public class MusicBox implements ControlBox {
             if (RedisClient.has(msgKey)) {
                 String msgId = RedisClient.get(msgKey);
                 try {
-                    Message message = musicChannel.retrieveMessageById(msgId).complete();
-                    if (message != null) {
-                        musicBoxMessage = message;
-                    }
+                    musicBoxMessage = musicChannel.retrieveMessageById(msgId).complete();
                 } catch (ErrorResponseException e) {
-                    int errorCode = e.getErrorCode();
-                    switch (errorCode) {
-                        case 10008:
-                            RedisClient.del(msgKey);
-                            break;
-                        default:
-                            e.printStackTrace();
-                            break;
-                    }
+                    if (e.getErrorCode() == 10008) RedisClient.del(msgKey);
+                    else logger.warn("Could not load the music box in {}: {}", guild.getName(), e.getMessage());
+                } catch (RuntimeException e) {
+                    // e.g. missing "read message history"; a new box is posted on the next update
+                    logger.warn("Could not load the music box in {}: {}", guild.getName(), e.getMessage());
                 }
             }
 
@@ -78,8 +73,8 @@ public class MusicBox implements ControlBox {
 
     public void quickPlay(String searchQuery, Member requester) throws MusicNotFoundException, GoogleJsonResponseException, MusicUrlInvalidException {
         if (searchQuery.contains("http")) {
-            String searchUrl = searchQuery;
-            if (searchUrl.contains("www.youtube.com") || searchUrl.contains("music.youtube.com")) {
+            String searchUrl = searchQuery.trim();
+            if (isYoutubeUrl(searchUrl)) {
                 if (searchUrl.contains("list=")) {
                     // playlist
                     streamer.addPlaylistByUrl(requester, searchUrl);
@@ -93,6 +88,18 @@ public class MusicBox implements ControlBox {
 
         } else {
             streamer.addTrackByQuery(requester, searchQuery);
+        }
+    }
+
+    /** youtube.com (www, m, music) and youtu.be links. */
+    static boolean isYoutubeUrl(String url) {
+        try {
+            String host = java.net.URI.create(url).getHost();
+            if (host == null) return false;
+            host = host.toLowerCase();
+            return host.equals("youtu.be") || host.equals("youtube.com") || host.endsWith(".youtube.com");
+        } catch (IllegalArgumentException e) {
+            return false;
         }
     }
 
@@ -137,29 +144,58 @@ public class MusicBox implements ControlBox {
 
     @Override
     public void updateEmbed() {
-        this.logger.info("Updating music box embed.");
+        if (streamer == null) return;
         MessageEmbedProps embed = getCurrentMusicActionEmbed();
-        if (musicBoxMessage == null) {
-            embed.sendMessageEmbedWithHook(getMusicChannel(), message -> {
-                setMusicBoxMessage(message);
-                this.updateNonNullMusicActionEmbed(embed);
+        Message message;
+        synchronized (this) {
+            message = musicBoxMessage;
+            if (message == null) {
+                // one box at a time: updates arriving while it is being posted are folded into a follow-up
+                if (postingBox) {
+                    updateAfterPost = true;
+                    return;
+                }
+                postingBox = true;
+            }
+        }
+        if (message == null) {
+            embed.sendMessageEmbedWithHook(getMusicChannel(), posted -> {
+                setMusicBoxMessage(posted);
+                boolean again;
+                synchronized (this) {
+                    postingBox = false;
+                    again = updateAfterPost;
+                    updateAfterPost = false;
+                }
+                if (again) updateEmbed();
             });
             return;
         }
-        this.updateNonNullMusicActionEmbed(embed);
+        // the box was deleted (e.g. /clear): forget it and post a new one
+        embed.editMessageEmbed(message, () -> {
+            synchronized (this) {
+                if (musicBoxMessage != message) return;
+                musicBoxMessage = null;
+            }
+            updateEmbed();
+        });
     }
 
+    /** Deletes the box and waits for Discord, so it is safe right before the process exits. */
     @Override
     public void clearEmbed() {
-        if (musicBoxMessage == null) return;
-        musicBoxMessage.delete().queue();
-        musicBoxMessage = null;
+        Message message;
+        synchronized (this) {
+            message = musicBoxMessage;
+            musicBoxMessage = null;
+        }
         RedisClient.del(GuildUtil.musicBoxMessageKey(guild.getId()));
-    }
-
-    private void updateNonNullMusicActionEmbed(MessageEmbedProps embed) {
-        assert musicBoxMessage != null;
-        embed.editMessageEmbed(musicBoxMessage);
+        if (message == null) return;
+        try {
+            message.delete().complete();
+        } catch (RuntimeException e) {
+            logger.warn("Could not delete the music box in {}: {}", guild.getName(), e.getMessage());
+        }
     }
 
     public MusicStreamer getStreamer() {
@@ -180,12 +216,31 @@ public class MusicBox implements ControlBox {
         }
 
         if (this.streamer != null) {
+            // same channel again: keep the player and queue as they are
+            if (this.streamer.getMusicChannel().getId().equals(musicChannel.getId())) {
+                RedisClient.set(GuildUtil.musicChannelKey(guild.getId()), musicChannel.getId());
+                return;
+            }
             this.streamer.destroy();
+            // the old box lives in the old channel; remove it so its buttons do not linger
+            Message old;
+            synchronized (this) {
+                old = musicBoxMessage;
+                musicBoxMessage = null;
+            }
+            if (old != null) old.delete().queue(null, failure -> {
+            });
         }
 
         Link link = client.getOrCreateLink(guild.getIdLong());
-        this.streamer = new MusicStreamer(musicChannel, link, this::updateEmbed);
-        this.streamer.clearTracksOfQueue();
+        try {
+            this.streamer = new MusicStreamer(musicChannel, link, this::updateEmbed);
+            this.streamer.clearTracksOfQueue();
+        } catch (RuntimeException e) {
+            logger.error("Could not create the music player for {}", guild.getName(), e);
+            this.streamer = null;
+            return;
+        }
 
         // initial update embed
         // logger.info("updating embed after setting music channel");
@@ -195,9 +250,14 @@ public class MusicBox implements ControlBox {
 
     public void setMusicBoxMessage(Message musicBoxMessage) {
         if (musicBoxMessage == null) return;
-        // print stack trace
         logger.info("Setting music box message with ID: {}", musicBoxMessage.getId());
-        this.musicBoxMessage = musicBoxMessage;
+        Message old;
+        synchronized (this) {
+            old = this.musicBoxMessage;
+            this.musicBoxMessage = musicBoxMessage;
+        }
+        if (old != null && !old.getId().equals(musicBoxMessage.getId())) old.delete().queue(null, failure -> {
+        });
         RedisClient.set(GuildUtil.musicBoxMessageKey(guild.getId()), musicBoxMessage.getId());
     }
 }
