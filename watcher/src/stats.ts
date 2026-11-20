@@ -342,6 +342,42 @@ export function chanceNow(p: Person, now: number) {
   return { chance: weight ? hitWeight / weight : 0, hits, days: days.length };
 }
 
+/** Bin size for the most likely join time. */
+const JOIN_BIN = 30 * MIN;
+
+/**
+ * Chance that a person comes in at some point today: over the same days as chanceNow, the weighted share
+ * of days with a session that started that day. `joinTime` is the most likely time of day of the first
+ * join (the busiest 30-minute bin by weight, then the median within it, rounded to 10 minutes), or null.
+ * `joinedToday` is true when the person has been on today already.
+ */
+export function todayChance(p: Person, now: number) {
+  const bins = new Array<number>(24 * 60 * MIN / JOIN_BIN).fill(0);
+  const firsts: { tod: number; weight: number }[] = [];
+  let weight = 0;
+  let hitWeight = 0;
+  let hits = 0;
+  const days = chanceDays(now);
+  for (const { day, weight: w } of days) {
+    weight += w;
+    const first = p.sessions.find((s) => s.s >= day && s.s < day + D);
+    if (!first) continue;
+    hitWeight += w;
+    hits++;
+    const tod = first.s - day;
+    bins[Math.floor(tod / JOIN_BIN)] += w;
+    firsts.push({ tod, weight: w });
+  }
+  let joinTime: number | null = null;
+  if (firsts.length) {
+    const best = bins.indexOf(Math.max(...bins));
+    const inBin = firsts.filter((x) => Math.floor(x.tod / JOIN_BIN) === best).sort((x, y) => x.tod - y.tod);
+    joinTime = (Math.round(inBin[Math.floor((inBin.length - 1) / 2)].tod / (10 * MIN)) * 10 * MIN) % D;
+  }
+  const joinedToday = p.sessions.some((s) => endOf(s, now) > sod(now));
+  return { chance: weight ? hitWeight / weight : 0, hits, days: days.length, joinTime, joinedToday };
+}
+
 /**
  * Chance that a person leaves soon: over the same days as chanceNow, of the days on which the person was
  * connected at the current time of day, the weighted share that ended within LEAVE_WINDOW.

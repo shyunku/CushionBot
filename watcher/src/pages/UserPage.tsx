@@ -4,8 +4,8 @@ import { useGuild } from "../context";
 import { ShareButton } from "../components/Header";
 import { DAYS, DEFAULT_FREQ_FILTER, DailyBars, FreqCurve, FreqFilters, Heatmap, MiniBars, PERCENT_AXIS } from "../components/Charts";
 import { chName, solidColor } from "../colors";
-import { chanceNow, endOf, heatFor, isOnline, lastSession, rankOf, slotsFor, userStats } from "../stats";
-import { fmtDate, fmtDur, fmtFull, kst } from "../time";
+import { todayChance, endOf, heatFor, isOnline, lastSession, rankOf, slotsFor, userStats } from "../stats";
+import { H, MIN, fmtDate, fmtDur, fmtFull, kst, p2 } from "../time";
 
 export default function UserPage() {
   const { data, now, base } = useGuild();
@@ -39,7 +39,8 @@ export default function UserPage() {
   const focus = filter.weekday === "today" ? today : null;
   const freq = slotsFor([p], filter.period, focus, now);
   const heat = heatFor([p], filter.period, now);
-  const chance = chanceNow(p, now);
+  const chance = todayChance(p, now);
+  const fmtTod = (tod: number) => `${p2(Math.floor(tod / H))}:${p2(Math.floor((tod % H) / MIN))}`;
 
   return (
     <>
@@ -71,10 +72,14 @@ export default function UserPage() {
           <div className="k small">30일 중 {st.days}일</div>
         </div>
         <div className="stat">
-          <div className="k">지금 들어올 확률</div>
-          <div className="v">{Math.round(chance.chance * 100)}%</div>
+          <div className="k">오늘 들어올 확률</div>
+          <div className="v">
+            {chance.joinedToday ? "오늘 접속함" : `${Math.round(chance.chance * 100)}%${chance.joinTime != null ? ` · ${fmtTod(chance.joinTime)}쯤` : ""}`}
+          </div>
           <div className="k small">
-            {DAYS[today]}요일 · {chance.days}번 중 {chance.hits}번
+            {chance.joinedToday
+              ? `평소 ${Math.round(chance.chance * 100)}%${chance.joinTime != null ? ` · ${fmtTod(chance.joinTime)}쯤 입장` : ""}`
+              : `${DAYS[today]}요일 · ${chance.days}번 중 ${chance.hits}번`}
           </div>
         </div>
         <div className="stat">
