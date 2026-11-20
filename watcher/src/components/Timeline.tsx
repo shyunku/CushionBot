@@ -55,6 +55,8 @@ const LIVE_STEP = 10 * MIN;
 const OVERSCAN = 0.5;
 /** Duration of the eased wheel zoom. */
 const WHEEL_EASE_MS = 300;
+/** Zoom per wheel pixel: ln(1.25) / 100, so one mouse notch scales the span by 1.25. */
+const WHEEL_ZOOM_PER_PX = Math.log(1.25) / 100;
 
 /** Current time redrawn on every animation frame while `on`; otherwise the shared 5-second clock. */
 function useLiveNow(base: number, offset: number, on: boolean) {
@@ -124,7 +126,10 @@ export default function Timeline({ people, hidden, range, now: baseNow, clockOff
   // wheel zoom around the mouse position (needs a non-passive listener), eased toward the target range
   const rangeRef = useRef(range);
   rangeRef.current = range;
-  const anim = useRef<{ from: [number, number]; to: [number, number]; t0: number; raf: number; last: [number, number] } | null>(null);
+  // The zoom keeps the time under the cursor fixed and eases the span (in log scale) toward the target.
+  // A wheel event during an animation retargets from the span on screen with the same anchor, so rapid
+  // scrolling stays smooth instead of jumping between the old and new targets.
+  const anim = useRef<{ at: number; r: number; fromSpan: number; toSpan: number; t0: number; raf: number; last: [number, number] } | null>(null);
   const stopAnim = () => {
     if (anim.current) cancelAnimationFrame(anim.current.raf);
     anim.current = null;
@@ -136,7 +141,7 @@ export default function Timeline({ people, hidden, range, now: baseNow, clockOff
     const step = (ts: number) => {
       const a = anim.current;
       if (!a) return;
-      // someone else (preset, buttons) moved the range: let them win
+      // someone else (preset, buttons, drag) moved the range: let them win
       const cur = rangeRef.current;
       if (cur[0] !== a.last[0] || cur[1] !== a.last[1]) {
         anim.current = null;
@@ -144,7 +149,8 @@ export default function Timeline({ people, hidden, range, now: baseNow, clockOff
       }
       const p = Math.min(1, (ts - a.t0) / WHEEL_EASE_MS);
       const k = 1 - Math.pow(1 - p, 3);
-      const next: [number, number] = [a.from[0] + (a.to[0] - a.from[0]) * k, a.from[1] + (a.to[1] - a.from[1]) * k];
+      const span = Math.exp(Math.log(a.fromSpan) + (Math.log(a.toSpan) - Math.log(a.fromSpan)) * k);
+      const next: [number, number] = [a.at - a.r * span, a.at + (1 - a.r) * span];
       a.last = next;
       rangeRef.current = next;
       onRangeChange(next);
@@ -156,20 +162,21 @@ export default function Timeline({ people, hidden, range, now: baseNow, clockOff
       const x = e.clientX - rect.left;
       if (x < NC) return;
       e.preventDefault();
-      // keep zooming from where the running animation is heading
-      const [ra, rb] = anim.current ? anim.current.to : rangeRef.current;
-      const span = rb - ra;
-      const factor = e.deltaY < 0 ? 0.8 : 1.25;
-      const nextSpan = Math.min(MAX_SPAN, Math.max(MIN_SPAN, span * factor));
       const w = el.clientWidth - NC - 24;
-      const at = ra + ((x - NC - 12) / w) * span;
-      const r = (at - ra) / span;
-      const to: [number, number] = [at - r * nextSpan, at + (1 - r) * nextSpan];
-      const from: [number, number] = [...rangeRef.current];
+      const r = Math.min(1, Math.max(0, (x - NC - 12) / w));
+      const [ra, rb] = rangeRef.current;
+      const span = rb - ra;
+      // proportional to the scroll amount: a mouse notch (~100px) is x1.25, touchpads scroll in small steps
+      const pixels = e.deltaY * (e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 400 : 1);
+      const factor = Math.exp(Math.max(-300, Math.min(300, pixels)) * WHEEL_ZOOM_PER_PX);
+      const baseSpan = anim.current ? anim.current.toSpan : span;
+      const toSpan = Math.min(MAX_SPAN, Math.max(MIN_SPAN, baseSpan * factor));
+      const at = ra + r * span;
+      const last: [number, number] = [ra, rb];
       if (anim.current) {
-        Object.assign(anim.current, { from, to, t0: performance.now() });
+        Object.assign(anim.current, { at, r, fromSpan: span, toSpan, t0: performance.now(), last });
       } else {
-        anim.current = { from, to, t0: performance.now(), raf: requestAnimationFrame(step), last: from };
+        anim.current = { at, r, fromSpan: span, toSpan, t0: performance.now(), raf: requestAnimationFrame(step), last };
       }
     };
     el.addEventListener("wheel", onWheel, { passive: false });
